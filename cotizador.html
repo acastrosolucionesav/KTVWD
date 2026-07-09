@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KTV Working Drone — Cotizador Comercial</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#34C7FF;--blue-dk:#00AADF;--blue-nk:#1F4E78;--blue-bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--white:#FFFFFF;--off:#F7FBFF;--ok:#38a169;--warn:#DD6B20;--err:#E53E3E;--r:20px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);background:var(--off);line-height:1.5;}
+
+/* ---- Top bar ---- */
+.top{background:linear-gradient(160deg,var(--blue-dk) 0%,var(--blue-nk) 100%);color:#fff;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.top-logo{display:flex;align-items:center;gap:14px;}
+.top-logo .mark{width:44px;height:44px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue-dk);font-size:20px;letter-spacing:-.03em;}
+.top-logo h1{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.1;}
+.top-logo p{font-size:12px;font-weight:300;opacity:.85;}
+.top-toggle{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;background:rgba(255,255,255,.14);padding:8px 16px;border-radius:50px;cursor:pointer;user-select:none;border:1px solid rgba(255,255,255,.25);}
+.top-toggle input{width:0;height:0;opacity:0;position:absolute;}
+.sw{width:38px;height:20px;border-radius:20px;background:rgba(255,255,255,.3);position:relative;transition:background .2s;flex-shrink:0;}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;}
+.top-toggle.on .sw{background:var(--blue);}
+.top-toggle.on .sw::after{transform:translateX(18px);}
+
+/* ---- Layout ---- */
+.wrap{max-width:1240px;margin:0 auto;padding:28px 24px 80px;display:grid;grid-template-columns:380px 1fr;gap:28px;align-items:start;}
+@media(max-width:940px){.wrap{grid-template-columns:1fr;}}
+
+/* ---- Panel / form ---- */
+.panel{background:#fff;border-radius:var(--r);border:1px solid rgba(52,199,255,.18);box-shadow:0 6px 24px rgba(31,78,120,.06);padding:24px;position:sticky;top:20px;}
+@media(max-width:940px){.panel{position:static;}}
+.panel h2{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-dk);margin-bottom:4px;}
+.panel .hint{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.fg input,.fg select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);background:var(--off);border:1.5px solid rgba(52,199,255,.28);border-radius:10px;padding:11px 12px;outline:none;transition:border-color .2s;}
+.fg input:focus,.fg select:focus{border-color:var(--blue);}
+.fg select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%2300AADF' stroke-width='1.6' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sec-div{border:none;border-top:1px dashed rgba(52,199,255,.3);margin:20px 0 16px;}
+.sec-lbl{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-nk);margin-bottom:12px;}
+.mov-box{display:none;}
+.mov-box.on{display:block;}
+
+/* ---- Results ---- */
+.results{display:flex;flex-direction:column;gap:22px;}
+.alerts{display:flex;flex-direction:column;gap:10px;}
+.alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:12px;font-size:13.5px;font-weight:600;line-height:1.45;}
+.alert .ai{font-size:18px;flex-shrink:0;line-height:1.2;}
+.alert.err{background:#FFF5F5;color:#9B2C2C;border:1px solid #FEB2B2;}
+.alert.warn{background:#FFFAF0;color:#9C4221;border:1px solid #FBD38D;}
+.alert.ok{background:#F0FFF4;color:#22543D;border:1px solid #9AE6B4;}
+
+/* three option cards */
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:1180px){.opts{grid-template-columns:1fr;}}
+.opt{background:#fff;border-radius:var(--r);border:1.5px solid rgba(52,199,255,.22);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
+.opt.feat{border-color:var(--blue);box-shadow:0 12px 34px rgba(0,170,223,.16);transform:translateY(-2px);}
+.opt-hd{padding:18px 20px 14px;border-bottom:1px solid rgba(52,199,255,.14);position:relative;}
+.opt.feat .opt-hd{background:linear-gradient(160deg,var(--blue) 0%,var(--blue-dk) 100%);color:#fff;}
+.opt-tag{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-dk);}
+.opt.feat .opt-tag{color:rgba(255,255,255,.9);}
+.opt-name{font-size:17px;font-weight:800;color:var(--ink);margin-top:3px;}
+.opt.feat .opt-name{color:#fff;}
+.opt-badge{position:absolute;top:14px;right:14px;background:#fff;color:var(--blue-dk);font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:50px;}
+.opt-bd{padding:18px 20px;display:flex;flex-direction:column;gap:12px;flex:1;}
+.opt-total{}
+.opt-total .tl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+.opt-total .tv{font-size:26px;font-weight:800;color:var(--blue-nk);line-height:1.1;letter-spacing:-.02em;}
+.opt-total .ts{font-size:12px;color:var(--muted);}
+.opt-feats{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:2px;}
+.opt-feats li{font-size:13px;color:var(--body);display:flex;gap:8px;align-items:flex-start;}
+.opt-feats li::before{content:'✓';color:var(--ok);font-weight:800;flex-shrink:0;}
+.opt-feats li.no{color:var(--muted);}
+.opt-feats li.no::before{content:'–';color:var(--muted);}
+
+/* internal view */
+.internal{display:none;}
+.internal.on{display:block;}
+.int-card{background:#fff;border-radius:var(--r);border:1px solid rgba(31,78,120,.18);padding:20px 22px;}
+.int-card h3{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-nk);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.int-card h3::before{content:'🔒';font-size:14px;}
+.int-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;}
+.int-item{background:var(--off);border-radius:10px;padding:11px 13px;border:1px solid rgba(52,199,255,.14);}
+.int-item .il{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.int-item .iv{font-size:17px;font-weight:800;color:var(--ink);margin-top:3px;}
+.int-item .iv.g{color:var(--ok);}.int-item .iv.w{color:var(--warn);}.int-item .iv.r{color:var(--err);}
+.int-note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.55;}
+
+.blk-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;flex-wrap:wrap;}
+.blk-hd h2{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.01em;}
+.blk-hd .sub{font-size:13px;color:var(--muted);}
+
+/* care */
+.care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:1180px){.care-grid{grid-template-columns:1fr;}}
+
+.print-btn{background:var(--blue);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.04em;padding:13px 24px;border-radius:50px;cursor:pointer;transition:background .2s,transform .15s;display:inline-flex;align-items:center;gap:8px;}
+.print-btn:hover{background:var(--blue-dk);transform:translateY(-1px);}
+.foot-note{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.6;}
+
+@media print{
+  .top-toggle,.panel,.print-btn,.no-print{display:none!important;}
+  .wrap{grid-template-columns:1fr;padding:0;}
+  body{background:#fff;}
+  .internal{display:none!important;}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-logo">
+    <div class="mark">KTV</div>
+    <div>
+      <h1>Cotizador Comercial</h1>
+      <p>KTV Working Drone Colombia S.A.S. — cálculo con reglas de negocio validadas</p>
+    </div>
+  </div>
+  <label class="top-toggle" id="intToggle">
+    <span>Vista interna (Gerencia)</span>
+    <span class="sw"></span>
+    <input type="checkbox" id="intChk">
+  </label>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ FORM ============ -->
+  <div class="panel">
+    <h2>Datos del proyecto</h2>
+    <p class="hint">Ingrese los datos y la cotización se calcula automáticamente.</p>
+
+    <div class="fg"><label>Cliente / Edificio</label><input type="text" id="cliente" placeholder="CC Plaza Claro — Multiplika"></div>
+    <div class="row2">
+      <div class="fg"><label>Contacto</label><input type="text" id="contacto" placeholder="Hernando Cáceres"></div>
+      <div class="fg"><label>Ciudad</label>
+        <select id="ciudad"><option value="bogota">Bogotá</option><option value="fuera">Fuera de Bogotá</option></select>
+      </div>
+    </div>
+
+    <hr class="sec-div">
+    <div class="sec-lbl">Fachada a intervenir</div>
+    <div class="fg"><label>Área de fachada (m²)</label><input type="number" id="m2" value="30500" min="0" step="10"></div>
+    <div class="row2">
+      <div class="fg"><label>Tipo de superficie</label>
+        <select id="superficie"><option value="vidrio">Vidrio (rápida)</option><option value="mixta" selected>Mixta</option><option value="dificil">Difícil</option></select>
+      </div>
+      <div class="fg"><label>Tarifa COP/m²</label><input type="number" id="tarifa" value="6000" min="0" step="50"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Tipo de edificio</label>
+        <select id="recEdif"><option value="0">Estándar (0%)</option><option value="0.05">Medio (+5%)</option><option value="0.10">Alto (+10%)</option></select>
+      </div>
+      <div class="fg"><label>Dificultad</label>
+        <select id="recDif"><option value="0">Baja (0%)</option><option value="0.05">Media (+5%)</option><option value="0.10">Alta (+10%)</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Origen comisión</label>
+        <select id="comision"><option value="0">Sin comisión</option><option value="0.05">Venta en frío (5%)</option><option value="0.03">Referido / web (3%)</option><option value="0.01">Renovación (1%)</option></select>
+      </div>
+      <div class="fg"><label>Montaje complejo</label>
+        <select id="complejo"><option value="0">No</option><option value="0.5">Sí (+½ día)</option></select>
+      </div>
+    </div>
+
+    <div class="mov-box" id="movBox">
+      <hr class="sec-div">
+      <div class="sec-lbl">Movilización (fuera de Bogotá)</div>
+      <div class="row2">
+        <div class="fg"><label>Tráiler / transporte</label><input type="number" id="mvTrailer" value="0" step="10000"></div>
+        <div class="fg"><label>Peajes</label><input type="number" id="mvPeaje" value="0" step="10000"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Personas</label><input type="number" id="mvPers" value="3" min="1"></div>
+        <div class="fg"><label>Noches hotel</label><input type="number" id="mvNoches" value="0" min="0"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Hotel p/persona-noche</label><input type="number" id="mvHotel" value="0" step="10000"></div>
+        <div class="fg"><label>Pasaje p/persona</label><input type="number" id="mvPasaje" value="0" step="10000"></div>
+      </div>
+      <div class="fg"><label>Viáticos p/persona-día</label><input type="number" id="mvViatico" value="0" step="10000"></div>
+    </div>
+
+    <hr class="sec-div">
+    <button class="print-btn" onclick="window.print()" style="width:100%;justify-content:center;">🖨️ Imprimir / Guardar propuesta (PDF)</button>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div class="results">
+
+    <div class="alerts" id="alerts"></div>
+
+    <!-- internal -->
+    <div class="internal" id="internal">
+      <div class="int-card">
+        <h3>Vista interna — no visible para el cliente</h3>
+        <div class="int-grid" id="intGrid"></div>
+        <p class="int-note" id="intNote"></p>
+      </div>
+    </div>
+
+    <!-- 3 options -->
+    <div>
+      <div class="blk-hd"><h2>Opciones para el cliente</h2><span class="sub">Valores antes de IVA · precio válido 30 días</span></div>
+      <div class="opts" id="opts"></div>
+    </div>
+
+    <!-- Care -->
+    <div>
+      <div class="blk-hd"><h2>Programas KTV Care</h2><span class="sub">Mantenimiento planificado con precio preferencial · valor mensual (÷12)</span></div>
+      <div class="care-grid" id="care"></div>
+    </div>
+
+    <p class="foot-note">
+      Cálculo según KWD-FIN-MPV-001 (modelo de precios v1.5). Los valores mostrados al cliente no incluyen IVA (19%).<br>
+      El inicio de la operación está sujeto a la agenda de la Aeronáutica Civil. Los servicios de terceros y materiales se facturan con +15% de administración.
+    </p>
+
+  </div>
+</div>
+
+<script>
+/* ================= PARÁMETROS (editables — KWD-FIN-MPV-001 v1.5) ================= */
+const P = {
+  TARIFA_LISTA: 6000,
+  TRM: 3727.2,
+  EUR_COP: 4400,
+  BANDA_MIN_USD: 1.5,
+  BANDA_MAX_USD: 2.0,
+  FEE_NORUEGA: 0.035,
+  PCT_ADMIN: 0.10,
+  PCT_IMPREV: 0.05,
+  PROD: { vidrio:1350, mixta:900, dificil:600 },
+  CUADRILLA_DIA: 524049,
+  CONSUMIBLES_DIA: 260034,
+  DEPRECIACION_DIA: 683118,
+  MARGEN_MIN: 0.25,
+  IVA: 0.19,
+  CARE_ESSENTIAL_DESC: 0.05,   // 1 lavada a 5.700
+  CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a 5.400 c/u
+  DV_PRECIO: 4500000           // Diagnóstico Visual de referencia (3–5,5M según techo)
+};
+
+const cop = n => 'COP ' + Math.round(n).toLocaleString('es-CO');
+const pct = n => (n*100).toFixed(1) + '%';
+const $ = id => document.getElementById(id);
+
+function calc(){
+  const m2 = Math.max(0, +$('m2').value || 0);
+  const sup = $('superficie').value;
+  const tarifa = Math.max(0, +$('tarifa').value || 0);
+  const recE = +$('recEdif').value;
+  const recD = +$('recDif').value;
+  const com = +$('comision').value;
+  const complejo = +$('complejo').value;
+  const fuera = $('ciudad').value === 'fuera';
+
+  // movilización
+  let mov = 0;
+  if(fuera){
+    const pers=+$('mvPers').value||0, noches=+$('mvNoches').value||0;
+    mov = (+$('mvTrailer').value||0) + (+$('mvPeaje').value||0)
+        + (+$('mvHotel').value||0)*pers*noches
+        + (+$('mvPasaje').value||0)*pers;
+    // viáticos por persona-día se suman según días abajo
+  }
+
+  const costoOpDia = (P.CUADRILLA_DIA + P.CONSUMIBLES_DIA + P.DEPRECIACION_DIA) * (1 + P.PCT_ADMIN + P.PCT_IMPREV);
+  let dias = Math.ceil((m2 / P.PROD[sup]) * 2) / 2;   // redondeo a ½ día hacia arriba
+  dias += complejo;
+  if(fuera){ mov += (+$('mvViatico').value||0) * (+$('mvPers').value||0) * Math.ceil(dias); }
+
+  const costoOperacion = dias * costoOpDia * (1 + recE + recD) + mov;
+  const precioLavado = m2 * tarifa;
+  const feeNoruega = precioLavado * P.FEE_NORUEGA;
+  const comision = precioLavado * com;
+  const costoTotal = costoOperacion + feeNoruega + comision;
+  const margenD = precioLavado - costoTotal;
+  const margenP = precioLavado > 0 ? margenD / precioLavado : 0;
+  const usdM2 = tarifa / P.TRM;
+  const precioPiso = costoTotal;
+  const precioMin25 = costoTotal / (1 - P.MARGEN_MIN);
+
+  return {m2,sup,tarifa,dias,costoOpDia,costoOperacion,mov,precioLavado,feeNoruega,comision,costoTotal,margenD,margenP,usdM2,precioPiso,precioMin25};
+}
+
+function render(){
+  $('movBox').classList.toggle('on', $('ciudad').value==='fuera');
+  const r = calc();
+
+  /* ---- alerts (guardrails) ---- */
+  const A = [];
+  if(r.m2>0){
+    if(r.usdM2 < P.BANDA_MIN_USD){
+      A.push(['err','⛔','Tarifa BAJO la banda del franquiciante ('+r.usdM2.toFixed(2)+' USD/m² < 1,50). Requiere DOBLE aprobación de Gerencia antes de enviar.']);
+    }
+    if(r.margenP < P.MARGEN_MIN){
+      A.push(['warn','⚠️','Margen '+pct(r.margenP)+' por debajo del mínimo autorizado (25%). Requiere aprobación de Gerencia.']);
+    }
+    if(r.usdM2 > P.BANDA_MAX_USD){
+      A.push(['warn','⚠️','Tarifa por ENCIMA del techo de banda ('+r.usdM2.toFixed(2)+' USD/m² > 2,00). Verificar competitividad.']);
+    }
+    if(A.length===0){
+      A.push(['ok','✅','Cotización dentro de parámetros: margen '+pct(r.margenP)+' y tarifa '+r.usdM2.toFixed(2)+' USD/m² (banda 1,50–2,00). Lista para aprobación.']);
+    }
+  }
+  $('alerts').innerHTML = A.map(a=>`<div class="alert ${a[0]}"><span class="ai">${a[1]}</span><span>${a[2]}</span></div>`).join('');
+
+  /* ---- internal ---- */
+  const mc = r.margenP>=0.25?'g':(r.margenP>=0?'w':'r');
+  const uc = r.usdM2>=1.5?'g':'r';
+  $('intGrid').innerHTML = [
+    ['Días de operación', r.dias.toFixed(1)+' días',''],
+    ['Costo operativo / día', cop(r.costoOpDia),''],
+    ['Costo operación total', cop(r.costoOperacion),''],
+    ['Fee Noruega (3,5%)', cop(r.feeNoruega),''],
+    ['Comisión comercial', cop(r.comision),''],
+    ['Costo total', cop(r.costoTotal),''],
+    ['Precio al cliente', cop(r.precioLavado),''],
+    ['Margen', cop(r.margenD),mc],
+    ['Margen %', pct(r.margenP),mc],
+    ['Tarifa USD/m²', r.usdM2.toFixed(2),uc],
+    ['Precio piso (margen 0)', cop(r.precioPiso),''],
+    ['Precio mín. autorizado (25%)', cop(r.precioMin25),''],
+  ].map(x=>`<div class="int-item"><div class="il">${x[0]}</div><div class="iv ${x[2]}">${x[1]}</div></div>`).join('');
+  $('intNote').textContent = 'Cotizado por m² al cliente; costo verificado por días ('+r.dias.toFixed(1)+' × '+cop(r.costoOpDia)+'). La gasolina de operación ya está incluida en consumibles — nunca se cobra aparte.';
+
+  /* ---- 3 opciones ---- */
+  const dv = P.DV_PRECIO;
+  const optA = r.precioLavado;
+  const optB = r.precioLavado + dv;
+  const opts = [
+    {tag:'Opción A', name:'Lavado puntual', total:optA, badge:'', feat:false,
+     feats:['1 lavado integral de fachada','Agua pura, sin contacto ni andamios','Registro fotográfico antes/después',{no:true,t:'Sin informe de estado'}]},
+    {tag:'Opción B', name:'Lavado + Diagnóstico', total:optB, badge:'', feat:false,
+     feats:['Todo lo de la Opción A','+ Diagnóstico Visual de su fachada','Hallazgos: fisuras, humedad, sellos','Recomendaciones de mantenimiento']},
+    {tag:'Opción C', name:'Programa KTV Care', total:null, badge:'Recomendado', feat:true,
+     feats:['Mantenimiento planificado anual','Informe de estado incluido','Precio preferencial vs. puntual','Prioridad de agenda','Ver planes abajo ↓']},
+  ];
+  $('opts').innerHTML = opts.map(o=>`
+    <div class="opt ${o.feat?'feat':''}">
+      <div class="opt-hd">
+        ${o.badge?`<span class="opt-badge">${o.badge}</span>`:''}
+        <div class="opt-tag">${o.tag}</div>
+        <div class="opt-name">${o.name}</div>
+      </div>
+      <div class="opt-bd">
+        <div class="opt-total">
+          ${o.total!==null
+            ? `<div class="tl">Total proyecto</div><div class="tv">${cop(o.total)}</div><div class="ts">+ IVA · ${cop(o.total*(1+P.IVA))} IVA incl.</div>`
+            : `<div class="tl">Desde</div><div class="tv" style="font-size:20px">Valor mensual</div><div class="ts">según plan (abajo)</div>`}
+        </div>
+        <ul class="opt-feats">${o.feats.map(f=>typeof f==='string'?`<li>${f}</li>`:`<li class="no">${f.t}</li>`).join('')}</ul>
+      </div>
+    </div>`).join('');
+
+  /* ---- Care ---- */
+  const essAnual = r.m2 * P.TARIFA_LISTA * (1-P.CARE_ESSENTIAL_DESC) + dv;      // 1 lavada @5.700 + DV
+  const compAnual = 2 * r.m2 * P.TARIFA_LISTA * (1-P.CARE_COMPLETE_DESC) + dv;  // 2 lavadas @5.400 + DV
+  const inspectAnual = dv;                                                       // solo inspección/informe
+  const care = [
+    {name:'Care Inspect', tag:'Diagnóstico', anual:inspectAnual, feat:false,
+     feats:['Inspección anual con informe','Gestión preventiva del activo',{no:'Sin lavadas incluidas'},'Tarifa preferencial en servicios']},
+    {name:'Care Essential', tag:'1 lavada / año', anual:essAnual, feat:false,
+     feats:['Inspección anual con informe','1 lavada de fachada al año','Lavada a $5.700/m² (vs $6.000)','Prioridad de agenda preferente']},
+    {name:'Care Complete', tag:'2 lavadas / año', anual:compAnual, feat:true, badge:'Máximo valor',
+     feats:['Inspección anual (informe certificado)','2 lavadas de fachada al año','Lavadas a $5.400/m² (mejor precio)','Prioridad máxima + urgencias']},
+  ];
+  $('care').innerHTML = care.map(c=>`
+    <div class="opt ${c.feat?'feat':''}">
+      <div class="opt-hd">
+        ${c.badge?`<span class="opt-badge">${c.badge}</span>`:''}
+        <div class="opt-tag">${c.tag}</div>
+        <div class="opt-name">${c.name}</div>
+      </div>
+      <div class="opt-bd">
+        <div class="opt-total">
+          <div class="tl">Valor mensual</div>
+          <div class="tv">${cop(c.anual/12)}</div>
+          <div class="ts">${cop(c.anual)} / año + IVA</div>
+        </div>
+        <ul class="opt-feats">${c.feats.map(f=>typeof f==='string'?`<li>${f}</li>`:`<li class="no">${f.no}</li>`).join('')}</ul>
+      </div>
+    </div>`).join('');
+}
+
+/* toggle internal view — el label alterna el checkbox de forma nativa; solo sincronizamos las clases */
+$('intChk').addEventListener('change',function(){
+  $('intToggle').classList.toggle('on',this.checked);
+  $('internal').classList.toggle('on',this.checked);
+});
+
+/* recalc on any input */
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));
+render();
+</script>
+</body>
+</html>
