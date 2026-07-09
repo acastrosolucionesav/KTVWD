@@ -238,10 +238,13 @@ const P = {
   CUADRILLA_DIA: 524049,
   CONSUMIBLES_DIA: 260034,
   DEPRECIACION_DIA: 683118,
-  MARGEN_MIN: 0.25,
+  MARGEN_MIN: 0.25,            // mínimo absoluto — no emitir sin aprobación
+  MARGEN_ALERTA: 0.40,         // objetivo — alerta amarilla si baja de aquí
+  NEG_LIBRE: 0.02,             // comercial libre hasta −2% ($5.880)
+  NEG_GERENCIA: 0.04,          // −2% a −4% aprobación Gerencia; bajo −4% doble aprobación
   IVA: 0.19,
-  CARE_ESSENTIAL_DESC: 0.05,   // 1 lavada a 5.700
-  CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a 5.400 c/u
+  CARE_ESSENTIAL_DESC: 0.06,   // 1 lavada a $5.640
+  CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a $5.400 c/u
   DV_PRECIO: 4500000           // Diagnóstico Visual de referencia (3–5,5M según techo)
 };
 
@@ -295,24 +298,32 @@ function render(){
   /* ---- alerts (guardrails) ---- */
   const A = [];
   if(r.m2>0){
-    if(r.usdM2 < P.BANDA_MIN_USD){
-      A.push(['err','⛔','Tarifa BAJO la banda del franquiciante ('+r.usdM2.toFixed(2)+' USD/m² < 1,50). Requiere DOBLE aprobación de Gerencia antes de enviar.']);
+    const pisoLibre = P.TARIFA_LISTA*(1-P.NEG_LIBRE);       // 5.880
+    const pisoGerencia = P.TARIFA_LISTA*(1-P.NEG_GERENCIA); // 5.760
+
+    // nivel de autorización por precio (escalones 2% / 4%)
+    if(r.tarifa < pisoGerencia){
+      A.push(['err','⛔','Tarifa '+cop(r.tarifa)+'/m² bajo el piso de −4% ('+cop(pisoGerencia)+'/m²). Requiere DOBLE aprobación de Gerencia.']);
+    } else if(r.tarifa < pisoLibre){
+      A.push(['warn','⚠️','Tarifa '+cop(r.tarifa)+'/m² entre −2% y −4%. Requiere aprobación de Gerencia antes de enviar.']);
     }
+
+    // control por MARGEN (el que de verdad protege la utilidad)
     if(r.margenP < P.MARGEN_MIN){
-      A.push(['warn','⚠️','Margen '+pct(r.margenP)+' por debajo del mínimo autorizado (25%). Requiere aprobación de Gerencia.']);
+      A.push(['err','⛔','Margen '+pct(r.margenP)+' bajo el mínimo (25%). No emitir sin aprobación de Gerencia.']);
+    } else if(r.margenP < P.MARGEN_ALERTA){
+      A.push(['warn','⚠️','Margen '+pct(r.margenP)+' bajo el objetivo (40%). Revise la productividad / tipo de superficie: el rendimiento real puede ser menor al supuesto.']);
     }
-    if(r.usdM2 > P.BANDA_MAX_USD){
-      A.push(['warn','⚠️','Tarifa por ENCIMA del techo de banda ('+r.usdM2.toFixed(2)+' USD/m² > 2,00). Verificar competitividad.']);
-    }
+
     if(A.length===0){
-      A.push(['ok','✅','Cotización dentro de parámetros: margen '+pct(r.margenP)+' y tarifa '+r.usdM2.toFixed(2)+' USD/m² (banda 1,50–2,00). Lista para aprobación.']);
+      A.push(['ok','✅','Cotización dentro de parámetros: tarifa '+cop(r.tarifa)+'/m² (comercial libre) y margen '+pct(r.margenP)+'. Lista para enviar.']);
     }
   }
   $('alerts').innerHTML = A.map(a=>`<div class="alert ${a[0]}"><span class="ai">${a[1]}</span><span>${a[2]}</span></div>`).join('');
 
   /* ---- internal ---- */
-  const mc = r.margenP>=0.25?'g':(r.margenP>=0?'w':'r');
-  const uc = r.usdM2>=1.5?'g':'r';
+  const mc = r.margenP>=P.MARGEN_ALERTA?'g':(r.margenP>=P.MARGEN_MIN?'w':'r');
+  const uc = '';
   $('intGrid').innerHTML = [
     ['Días de operación', r.dias.toFixed(1)+' días',''],
     ['Costo operativo / día', cop(r.costoOpDia),''],
@@ -323,7 +334,7 @@ function render(){
     ['Precio al cliente', cop(r.precioLavado),''],
     ['Margen', cop(r.margenD),mc],
     ['Margen %', pct(r.margenP),mc],
-    ['Tarifa USD/m²', r.usdM2.toFixed(2),uc],
+    ['Tarifa USD/m² (ref.)', r.usdM2.toFixed(2),uc],
     ['Precio piso (margen 0)', cop(r.precioPiso),''],
     ['Precio mín. autorizado (25%)', cop(r.precioMin25),''],
   ].map(x=>`<div class="int-item"><div class="il">${x[0]}</div><div class="iv ${x[2]}">${x[1]}</div></div>`).join('');
@@ -366,7 +377,7 @@ function render(){
     {name:'Care Inspect', tag:'Diagnóstico', anual:inspectAnual, feat:false,
      feats:['Inspección anual con informe','Gestión preventiva del activo',{no:'Sin lavadas incluidas'},'Tarifa preferencial en servicios']},
     {name:'Care Essential', tag:'1 lavada / año', anual:essAnual, feat:false,
-     feats:['Inspección anual con informe','1 lavada de fachada al año','Lavada a $5.700/m² (vs $6.000)','Prioridad de agenda preferente']},
+     feats:['Inspección con informe de estado incluida','1 lavada de fachada al año','Lavada a $5.640/m² (vs $6.000)','Prioridad de agenda preferente']},
     {name:'Care Complete', tag:'2 lavadas / año', anual:compAnual, feat:true, badge:'Máximo valor',
      feats:['Inspección anual (informe certificado)','2 lavadas de fachada al año','Lavadas a $5.400/m² (mejor precio)','Prioridad máxima + urgencias']},
   ];
