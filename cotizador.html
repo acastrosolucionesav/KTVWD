@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KTV Working Drone — Cotizador Comercial</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#34C7FF;--blue-dk:#00AADF;--blue-nk:#1F4E78;--blue-bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--white:#FFFFFF;--off:#F7FBFF;--ok:#38a169;--warn:#DD6B20;--err:#E53E3E;--r:20px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);background:var(--off);line-height:1.5;}
+
+/* ---- Top bar ---- */
+.top{background:linear-gradient(160deg,var(--blue-dk) 0%,var(--blue-nk) 100%);color:#fff;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.top-logo{display:flex;align-items:center;gap:14px;}
+.top-logo .mark{width:44px;height:44px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue-dk);font-size:20px;letter-spacing:-.03em;}
+.top-logo h1{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.1;}
+.top-logo p{font-size:12px;font-weight:300;opacity:.85;}
+.top-toggle{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;background:rgba(255,255,255,.14);padding:8px 16px;border-radius:50px;cursor:pointer;user-select:none;border:1px solid rgba(255,255,255,.25);}
+.top-toggle input{width:0;height:0;opacity:0;position:absolute;}
+.sw{width:38px;height:20px;border-radius:20px;background:rgba(255,255,255,.3);position:relative;transition:background .2s;flex-shrink:0;}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;}
+.top-toggle.on .sw{background:var(--blue);}
+.top-toggle.on .sw::after{transform:translateX(18px);}
+
+/* ---- Layout ---- */
+.wrap{max-width:1240px;margin:0 auto;padding:28px 24px 80px;display:grid;grid-template-columns:380px 1fr;gap:28px;align-items:start;}
+@media(max-width:940px){.wrap{grid-template-columns:1fr;}}
+
+/* ---- Panel / form ---- */
+.panel{background:#fff;border-radius:var(--r);border:1px solid rgba(52,199,255,.18);box-shadow:0 6px 24px rgba(31,78,120,.06);padding:24px;position:sticky;top:20px;}
+@media(max-width:940px){.panel{position:static;}}
+.panel h2{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-dk);margin-bottom:4px;}
+.panel .hint{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.fg input,.fg select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);background:var(--off);border:1.5px solid rgba(52,199,255,.28);border-radius:10px;padding:11px 12px;outline:none;transition:border-color .2s;}
+.fg input:focus,.fg select:focus{border-color:var(--blue);}
+.fg select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%2300AADF' stroke-width='1.6' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sec-div{border:none;border-top:1px dashed rgba(52,199,255,.3);margin:20px 0 16px;}
+.sec-lbl{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-nk);margin-bottom:12px;}
+.mov-box{display:none;}
+.mov-box.on{display:block;}
+
+/* ---- Results ---- */
+.results{display:flex;flex-direction:column;gap:22px;}
+.alerts{display:flex;flex-direction:column;gap:10px;}
+.alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:12px;font-size:13.5px;font-weight:600;line-height:1.45;}
+.alert .ai{font-size:18px;flex-shrink:0;line-height:1.2;}
+.alert.err{background:#FFF5F5;color:#9B2C2C;border:1px solid #FEB2B2;}
+.alert.warn{background:#FFFAF0;color:#9C4221;border:1px solid #FBD38D;}
+.alert.ok{background:#F0FFF4;color:#22543D;border:1px solid #9AE6B4;}
+
+/* three option cards */
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:1180px){.opts{grid-template-columns:1fr;}}
+.opt{background:#fff;border-radius:var(--r);border:1.5px solid rgba(52,199,255,.22);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
+.opt.feat{border-color:var(--blue);box-shadow:0 12px 34px rgba(0,170,223,.16);transform:translateY(-2px);}
+.opt-hd{padding:18px 20px 14px;border-bottom:1px solid rgba(52,199,255,.14);position:relative;}
+.opt.feat .opt-hd{background:linear-gradient(160deg,var(--blue) 0%,var(--blue-dk) 100%);color:#fff;}
+.opt-tag{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-dk);}
+.opt.feat .opt-tag{color:rgba(255,255,255,.9);}
+.opt-name{font-size:17px;font-weight:800;color:var(--ink);margin-top:3px;}
+.opt.feat .opt-name{color:#fff;}
+.opt-badge{position:absolute;top:14px;right:14px;background:#fff;color:var(--blue-dk);font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:50px;}
+.opt-bd{padding:18px 20px;display:flex;flex-direction:column;gap:12px;flex:1;}
+.opt-total{}
+.opt-total .tl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+.opt-total .tv{font-size:26px;font-weight:800;color:var(--blue-nk);line-height:1.1;letter-spacing:-.02em;}
+.opt-total .ts{font-size:12px;color:var(--muted);}
+.opt-feats{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:2px;}
+.opt-feats li{font-size:13px;color:var(--body);display:flex;gap:8px;align-items:flex-start;}
+.opt-feats li::before{content:'✓';color:var(--ok);font-weight:800;flex-shrink:0;}
+.opt-feats li.no{color:var(--muted);}
+.opt-feats li.no::before{content:'–';color:var(--muted);}
+
+/* internal view */
+.internal{display:none;}
+.internal.on{display:block;}
+.int-card{background:#fff;border-radius:var(--r);border:1px solid rgba(31,78,120,.18);padding:20px 22px;}
+.int-card h3{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-nk);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.int-card h3::before{content:'🔒';font-size:14px;}
+.int-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;}
+.int-item{background:var(--off);border-radius:10px;padding:11px 13px;border:1px solid rgba(52,199,255,.14);}
+.int-item .il{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.int-item .iv{font-size:17px;font-weight:800;color:var(--ink);margin-top:3px;}
+.int-item .iv.g{color:var(--ok);}.int-item .iv.w{color:var(--warn);}.int-item .iv.r{color:var(--err);}
+.int-note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.55;}
+
+.blk-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px;flex-wrap:wrap;}
+.blk-hd h2{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.01em;}
+.blk-hd .sub{font-size:13px;color:var(--muted);}
+
+/* care */
+.care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:1180px){.care-grid{grid-template-columns:1fr;}}
+
+.print-btn{background:var(--blue);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.04em;padding:13px 24px;border-radius:50px;cursor:pointer;transition:background .2s,transform .15s;display:inline-flex;align-items:center;gap:8px;}
+.print-btn:hover{background:var(--blue-dk);transform:translateY(-1px);}
+.foot-note{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.6;}
+
+@media print{
+  .top-toggle,.panel,.print-btn,.no-print{display:none!important;}
+  .wrap{grid-template-columns:1fr;padding:0;}
+  body{background:#fff;}
+  .internal{display:none!important;}
+}
+
+/* ===== Propuesta para el cliente (Documento B) ===== */
+#propuestaDoc{display:none;}
+body.proposal-open{overflow:hidden;}
+body.proposal-open .top,body.proposal-open .wrap{display:none;}
+body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:500;overflow:auto;background:#eef4f9;}
+.pd-actions{position:sticky;top:0;z-index:3;display:flex;gap:12px;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid rgba(52,199,255,.2);padding:12px 24px;}
+.pd-actions button{font-family:inherit;font-size:14px;font-weight:700;border:none;cursor:pointer;padding:11px 20px;border-radius:50px;transition:background .2s;}
+.pd-back{background:var(--off);color:var(--blue-nk);}
+.pd-pdf{background:var(--blue);color:#fff;}
+.pd-pdf:hover{background:var(--blue-dk);}
+.pd-page{position:relative;max-width:900px;margin:24px auto;background:#fff;box-shadow:0 10px 40px rgba(31,78,120,.12);overflow:hidden;}
+.pd-wm{position:absolute;inset:0;z-index:0;background-repeat:repeat;pointer-events:none;}
+.pd-page>.pd-hd,.pd-page>.pd-body{position:relative;z-index:1;}
+.pd-hd{display:flex;align-items:center;gap:16px;background:linear-gradient(150deg,var(--blue-dk),var(--blue-nk));color:#fff;padding:26px 40px;}
+.pd-logo{width:52px;height:52px;border-radius:12px;background:#fff;color:var(--blue-dk);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;flex-shrink:0;}
+.pd-hd-txt b{font-size:18px;display:block;line-height:1.2;}
+.pd-hd-txt span{font-size:13px;opacity:.9;}
+.pd-id{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 12px;border-radius:8px;white-space:nowrap;}
+.pd-body{padding:34px 40px 40px;}
+.pd-to{font-size:15px;color:var(--body);margin-bottom:4px;}
+.pd-to b{color:var(--ink);}
+.pd-date{font-size:13px;color:var(--muted);margin-bottom:22px;}
+.pd-lead{font-size:15px;color:var(--body);line-height:1.7;margin-bottom:28px;}
+.pd-sec-t{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-dk);margin:0 0 14px;}
+.pd-diff{display:grid;grid-template-columns:1fr 1fr;gap:11px 26px;margin-bottom:30px;}
+.pd-diff .d{display:flex;gap:9px;font-size:13.5px;color:var(--body);line-height:1.5;}
+.pd-diff .d b{color:var(--ink);}
+.pd-diff .d::before{content:'✓';color:var(--blue-dk);font-weight:800;flex-shrink:0;}
+.pd-plans{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:12px;}
+.pdp{border:1.5px solid rgba(52,199,255,.25);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;}
+.pdp.feat{border-color:var(--blue);box-shadow:0 10px 26px rgba(0,170,223,.14);}
+.pdp-h{padding:16px 18px 12px;border-bottom:1px solid rgba(52,199,255,.14);position:relative;}
+.pdp.feat .pdp-h{background:linear-gradient(150deg,var(--blue),var(--blue-dk));color:#fff;}
+.pdp-h .t{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--blue-dk);}
+.pdp.feat .pdp-h .t{color:rgba(255,255,255,.9);}
+.pdp-h .n{font-size:17px;font-weight:800;color:var(--ink);margin-top:2px;}
+.pdp.feat .pdp-h .n{color:#fff;}
+.pdp-badge{position:absolute;top:12px;right:12px;background:#fff;color:var(--blue-dk);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:50px;}
+.pdp-b{padding:16px 18px;display:flex;flex-direction:column;gap:12px;flex:1;}
+.pdp-price .m{font-size:24px;font-weight:800;color:var(--blue-nk);line-height:1;}
+.pdp.feat .pdp-price .m{color:var(--blue-dk);}
+.pdp-price .per{font-size:12px;color:var(--muted);font-weight:600;}
+.pdp-price .y{font-size:12px;color:var(--muted);margin-top:4px;}
+.pdp-f{list-style:none;display:flex;flex-direction:column;gap:6px;margin:0;}
+.pdp-f li{font-size:12.5px;color:var(--body);display:flex;gap:7px;line-height:1.4;}
+.pdp-f li::before{content:'✓';color:var(--blue-dk);font-weight:800;flex-shrink:0;}
+.pd-fine{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5;}
+.pd-cond{margin-top:24px;background:var(--off);border:1px solid rgba(52,199,255,.16);border-radius:14px;padding:18px 22px;}
+.pd-cond h4{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-nk);margin-bottom:10px;}
+.pd-cond ul{margin:0;padding-left:18px;}
+.pd-cond li{font-size:13px;color:var(--muted);margin-bottom:5px;line-height:1.5;}
+.pd-ft{margin-top:26px;padding-top:18px;border-top:1px solid rgba(52,199,255,.16);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);}
+@media print{
+  @page{margin:12mm;}
+  body.proposal-open .top,body.proposal-open .wrap{display:none!important;}
+  body.proposal-open{overflow:visible;}
+  body.proposal-open #propuestaDoc{position:static;background:#fff;overflow:visible;}
+  .pd-actions{display:none!important;}
+  .pd-page{box-shadow:none;margin:0;max-width:100%;}
+}
+@media(max-width:720px){.pd-plans{grid-template-columns:1fr;}.pd-diff{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-logo">
+    <div class="mark">KTV</div>
+    <div>
+      <h1>Cotizador Comercial</h1>
+      <p>KTV Working Drone Colombia S.A.S. — cálculo con reglas de negocio validadas</p>
+    </div>
+  </div>
+  <label class="top-toggle" id="intToggle">
+    <span>Vista interna (Gerencia)</span>
+    <span class="sw"></span>
+    <input type="checkbox" id="intChk">
+  </label>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ FORM ============ -->
+  <div class="panel">
+    <h2>Datos del proyecto</h2>
+    <p class="hint">Ingrese los datos y la cotización se calcula automáticamente.</p>
+
+    <div class="fg"><label>Cliente / Edificio</label><input type="text" id="cliente" placeholder="CC Plaza Claro — Multiplika"></div>
+    <div class="row2">
+      <div class="fg"><label>Contacto</label><input type="text" id="contacto" placeholder="Hernando Cáceres"></div>
+      <div class="fg"><label>Ciudad</label>
+        <select id="ciudad"><option value="bogota">Bogotá</option><option value="fuera">Fuera de Bogotá</option></select>
+      </div>
+    </div>
+
+    <hr class="sec-div">
+    <div class="sec-lbl">Fachada a intervenir</div>
+    <div class="fg"><label>Área de fachada (m²)</label><input type="number" id="m2" value="30500" min="0" step="10"></div>
+    <div class="row2">
+      <div class="fg"><label>Tipo de superficie</label>
+        <select id="superficie"><option value="vidrio">Vidrio (rápida)</option><option value="mixta" selected>Mixta</option><option value="dificil">Difícil</option></select>
+      </div>
+      <div class="fg"><label>Tarifa COP/m²</label><input type="number" id="tarifa" value="6000" min="0" step="50"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Tipo de edificio</label>
+        <select id="recEdif"><option value="0">Estándar (0%)</option><option value="0.05">Medio (+5%)</option><option value="0.10">Alto (+10%)</option></select>
+      </div>
+      <div class="fg"><label>Dificultad</label>
+        <select id="recDif"><option value="0">Baja (0%)</option><option value="0.05">Media (+5%)</option><option value="0.10">Alta (+10%)</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Origen comisión</label>
+        <select id="comision"><option value="0">Sin comisión</option><option value="0.05">Venta en frío (5%)</option><option value="0.03">Referido / web (3%)</option><option value="0.01">Renovación (1%)</option></select>
+      </div>
+      <div class="fg"><label>Montaje complejo</label>
+        <select id="complejo"><option value="0">No</option><option value="0.5">Sí (+½ día)</option></select>
+      </div>
+    </div>
+
+    <div class="mov-box" id="movBox">
+      <hr class="sec-div">
+      <div class="sec-lbl">Movilización (fuera de Bogotá)</div>
+      <div class="row2">
+        <div class="fg"><label>Tráiler / transporte</label><input type="number" id="mvTrailer" value="0" step="10000"></div>
+        <div class="fg"><label>Peajes</label><input type="number" id="mvPeaje" value="0" step="10000"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Personas</label><input type="number" id="mvPers" value="3" min="1"></div>
+        <div class="fg"><label>Noches hotel</label><input type="number" id="mvNoches" value="0" min="0"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Hotel p/persona-noche</label><input type="number" id="mvHotel" value="0" step="10000"></div>
+        <div class="fg"><label>Pasaje p/persona</label><input type="number" id="mvPasaje" value="0" step="10000"></div>
+      </div>
+      <div class="fg"><label>Viáticos p/persona-día</label><input type="number" id="mvViatico" value="0" step="10000"></div>
+    </div>
+
+    <hr class="sec-div">
+    <button class="print-btn" onclick="descargarPropuestaHTML()" style="width:100%;justify-content:center;">🌐 Descargar propuesta web (HTML + video)</button>
+    <button class="print-btn" onclick="generarPropuesta()" style="width:100%;justify-content:center;margin-top:8px;background:var(--blue-nk);">👁️ Ver propuesta en pantalla</button>
+    <p class="foot-note" style="margin-top:10px;">La propuesta web es una página con video y marca de agua, lista para subir a Hostinger y enviar por link. Guárdala en la misma carpeta que <b>videos/</b>.</p>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div class="results">
+
+    <div class="alerts" id="alerts"></div>
+
+    <!-- internal -->
+    <div class="internal" id="internal">
+      <div class="int-card">
+        <h3>Vista interna — no visible para el cliente</h3>
+        <div class="int-grid" id="intGrid"></div>
+        <p class="int-note" id="intNote"></p>
+      </div>
+    </div>
+
+    <!-- 3 options -->
+    <div>
+      <div class="blk-hd"><h2>Opciones para el cliente</h2><span class="sub">Valores antes de IVA · precio válido 30 días</span></div>
+      <div class="opts" id="opts"></div>
+    </div>
+
+    <!-- Care -->
+    <div>
+      <div class="blk-hd"><h2>Programas KTV Care</h2><span class="sub">Mantenimiento planificado con precio preferencial · valor mensual (÷12)</span></div>
+      <div class="care-grid" id="care"></div>
+    </div>
+
+    <p class="foot-note">
+      Cálculo según KWD-FIN-MPV-001 (modelo de precios v1.5). Los valores mostrados al cliente no incluyen IVA (19%).<br>
+      El inicio de la operación está sujeto a la agenda de la Aeronáutica Civil. Los servicios de terceros y materiales se facturan con +15% de administración.
+    </p>
+
+  </div>
+</div>
+
+<!-- ============ PROPUESTA CLIENTE (Documento B) ============ -->
+<div id="propuestaDoc">
+  <div class="pd-actions">
+    <button class="pd-back" onclick="cerrarPropuesta()">← Volver al cotizador</button>
+    <button class="pd-pdf" onclick="window.print()">🖨️ Guardar como PDF</button>
+  </div>
+  <div class="pd-page">
+    <div class="pd-wm" id="pdWm"></div>
+    <div class="pd-hd">
+      <div class="pd-logo">KTV</div>
+      <div class="pd-hd-txt"><b>KTV Working Drone Colombia</b><span>Programa de Mantenimiento de Fachadas con Drones</span></div>
+      <div class="pd-id" id="pdId">—</div>
+    </div>
+    <div class="pd-body">
+      <div class="pd-to" id="pdTo">Preparado para: <b>—</b></div>
+      <div class="pd-date" id="pdDate"></div>
+      <p class="pd-lead">Presentamos nuestra propuesta de <b>Programa de Mantenimiento de Fachadas KTV Care</b>: convierte el cuidado de su edificio en un servicio planificado, con precio preferencial e <b>informe técnico de estado incluido</b> — sin andamios y sin riesgo de trabajo en alturas.</p>
+
+      <div class="pd-sec-t">Por qué KTV y no otra opción</div>
+      <div class="pd-diff">
+        <div class="d"><span><b>Único operador certificado.</b> El único con Certificado de Explotador UAS vigente en la categoría. Verifíquelo usted mismo en el listado público de la Aeronáutica Civil.</span></div>
+        <div class="d"><span><b>Cero riesgo en alturas.</b> Elimina su responsabilidad legal y de SST (Res. 4272/2021). Nadie colgado de su fachada.</span></div>
+        <div class="d"><span><b>3 a 5 veces más rápido.</b> Menos días de intervención, sin andamios, sin interrumpir la operación de su edificio.</span></div>
+        <div class="d"><span><b>Respaldo global.</b> Operación en Colombia de KTV Working Drone (Noruega), presente en 68 países.</span></div>
+        <div class="d"><span><b>Agua pura sin contacto.</b> No raya vidrios ni deteriora sellos: protege el activo en vez de desgastarlo.</span></div>
+        <div class="d"><span><b>Informe de estado incluido.</b> Diagnóstico técnico de su fachada que el mantenimiento tradicional no entrega.</span></div>
+      </div>
+
+      <div class="pd-sec-t">Su programa a la medida — valor mensual</div>
+      <div class="pd-plans" id="pdPlans"></div>
+      <p class="pd-fine">Valores antes de IVA (19%), calculados para un área de fachada de <b id="pdM2"></b> m². El pago puede diferirse hasta en 12 cuotas mensuales sin variar el valor del contrato.</p>
+
+      <div class="pd-cond">
+        <h4>Condiciones</h4>
+        <ul>
+          <li><b>Vigencia:</b> propuesta válida por 30 días calendario desde su emisión.</li>
+          <li><b>Contrato:</b> a 1 o 3 años (el de 3 años congela el valor el primer año y lo ajusta por IPC en los siguientes).</li>
+          <li><b>Pago:</b> de contado o diferido hasta en 12 cuotas mensuales (el diferido es una facilidad, no un recargo ni un descuento).</li>
+          <li><b>Inspección técnica inicial sin costo</b> para confirmar el alcance y el valor definitivo del programa.</li>
+          <li>El inicio de la operación está sujeto a la agenda de permisos de la Aeronáutica Civil.</li>
+        </ul>
+      </div>
+
+      <div class="pd-ft">
+        <span>KTV Working Drone Colombia S.A.S. — NIT 901.830.814-8</span>
+        <span>mercadeo@ktvworkingdrone.com.co · +57 314 235 8441 · ktvworkingdrone.com.co</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= PARÁMETROS (editables — KWD-FIN-MPV-001 v1.5) ================= */
+const P = {
+  TARIFA_LISTA: 6000,
+  TRM: 3727.2,
+  EUR_COP: 4400,
+  BANDA_MIN_USD: 1.5,
+  BANDA_MAX_USD: 2.0,
+  FEE_NORUEGA: 0.035,
+  PCT_ADMIN: 0.10,
+  PCT_IMPREV: 0.05,
+  PROD: { vidrio:1350, mixta:900, dificil:600 },
+  CUADRILLA_DIA: 524049,
+  CONSUMIBLES_DIA: 260034,
+  DEPRECIACION_DIA: 683118,
+  MARGEN_MIN: 0.25,            // mínimo absoluto — no emitir sin aprobación
+  MARGEN_ALERTA: 0.40,         // objetivo — alerta amarilla si baja de aquí
+  NEG_LIBRE: 0.02,             // comercial libre hasta −2% ($5.880)
+  NEG_GERENCIA: 0.04,          // −2% a −4% aprobación Gerencia; bajo −4% doble aprobación
+  IVA: 0.19,
+  CARE_ESSENTIAL_DESC: 0.06,   // 1 lavada a $5.640
+  CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a $5.400 c/u
+  DV_PRECIO: 4500000           // Diagnóstico Visual de referencia (3–5,5M según techo)
+};
+
+const cop = n => 'COP ' + Math.round(n).toLocaleString('es-CO');
+const pct = n => (n*100).toFixed(1) + '%';
+const $ = id => document.getElementById(id);
+
+function calc(){
+  const m2 = Math.max(0, +$('m2').value || 0);
+  const sup = $('superficie').value;
+  const tarifa = Math.max(0, +$('tarifa').value || 0);
+  const recE = +$('recEdif').value;
+  const recD = +$('recDif').value;
+  const com = +$('comision').value;
+  const complejo = +$('complejo').value;
+  const fuera = $('ciudad').value === 'fuera';
+
+  // movilización
+  let mov = 0;
+  if(fuera){
+    const pers=+$('mvPers').value||0, noches=+$('mvNoches').value||0;
+    mov = (+$('mvTrailer').value||0) + (+$('mvPeaje').value||0)
+        + (+$('mvHotel').value||0)*pers*noches
+        + (+$('mvPasaje').value||0)*pers;
+    // viáticos por persona-día se suman según días abajo
+  }
+
+  const costoOpDia = (P.CUADRILLA_DIA + P.CONSUMIBLES_DIA + P.DEPRECIACION_DIA) * (1 + P.PCT_ADMIN + P.PCT_IMPREV);
+  let dias = Math.ceil((m2 / P.PROD[sup]) * 2) / 2;   // redondeo a ½ día hacia arriba
+  dias += complejo;
+  if(fuera){ mov += (+$('mvViatico').value||0) * (+$('mvPers').value||0) * Math.ceil(dias); }
+
+  const costoOperacion = dias * costoOpDia * (1 + recE + recD) + mov;
+  const precioLavado = m2 * tarifa;
+  const feeNoruega = precioLavado * P.FEE_NORUEGA;
+  const comision = precioLavado * com;
+  const costoTotal = costoOperacion + feeNoruega + comision;
+  const margenD = precioLavado - costoTotal;
+  const margenP = precioLavado > 0 ? margenD / precioLavado : 0;
+  const usdM2 = tarifa / P.TRM;
+  const precioPiso = costoTotal;
+  const precioMin25 = costoTotal / (1 - P.MARGEN_MIN);
+
+  return {m2,sup,tarifa,dias,costoOpDia,costoOperacion,mov,precioLavado,feeNoruega,comision,costoTotal,margenD,margenP,usdM2,precioPiso,precioMin25};
+}
+
+function render(){
+  $('movBox').classList.toggle('on', $('ciudad').value==='fuera');
+  const r = calc();
+
+  /* ---- alerts (guardrails) ---- */
+  const A = [];
+  if(r.m2>0){
+    const pisoLibre = P.TARIFA_LISTA*(1-P.NEG_LIBRE);       // 5.880
+    const pisoGerencia = P.TARIFA_LISTA*(1-P.NEG_GERENCIA); // 5.760
+
+    // nivel de autorización por precio (escalones 2% / 4%)
+    if(r.tarifa < pisoGerencia){
+      A.push(['err','⛔','Tarifa '+cop(r.tarifa)+'/m² bajo el piso de −4% ('+cop(pisoGerencia)+'/m²). Requiere DOBLE aprobación de Gerencia.']);
+    } else if(r.tarifa < pisoLibre){
+      A.push(['warn','⚠️','Tarifa '+cop(r.tarifa)+'/m² entre −2% y −4%. Requiere aprobación de Gerencia antes de enviar.']);
+    }
+
+    // control por MARGEN (el que de verdad protege la utilidad)
+    if(r.margenP < P.MARGEN_MIN){
+      A.push(['err','⛔','Margen '+pct(r.margenP)+' bajo el mínimo (25%). No emitir sin aprobación de Gerencia.']);
+    } else if(r.margenP < P.MARGEN_ALERTA){
+      A.push(['warn','⚠️','Margen '+pct(r.margenP)+' bajo el objetivo (40%). Revise la productividad / tipo de superficie: el rendimiento real puede ser menor al supuesto.']);
+    }
+
+    if(A.length===0){
+      A.push(['ok','✅','Cotización dentro de parámetros: tarifa '+cop(r.tarifa)+'/m² (comercial libre) y margen '+pct(r.margenP)+'. Lista para enviar.']);
+    }
+  }
+  $('alerts').innerHTML = A.map(a=>`<div class="alert ${a[0]}"><span class="ai">${a[1]}</span><span>${a[2]}</span></div>`).join('');
+
+  /* ---- internal ---- */
+  const mc = r.margenP>=P.MARGEN_ALERTA?'g':(r.margenP>=P.MARGEN_MIN?'w':'r');
+  const uc = '';
+  $('intGrid').innerHTML = [
+    ['Días de operación', r.dias.toFixed(1)+' días',''],
+    ['Costo operativo / día', cop(r.costoOpDia),''],
+    ['Costo operación total', cop(r.costoOperacion),''],
+    ['Fee Noruega (3,5%)', cop(r.feeNoruega),''],
+    ['Comisión comercial', cop(r.comision),''],
+    ['Costo total', cop(r.costoTotal),''],
+    ['Precio al cliente', cop(r.precioLavado),''],
+    ['Margen', cop(r.margenD),mc],
+    ['Margen %', pct(r.margenP),mc],
+    ['Tarifa USD/m² (ref.)', r.usdM2.toFixed(2),uc],
+    ['Precio piso (margen 0)', cop(r.precioPiso),''],
+    ['Precio mín. autorizado (25%)', cop(r.precioMin25),''],
+  ].map(x=>`<div class="int-item"><div class="il">${x[0]}</div><div class="iv ${x[2]}">${x[1]}</div></div>`).join('');
+  $('intNote').textContent = 'Cotizado por m² al cliente; costo verificado por días ('+r.dias.toFixed(1)+' × '+cop(r.costoOpDia)+'). La gasolina de operación ya está incluida en consumibles — nunca se cobra aparte.';
+
+  /* ---- 3 opciones ---- */
+  const dv = P.DV_PRECIO;
+  const optA = r.precioLavado;
+  const optB = r.precioLavado + dv;
+  const opts = [
+    {tag:'Opción A', name:'Lavado puntual', total:optA, badge:'', feat:false,
+     feats:['1 lavado integral de fachada','Agua pura, sin contacto ni andamios','Registro fotográfico antes/después',{no:true,t:'Sin informe de estado'}]},
+    {tag:'Opción B', name:'Lavado + Diagnóstico', total:optB, badge:'', feat:false,
+     feats:['Todo lo de la Opción A','+ Diagnóstico Visual de su fachada','Hallazgos: fisuras, humedad, sellos','Recomendaciones de mantenimiento']},
+    {tag:'Opción C', name:'Programa KTV Care', total:null, badge:'Recomendado', feat:true,
+     feats:['Mantenimiento planificado anual','Informe de estado incluido','Precio preferencial vs. puntual','Prioridad de agenda','Ver planes abajo ↓']},
+  ];
+  $('opts').innerHTML = opts.map(o=>`
+    <div class="opt ${o.feat?'feat':''}">
+      <div class="opt-hd">
+        ${o.badge?`<span class="opt-badge">${o.badge}</span>`:''}
+        <div class="opt-tag">${o.tag}</div>
+        <div class="opt-name">${o.name}</div>
+      </div>
+      <div class="opt-bd">
+        <div class="opt-total">
+          ${o.total!==null
+            ? `<div class="tl">Total proyecto</div><div class="tv">${cop(o.total)}</div><div class="ts">+ IVA · ${cop(o.total*(1+P.IVA))} IVA incl.</div>`
+            : `<div class="tl">Desde</div><div class="tv" style="font-size:20px">Valor mensual</div><div class="ts">según plan (abajo)</div>`}
+        </div>
+        <ul class="opt-feats">${o.feats.map(f=>typeof f==='string'?`<li>${f}</li>`:`<li class="no">${f.t}</li>`).join('')}</ul>
+      </div>
+    </div>`).join('');
+
+  /* ---- Care ---- */
+  const essAnual = r.m2 * P.TARIFA_LISTA * (1-P.CARE_ESSENTIAL_DESC) + dv;      // 1 lavada @5.700 + DV
+  const compAnual = 2 * r.m2 * P.TARIFA_LISTA * (1-P.CARE_COMPLETE_DESC) + dv;  // 2 lavadas @5.400 + DV
+  const inspectAnual = dv;                                                       // solo inspección/informe
+  const care = [
+    {name:'Care Inspect', tag:'Diagnóstico', anual:inspectAnual, feat:false,
+     feats:['Inspección anual con informe','Gestión preventiva del activo',{no:'Sin lavadas incluidas'},'Tarifa preferencial en servicios']},
+    {name:'Care Essential', tag:'1 lavada / año', anual:essAnual, feat:false,
+     feats:['Inspección con informe de estado incluida','1 lavada de fachada al año','Lavada a $5.640/m² (vs $6.000)','Prioridad de agenda preferente']},
+    {name:'Care Complete', tag:'2 lavadas / año', anual:compAnual, feat:true, badge:'Máximo valor',
+     feats:['Inspección anual (informe certificado)','2 lavadas de fachada al año','Lavadas a $5.400/m² (mejor precio)','Prioridad máxima + urgencias']},
+  ];
+  $('care').innerHTML = care.map(c=>`
+    <div class="opt ${c.feat?'feat':''}">
+      <div class="opt-hd">
+        ${c.badge?`<span class="opt-badge">${c.badge}</span>`:''}
+        <div class="opt-tag">${c.tag}</div>
+        <div class="opt-name">${c.name}</div>
+      </div>
+      <div class="opt-bd">
+        <div class="opt-total">
+          <div class="tl">Valor mensual</div>
+          <div class="tv">${cop(c.anual/12)}</div>
+          <div class="ts">${cop(c.anual)} / año + IVA</div>
+        </div>
+        <ul class="opt-feats">${c.feats.map(f=>typeof f==='string'?`<li>${f}</li>`:`<li class="no">${f.no}</li>`).join('')}</ul>
+      </div>
+    </div>`).join('');
+}
+
+/* toggle internal view — el label alterna el checkbox de forma nativa; solo sincronizamos las clases */
+$('intChk').addEventListener('change',function(){
+  $('intToggle').classList.toggle('on',this.checked);
+  $('internal').classList.toggle('on',this.checked);
+});
+
+/* ===== Generar propuesta cliente (Documento B) ===== */
+function esc(s){return (s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+function wmBg(text){
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='330' height='230'><text x='16' y='120' transform='rotate(-27 165 115)' fill='rgba(20,40,64,0.05)' font-family='Open Sans, Verdana, sans-serif' font-size='14' font-weight='700'>"+esc(text)+"</text></svg>";
+  return "url(\"data:image/svg+xml;utf8,"+encodeURIComponent(svg)+"\")";
+}
+function genId(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return 'KTV-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+Math.floor(1000+Math.random()*9000);
+}
+function generarPropuesta(){
+  const r = calc();
+  if(r.m2<=0){ alert('Ingrese el área de fachada (m²) para generar la propuesta.'); return; }
+  const cliente = $('cliente').value.trim() || 'Cliente';
+  const contacto = $('contacto').value.trim();
+  const id = genId();
+  const dv = P.DV_PRECIO;
+  const ess = r.m2*P.TARIFA_LISTA*(1-P.CARE_ESSENTIAL_DESC) + dv;
+  const comp = 2*r.m2*P.TARIFA_LISTA*(1-P.CARE_COMPLETE_DESC) + dv;
+  const plans = [
+    {name:'KTV Care Inspect', tag:'Diagnóstico', anual:dv, feat:false,
+     f:['Inspección anual con informe de estado','Gestión preventiva del activo','Tarifa preferencial en servicios KTV']},
+    {name:'KTV Care Essential', tag:'1 lavada / año', anual:ess, feat:false,
+     f:['Inspección anual con informe de estado','1 lavada de fachada al año','Prioridad de agenda preferente','Precio preferente vs. servicio puntual']},
+    {name:'KTV Care Complete', tag:'2 lavadas / año', anual:comp, feat:true,
+     f:['Inspección anual (informe certificado institucional)','2 lavadas de fachada al año','Prioridad máxima + atención de urgencias','Máximo beneficio de precio por volumen']},
+  ];
+  $('pdId').textContent = id;
+  $('pdTo').innerHTML = 'Preparado para: <b>'+esc(cliente)+'</b>'+(contacto?' &nbsp;·&nbsp; At.: '+esc(contacto):'');
+  $('pdDate').textContent = 'Bogotá, '+new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  $('pdM2').textContent = r.m2.toLocaleString('es-CO');
+  $('pdPlans').innerHTML = plans.map(p=>`
+    <div class="pdp ${p.feat?'feat':''}">
+      <div class="pdp-h">${p.feat?'<span class="pdp-badge">Recomendado</span>':''}<div class="t">${p.tag}</div><div class="n">${p.name}</div></div>
+      <div class="pdp-b">
+        <div class="pdp-price"><span class="m">${cop(p.anual/12)}</span> <span class="per">/ mes</span><div class="y">${cop(p.anual)} / año + IVA</div></div>
+        <ul class="pdp-f">${p.f.map(x=>`<li>${x}</li>`).join('')}</ul>
+      </div>
+    </div>`).join('');
+  $('pdWm').style.backgroundImage = wmBg(cliente+' · '+id+' · CONFIDENCIAL');
+  document.body.classList.add('proposal-open');
+  window.scrollTo(0,0);
+}
+function cerrarPropuesta(){ document.body.classList.remove('proposal-open'); }
+
+/* ===== Descargar propuesta como página web con video (HTML autónomo) ===== */
+function descargarPropuestaHTML(){
+  const r = calc();
+  if(r.m2<=0){ alert('Ingrese el área de fachada (m²) para generar la propuesta.'); return; }
+  const cliente = $('cliente').value.trim() || 'Cliente';
+  const contacto = $('contacto').value.trim();
+  const id = genId();
+  const fecha = new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  const dv = P.DV_PRECIO;
+  const ess = r.m2*P.TARIFA_LISTA*(1-P.CARE_ESSENTIAL_DESC) + dv;
+  const comp = 2*r.m2*P.TARIFA_LISTA*(1-P.CARE_COMPLETE_DESC) + dv;
+  const cl = esc(cliente), co = esc(contacto);
+  const plans = [
+    {name:'KTV Care Inspect', tag:'Diagnóstico', anual:dv, feat:false,
+     f:['Inspección anual con informe de estado','Gestión preventiva del activo','Tarifa preferencial en servicios KTV']},
+    {name:'KTV Care Essential', tag:'1 lavada / año', anual:ess, feat:false,
+     f:['Inspección anual con informe de estado','1 lavada de fachada al año','Prioridad de agenda preferente','Precio preferente vs. servicio puntual']},
+    {name:'KTV Care Complete', tag:'2 lavadas / año', anual:comp, feat:true,
+     f:['Inspección anual (informe certificado institucional)','2 lavadas de fachada al año','Prioridad máxima + atención de urgencias','Máximo beneficio de precio por volumen']},
+  ];
+  const plansHTML = plans.map(p =>
+    '<div class="pl'+(p.feat?' feat':'')+'">'+
+      '<div class="plh">'+(p.feat?'<span class="badge">Recomendado</span>':'')+'<div class="t">'+p.tag+'</div><div class="n">'+p.name+'</div></div>'+
+      '<div class="plb"><div class="price"><span class="m">'+cop(p.anual/12)+'</span> <span class="per">/ mes</span><div class="y">'+cop(p.anual)+' / año + IVA</div></div>'+
+      '<ul>'+p.f.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>'+
+    '</div>'
+  ).join('');
+  const wm = wmBg(cliente+' · '+id+' · CONFIDENCIAL');
+
+  const html =
+'<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'+
+'<title>Propuesta KTV Care — '+cl+'</title>'+
+'<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">'+
+'<style>'+
+':root{--blue:#34C7FF;--dk:#00AADF;--nk:#1F4E78;--bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--off:#F7FBFF;}'+
+'*{margin:0;padding:0;box-sizing:border-box}body{font-family:\'Open Sans\',Verdana,sans-serif;color:var(--body);line-height:1.6;background:#eef4f9}'+
+'.wm{position:fixed;inset:0;z-index:0;background-repeat:repeat;pointer-events:none}'+
+'.wrap{position:relative;z-index:1;max-width:960px;margin:24px auto;background:#fff;box-shadow:0 12px 44px rgba(31,78,120,.14);border-radius:16px;overflow:hidden}'+
+'.hero{position:relative;min-height:56vh;display:flex;align-items:flex-end;overflow:hidden;color:#fff;padding:44px 44px 40px}'+
+'.hero video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}'+
+'.hero .ov{position:absolute;inset:0;background:linear-gradient(150deg,rgba(0,150,210,.80),rgba(20,38,64,.95));z-index:1}'+
+'.hero .hc{position:relative;z-index:2;max-width:640px}'+
+'.hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 14px;border-radius:50px;display:inline-block;margin-bottom:16px}'+
+'.hero h1{font-size:clamp(30px,5vw,44px);font-weight:800;line-height:1.08;margin-bottom:10px;letter-spacing:-.01em}'+
+'.hero .sub{font-size:16px;opacity:.92;font-weight:300}'+
+'.hero .id{position:absolute;top:22px;right:22px;z-index:2;font-size:11px;font-weight:700;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 12px;border-radius:8px}'+
+'.body{padding:38px 44px 44px}'+
+'.to{font-size:15px;margin-bottom:4px}.to b{color:var(--ink)}.date{font-size:13px;color:var(--muted);margin-bottom:22px}'+
+'.lead{font-size:15px;line-height:1.7;margin-bottom:28px}'+
+'.st{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dk);margin:0 0 14px}'+
+'.diff{display:grid;grid-template-columns:1fr 1fr;gap:11px 26px;margin-bottom:32px}'+
+'.diff .d{display:flex;gap:9px;font-size:13.5px;line-height:1.5}.diff .d b{color:var(--ink)}.diff .d::before{content:\'\\2713\';color:var(--dk);font-weight:800}'+
+'.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:12px}'+
+'.pl{border:1.5px solid rgba(52,199,255,.25);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}'+
+'.pl.feat{border-color:var(--blue);box-shadow:0 10px 26px rgba(0,170,223,.14)}'+
+'.plh{padding:16px 18px 12px;border-bottom:1px solid rgba(52,199,255,.14);position:relative}'+
+'.pl.feat .plh{background:linear-gradient(150deg,var(--blue),var(--dk));color:#fff}'+
+'.plh .t{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--dk)}.pl.feat .plh .t{color:rgba(255,255,255,.9)}'+
+'.plh .n{font-size:17px;font-weight:800;color:var(--ink);margin-top:2px}.pl.feat .plh .n{color:#fff}'+
+'.badge{position:absolute;top:12px;right:12px;background:#fff;color:var(--dk);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:50px}'+
+'.plb{padding:16px 18px;display:flex;flex-direction:column;gap:12px;flex:1}'+
+'.price .m{font-size:23px;font-weight:800;color:var(--nk);line-height:1}.price .per{font-size:12px;color:var(--muted);font-weight:600}.price .y{font-size:12px;color:var(--muted);margin-top:4px}'+
+'.plb ul{list-style:none;display:flex;flex-direction:column;gap:6px}.plb li{font-size:12.5px;display:flex;gap:7px;line-height:1.4}.plb li::before{content:\'\\2713\';color:var(--dk);font-weight:800;flex-shrink:0}'+
+'.fine{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}'+
+'.vids{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}'+
+'.vc{position:relative;border-radius:14px;overflow:hidden;background:#000;box-shadow:0 8px 24px rgba(0,170,223,.14)}'+
+'.vc video{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#000}'+
+'.vc span{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:50px}'+
+'.cond{margin-top:26px;background:var(--off);border:1px solid rgba(52,199,255,.16);border-radius:14px;padding:18px 22px}'+
+'.cond h4{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--nk);margin-bottom:10px}.cond ul{margin:0;padding-left:18px}.cond li{font-size:13px;color:var(--muted);margin-bottom:5px;line-height:1.5}'+
+'.cta{margin-top:26px;text-align:center}.cta a{display:inline-block;background:var(--blue);color:#fff;font-weight:800;font-size:15px;text-decoration:none;padding:15px 34px;border-radius:50px}'+
+'.ft{margin-top:24px;padding-top:18px;border-top:1px solid rgba(52,199,255,.16);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}'+
+'@media(max-width:720px){.diff,.plans,.vids{grid-template-columns:1fr}}'+
+'</style></head><body>'+
+'<div class="wm" style="background-image:'+wm+'"></div>'+
+'<div class="wrap">'+
+  '<div class="hero"><video autoplay muted loop playsinline preload="auto"><source src="videos/hero.mp4" type="video/mp4"></video><div class="ov"></div>'+
+    '<div class="id">'+id+'</div>'+
+    '<div class="hc"><span class="eyebrow">Programa de Mantenimiento de Fachadas</span><h1>Propuesta para<br>'+cl+'</h1><p class="sub">Mantenimiento planificado con drones — sin andamios, sin riesgo de alturas, con informe técnico incluido.</p></div>'+
+  '</div>'+
+  '<div class="body">'+
+    '<div class="to">Preparado para: <b>'+cl+'</b>'+(co?' &nbsp;·&nbsp; At.: '+co:'')+'</div>'+
+    '<div class="date">Bogotá, '+fecha+'</div>'+
+    '<p class="lead">Presentamos nuestra propuesta de <b>Programa de Mantenimiento de Fachadas KTV Care</b>: convierte el cuidado de su edificio en un servicio planificado, con precio preferencial e <b>informe técnico de estado incluido</b>.</p>'+
+    '<div class="st">Por qué KTV y no otra opción</div>'+
+    '<div class="diff">'+
+      '<div class="d"><span><b>Único operador certificado.</b> El único con Certificado de Explotador UAS vigente. Verifíquelo en el listado público de la Aeronáutica Civil.</span></div>'+
+      '<div class="d"><span><b>Cero riesgo en alturas.</b> Elimina su responsabilidad legal y de SST (Res. 4272/2021).</span></div>'+
+      '<div class="d"><span><b>3 a 5 veces más rápido.</b> Menos días de intervención, sin interrumpir su edificio.</span></div>'+
+      '<div class="d"><span><b>Respaldo global.</b> Operación en Colombia de KTV Working Drone (Noruega), en 68 países.</span></div>'+
+      '<div class="d"><span><b>Agua pura sin contacto.</b> Protege el activo en vez de desgastarlo.</span></div>'+
+      '<div class="d"><span><b>Informe de estado incluido.</b> Diagnóstico que el mantenimiento tradicional no entrega.</span></div>'+
+    '</div>'+
+    '<div class="st">Su programa a la medida — valor mensual</div>'+
+    '<div class="plans">'+plansHTML+'</div>'+
+    '<p class="fine">Valores antes de IVA (19%), calculados para un área de fachada de <b>'+r.m2.toLocaleString('es-CO')+'</b> m². El pago puede diferirse hasta en 12 cuotas mensuales sin variar el valor del contrato.</p>'+
+    '<div class="st" style="margin-top:30px">El dron en acción</div>'+
+    '<div class="vids">'+
+      '<div class="vc"><span>Lavado de fachada</span><video controls muted playsinline preload="metadata"><source src="videos/accion-1.mp4" type="video/mp4"></video></div>'+
+      '<div class="vc"><span>Operación en altura</span><video controls muted playsinline preload="metadata"><source src="videos/accion-2.mp4" type="video/mp4"></video></div>'+
+      '<div class="vc"><span>KTV Working Drone</span><video controls muted playsinline preload="metadata"><source src="videos/hero.mp4" type="video/mp4"></video></div>'+
+    '</div>'+
+    '<div class="cond"><h4>Condiciones</h4><ul>'+
+      '<li><b>Vigencia:</b> propuesta válida por 30 días calendario desde su emisión.</li>'+
+      '<li><b>Contrato:</b> a 1 o 3 años (el de 3 años congela el valor el primer año y lo ajusta por IPC en los siguientes).</li>'+
+      '<li><b>Pago:</b> de contado o diferido hasta en 12 cuotas mensuales (el diferido es una facilidad, no un recargo ni un descuento).</li>'+
+      '<li><b>Inspección técnica inicial sin costo</b> para confirmar el alcance y el valor definitivo.</li>'+
+      '<li>El inicio de la operación está sujeto a la agenda de permisos de la Aeronáutica Civil.</li>'+
+    '</ul></div>'+
+    '<div class="cta"><a href="https://wa.me/573142358441?text=Hola%2C%20quiero%20avanzar%20con%20la%20propuesta%20'+encodeURIComponent(id)+'">Agendar inspección sin costo →</a></div>'+
+    '<div class="ft"><span>KTV Working Drone Colombia S.A.S. — NIT 901.830.814-8</span><span>mercadeo@ktvworkingdrone.com.co · +57 314 235 8441</span></div>'+
+  '</div>'+
+'</div></body></html>';
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Propuesta-'+cliente.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+id+'.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+
+/* recalc on any input */
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));
+render();
+</script>
+</body>
+</html>
