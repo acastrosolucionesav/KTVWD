@@ -22,7 +22,10 @@ body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);back
 .hero{position:relative;min-height:76vh;display:flex;align-items:center;padding:120px 40px 84px;background:linear-gradient(150deg,#1F4E78 0%,#0C1E33 100%);overflow:hidden;}
 .hero::before{content:'';position:absolute;width:680px;height:680px;top:-240px;right:-160px;border-radius:50%;background:radial-gradient(circle,rgba(52,199,255,.28),transparent 68%);}
 .hero::after{content:'';position:absolute;width:520px;height:520px;bottom:-240px;left:-140px;border-radius:50%;background:radial-gradient(circle,rgba(52,199,255,.14),transparent 70%);}
-.hero-in{position:relative;z-index:2;max-width:840px;}
+.hero-grid{position:relative;z-index:2;max-width:1180px;margin:0 auto;width:100%;display:grid;grid-template-columns:1.05fr .95fr;gap:50px;align-items:center;}
+.hero-in{max-width:620px;}
+.hero-media{border-radius:22px;overflow:hidden;box-shadow:0 28px 64px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);aspect-ratio:9/12.5;background:#000;}
+.hero-media video{width:100%;height:100%;object-fit:cover;display:block;}
 .hero .eyebrow{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:rgba(52,199,255,.18);border:1px solid rgba(52,199,255,.45);padding:8px 18px;border-radius:50px;margin-bottom:24px;}
 .hero h1{font-size:clamp(38px,6vw,66px);font-weight:800;line-height:1.05;color:#fff;letter-spacing:-.02em;margin-bottom:22px;}
 .hero h1 em{font-style:normal;color:var(--blue);}
@@ -145,6 +148,8 @@ footer{background:var(--ink);padding:56px 40px 32px;}
 @media(max-width:900px){
   .nav{padding:0 20px;}
   .hero{padding:100px 22px 64px;}
+  .hero-grid{grid-template-columns:1fr;gap:30px;}
+  .hero-media{aspect-ratio:9/11;max-width:300px;margin:0 auto;order:2;}
   .sec{padding:56px 22px;}
   .plus-in,.resp-in{grid-template-columns:1fr;gap:36px;}
   .care-grid,.diff-grid{grid-template-columns:1fr;}
@@ -164,18 +169,23 @@ footer{background:var(--ink);padding:56px 40px 32px;}
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-in">
-    <span class="eyebrow">Programas exclusivos de mantenimiento</span>
-    <h1>El mantenimiento de su fachada,<br><em>planificado y sin sorpresas.</em></h1>
-    <p>Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin riesgo de trabajo en alturas.</p>
-    <div class="hero-btns">
-      <a href="#contacto" class="btn-w">Agendar inspección sin costo</a>
-      <a href="#planes" class="btn-o">Ver los programas ↓</a>
+  <div class="hero-grid">
+    <div class="hero-in">
+      <span class="eyebrow">Programas exclusivos de mantenimiento</span>
+      <h1>El mantenimiento de su fachada,<br><em>planificado y sin sorpresas.</em></h1>
+      <p>Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin riesgo de trabajo en alturas.</p>
+      <div class="hero-btns">
+        <a href="#contacto" class="btn-w">Agendar inspección sin costo</a>
+        <a href="#planes" class="btn-o">Ver los programas ↓</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hs"><div class="n">68</div><div class="l">países en la red KTV</div></div>
+        <div class="hs"><div class="n">3–5×</div><div class="l">más rápido que andamios</div></div>
+        <div class="hs"><div class="n">0</div><div class="l">trabajo en alturas</div></div>
+      </div>
     </div>
-    <div class="hero-stats">
-      <div class="hs"><div class="n">68</div><div class="l">países en la red KTV</div></div>
-      <div class="hs"><div class="n">3–5×</div><div class="l">más rápido que andamios</div></div>
-      <div class="hs"><div class="n">0</div><div class="l">trabajo en alturas</div></div>
+    <div class="hero-media">
+      <video autoplay muted loop playsinline preload="auto"><source src="videos/accion-1.mp4" type="video/mp4"></video>
     </div>
   </div>
 </section>
