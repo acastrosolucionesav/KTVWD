@@ -229,6 +229,22 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
       </div>
     </div>
 
+    <hr class="sec-div">
+    <div class="sec-lbl">Inspección de cubierta (opcional)</div>
+    <div class="row2">
+      <div class="fg"><label>¿Cotizar inspección?</label>
+        <select id="inclInsp"><option value="0">No / tras medición</option><option value="1">Sí, incluir</option></select>
+      </div>
+      <div class="fg"><label>Área de techo (m²)</label><input type="number" id="techo" value="0" min="0" step="100"></div>
+    </div>
+
+    <hr class="sec-div">
+    <div class="sec-lbl">Tasas de cambio (editables)</div>
+    <div class="row2">
+      <div class="fg"><label>TRM (COP/USD)</label><input type="number" id="trm" value="3727.2" min="0" step="0.1"></div>
+      <div class="fg"><label>EUR (COP/EUR)</label><input type="number" id="eur" value="4400" min="0" step="10"></div>
+    </div>
+
     <div class="mov-box" id="movBox">
       <hr class="sec-div">
       <div class="sec-lbl">Movilización (fuera de Bogotá)</div>
@@ -272,6 +288,9 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
       <div class="blk-hd"><h2>Opciones para el cliente</h2><span class="sub">Valores antes de IVA · precio válido 30 días</span></div>
       <div class="opts" id="opts"></div>
     </div>
+
+    <!-- inspección (opcional) -->
+    <div id="inspBlock"></div>
 
     <!-- Care -->
     <div>
@@ -360,7 +379,10 @@ const P = {
   IVA: 0.19,
   CARE_ESSENTIAL_DESC: 0.06,   // 1 lavada a $5.640
   CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a $5.400 c/u
-  DV_PRECIO: 4500000           // Diagnóstico Visual de referencia (3–5,5M según techo)
+  DV_PRECIO: 4500000,          // Diagnóstico Visual por defecto (si no hay medida de techo)
+  DV_TIERS: [3500000, 4500000, 5500000],    // Diagnóstico Visual por rango de techo
+  COSTO_DIA_INSPECCION: 814381,             // costo día inspección (cuadrilla+dron+RTK+camioneta +15%)
+  ROOF_TIERS: [[0,10000,798],[10000,25000,1198],[25000,40000,1598]] // techo m² → fee Noruega EUR
 };
 
 const cop = n => 'COP ' + Math.round(n).toLocaleString('es-CO');
@@ -376,6 +398,10 @@ function calc(){
   const com = +$('comision').value;
   const complejo = +$('complejo').value;
   const fuera = $('ciudad').value === 'fuera';
+  const trm = Math.max(0,+$('trm').value) || P.TRM;
+  const eur = Math.max(0,+$('eur').value) || P.EUR_COP;
+  const techo = Math.max(0, +$('techo').value || 0);
+  const inclInsp = $('inclInsp').value === '1';
 
   // movilización
   let mov = 0;
@@ -399,11 +425,19 @@ function calc(){
   const costoTotal = costoOperacion + feeNoruega + comision;
   const margenD = precioLavado - costoTotal;
   const margenP = precioLavado > 0 ? margenD / precioLavado : 0;
-  const usdM2 = tarifa / P.TRM;
+  const usdM2 = tarifa / trm;
   const precioPiso = costoTotal;
   const precioMin25 = costoTotal / (1 - P.MARGEN_MIN);
 
-  return {m2,sup,tarifa,dias,costoOpDia,costoOperacion,mov,precioLavado,feeNoruega,comision,costoTotal,margenD,margenP,usdM2,precioPiso,precioMin25};
+  // inspección por rango de techo
+  let tierIdx = -1;
+  for(let i=0;i<P.ROOF_TIERS.length;i++){ const t=P.ROOF_TIERS[i]; if(techo>t[0] && techo<=t[1]){ tierIdx=i; break; } }
+  const dvPrecio = tierIdx>=0 ? P.DV_TIERS[tierIdx] : P.DV_PRECIO;
+  const inspCert = tierIdx>=0 ? (2*P.ROOF_TIERS[tierIdx][2]*eur + P.COSTO_DIA_INSPECCION) : null;
+  const inspFueraRango = techo > P.ROOF_TIERS[P.ROOF_TIERS.length-1][1];
+
+  return {m2,sup,tarifa,dias,costoOpDia,costoOperacion,mov,precioLavado,feeNoruega,comision,costoTotal,margenD,margenP,usdM2,precioPiso,precioMin25,
+          trm,eur,techo,inclInsp,dvPrecio,inspCert,inspFueraRango};
 }
 
 function render(){
@@ -456,7 +490,7 @@ function render(){
   $('intNote').textContent = 'Cotizado por m² al cliente; costo verificado por días ('+r.dias.toFixed(1)+' × '+cop(r.costoOpDia)+'). La gasolina de operación ya está incluida en consumibles — nunca se cobra aparte.';
 
   /* ---- 3 opciones ---- */
-  const dv = P.DV_PRECIO;
+  const dv = r.dvPrecio;
   const optA = r.precioLavado;
   const optB = r.precioLavado + dv;
   const opts = [
@@ -512,6 +546,28 @@ function render(){
         <ul class="opt-feats">${c.feats.map(f=>typeof f==='string'?`<li>${f}</li>`:`<li class="no">${f.no}</li>`).join('')}</ul>
       </div>
     </div>`).join('');
+
+  /* ---- inspección de cubierta (opcional) ---- */
+  let inspHTML = '';
+  if(r.inclInsp){
+    if(r.inspCert!==null){
+      inspHTML =
+        '<div class="blk-hd"><h2>Inspección de cubierta</h2><span class="sub">Por área de techo ('+r.techo.toLocaleString('es-CO')+' m²) · antes de IVA</span></div>'+
+        '<div class="opts">'+
+          '<div class="opt"><div class="opt-hd"><div class="opt-tag">Informe propio KTV</div><div class="opt-name">Diagnóstico Visual</div></div>'+
+            '<div class="opt-bd"><div class="opt-total"><div class="tl">Valor</div><div class="tv">'+cop(r.dvPrecio)+'</div><div class="ts">informe de estado propio · va incluido en los planes Care</div></div>'+
+            '<ul class="opt-feats"><li>Registro fotográfico de alta resolución</li><li>Hallazgos: fisuras, humedad, sellos</li><li>Recomendaciones de mantenimiento</li></ul></div></div>'+
+          '<div class="opt feat"><div class="opt-hd"><span class="opt-badge">Estándar internacional</span><div class="opt-tag">Informe Noruega</div><div class="opt-name">Inspección Certificada</div></div>'+
+            '<div class="opt-bd"><div class="opt-total"><div class="tl">Valor (adicional)</div><div class="tv">'+cop(r.inspCert)+'</div><div class="ts">+ IVA · '+cop(r.inspCert*(1+P.IVA))+' IVA incl.</div></div>'+
+            '<ul class="opt-feats"><li>Informe bajo estándar internacional KTV</li><li>Para due diligence, auditorías, aseguradoras</li><li>Nunca se descuenta</li></ul></div></div>'+
+        '</div>';
+    } else if(r.inspFueraRango){
+      inspHTML = '<div class="blk-hd"><h2>Inspección de cubierta</h2></div><div class="alert warn"><span class="ai">⚠️</span><span>Techo mayor a 40.000 m²: la inspección certificada se cotiza <b>a solicitud</b> con Noruega.</span></div>';
+    } else {
+      inspHTML = '<div class="blk-hd"><h2>Inspección de cubierta</h2></div><div class="alert warn"><span class="ai">📐</span><span>Ingrese el <b>área de techo (m²)</b> para calcular la inspección certificada. Sin la medida, se cotiza <b>tras medición de cubierta</b> — no frena el resto de la cotización.</span></div>';
+    }
+  }
+  $('inspBlock').innerHTML = inspHTML;
 }
 
 /* toggle internal view — el label alterna el checkbox de forma nativa; solo sincronizamos las clases */
@@ -536,7 +592,7 @@ function generarPropuesta(){
   const cliente = $('cliente').value.trim() || 'Cliente';
   const contacto = $('contacto').value.trim();
   const id = genId();
-  const dv = P.DV_PRECIO;
+  const dv = r.dvPrecio;
   const ess = r.m2*P.TARIFA_LISTA*(1-P.CARE_ESSENTIAL_DESC) + dv;
   const comp = 2*r.m2*P.TARIFA_LISTA*(1-P.CARE_COMPLETE_DESC) + dv;
   const plans = [
@@ -573,7 +629,7 @@ function descargarPropuestaHTML(){
   const contacto = $('contacto').value.trim();
   const id = genId();
   const fecha = new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
-  const dv = P.DV_PRECIO;
+  const dv = r.dvPrecio;
   const ess = r.m2*P.TARIFA_LISTA*(1-P.CARE_ESSENTIAL_DESC) + dv;
   const comp = 2*r.m2*P.TARIFA_LISTA*(1-P.CARE_COMPLETE_DESC) + dv;
   const cl = esc(cliente), co = esc(contacto);
