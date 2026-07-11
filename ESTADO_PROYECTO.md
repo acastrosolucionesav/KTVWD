@@ -11,7 +11,11 @@
 
 ## 1. Qué estamos construyendo
 El motor comercial digital de KTV: páginas públicas de venta + un cotizador interno que
-genera propuestas sin errores. Todo con la línea gráfica de la marca (azul #34C7FF / navy #1F4E78).
+genera propuestas sin errores.
+
+**Paleta (manual de marca — ya aplicada en TODO):** azul corporativo **#2E75B6**, azul
+corporativo oscuro **#245E92**, azul oscuro/navy **#1F4E78**. (Se eliminó el cian #34C7FF del
+diseño original del landing; todo está alineado al manual.)
 
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,
