@@ -64,13 +64,15 @@ genera propuestas sin errores. Todo con la línea gráfica de la marca (azul #34
   protagonistas con frases-gancho y jerarquía, footer con redes + WhatsApp flotante.
 - Cotizador: motor de lavado + alertas de margen/negociación + generador de propuesta web
   (Documento B, con marca de agua) + **motor de inspección por techo con switch opcional +
-  TRM/EUR editables** (paso 1 de la fase de precios).
+  TRM/EUR editables** (paso 1).
+- **Paso 2 — Cotización puntual** (1 lavado + inspección opcional) en web: botón
+  "Descargar cotización puntual" → documento tipo Plaza Claro pero HTML, con campos manuales
+  (Aerocivil, ejecución, condiciones de pago anticipo/saldo). Función `descargarCotizacionPuntual()`.
 
 **Pendiente (fase de precios):**
-- 🔲 **Paso 2 — Cotización puntual** (1 lavado o 1 inspección) en web espectacular, tipo el
-  PDF de Plaza Claro pero HTML, con los campos manuales (Aerocivil, ejecución, pago).
 - 🔲 **Paso 3 — Propuesta de paquetes:** mostrar el **valor del informe KTV debajo de cada
-  plan** + el Certificado como adicional (usando el switch de inspección).
+  plan** + el Certificado como adicional (usando el switch de inspección). Editar
+  `generarPropuesta()` y `descargarPropuestaHTML()` en cotizador.html.
 - 🔲 Cerrar el costeo del dron con importación/nacionalización.
 - 🔲 Módulo 2 (backend): links únicos, desactivación, tracking de apertura, Pipedrive (futuro).
 
