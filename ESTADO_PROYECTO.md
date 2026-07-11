@@ -72,11 +72,17 @@ diseño original del landing; todo está alineado al manual.)
 - **Paso 2 — Cotización puntual** (1 lavado + inspección opcional) en web: botón
   "Descargar cotización puntual" → documento tipo Plaza Claro pero HTML, con campos manuales
   (Aerocivil, ejecución, condiciones de pago anticipo/saldo). Función `descargarCotizacionPuntual()`.
+- **Paso 3 — Propuesta de paquetes:** cada plan (Inspect/Essential/Complete) muestra debajo del
+  precio el **valor del Diagnóstico Visual KTV** (informe propio, ya incluido) y, si el switch de
+  inspección está activo, un bloque **"Informe Certificado (adicional opcional)"** con su valor
+  propio — nunca incluido en el plan, nunca descontado, sin prometer validez ante aseguradoras.
+  De paso se corrigió el plan Complete: antes su texto decía que traía el "informe certificado
+  institucional" incluido, lo cual contradecía la regla de negocio (el Certificado SIEMPRE es
+  adicional; lo incluido en todos los planes es el Diagnóstico Visual). Aplicado en
+  `generarPropuesta()` (vista en pantalla) y `descargarPropuestaHTML()` (documento que recibe el
+  cliente) en cotizador.html — probado en navegador real con Playwright.
 
 **Pendiente (fase de precios):**
-- 🔲 **Paso 3 — Propuesta de paquetes:** mostrar el **valor del informe KTV debajo de cada
-  plan** + el Certificado como adicional (usando el switch de inspección). Editar
-  `generarPropuesta()` y `descargarPropuestaHTML()` en cotizador.html.
 - 🔲 Cerrar el costeo del dron con importación/nacionalización.
 - 🔲 Módulo 2 (backend): links únicos, desactivación, tracking de apertura, Pipedrive (futuro).
 
@@ -86,4 +92,14 @@ diseño original del landing; todo está alineado al manual.)
    (códec H.264) pero sí en un navegador real.
 3. Para editar video hay ffmpeg completo vía `pip install imageio-ffmpeg`.
 4. Cada push a `main` despliega el sitio público en Vercel automáticamente.
-5. Continúa por el Paso 2.
+5. Continúa cerrando el costeo del dron de inspección (importación/nacionalización) o el
+   Módulo 2 (backend: links únicos, tracking, Pipedrive).
+
+## 7. Nota de paleta pendiente (no bloqueante)
+El **panel interno del cotizador** (`:root` en cotizador.html, línea ~9) todavía define
+`--blue:#34C7FF` (cian, diseño original) en vez de `#2E75B6`. No afecta al cliente: el
+**documento que se descarga y se envía** (`descargarPropuestaHTML()` / `descargarCotizacionPuntual()`)
+ya tiene su propia paleta correcta embebida (`#2E75B6` / `#245E92` / `#1F4E78`), verificado en
+pantalla. Solo la vista previa en pantalla del cotizador (uso exclusivo de Gerencia, nunca se
+publica) conserva el azul cian heredado. Pendiente decidir si vale la pena alinearlo también
+(cambio cosmético, sin impacto en lo que ve el cliente).
