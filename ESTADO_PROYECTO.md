@@ -85,20 +85,27 @@ descargables a #34C7FF. NO volver a #2E75B6.
   adicional; lo incluido en todos los planes es el Diagnóstico Visual). Aplicado en
   `generarPropuesta()` (vista en pantalla) y `descargarPropuestaHTML()` (documento que recibe el
   cliente) en cotizador.html — probado en navegador real con Playwright.
-- **Paso 4 — Formatos de cotización (2026-07-11):**
-  - **Paleta:** todo revertido al azul de marca real **#34C7FF (Pantone 299C)**.
-  - **Sin m² al cliente:** ni la cotización sencilla ni la propuesta de paquetes muestran metros
-    cuadrados (ni de fachada ni de cubierta). El m² sigue del lado interno para el cálculo de
-    días/margen. Se agregó campo **Observaciones** (lo escribe el comercial, se muestra al
-    cliente) en ambos documentos — pensado para la trazabilidad/Pipedrive.
-  - **Sin galería de videos:** se quitó la galería "El dron en acción" de la propuesta de paquetes
-    (los brochure ya muestran videos). Se mantiene el video de fondo del encabezado.
-  - **Cotización sencilla con 3 escenarios** (controles `cpLavado` + `cpDV` + switch inspección):
-    (1) lavado solo; (2) lavado + Diagnóstico Visual REGALADO (recuadro "incluido sin costo") +
-    Informe Certificado como adicional pagado; (3) inspección sola (DV cobrado + certificado).
-    El texto del lavado ya NO dice "agua desmineralizada" (ahora "agua pura"). Requerimientos y
-    exclusión de fachada solo aparecen cuando hay lavado. Probado los 3 escenarios + paquetes con
-    Playwright.
+- **Paso 4 — DOS formatos de alto impacto (2026-07-11, rediseñado con feedback de Gerencia):**
+  - **Formato 1 — Cotización sencilla:** el comercial escoge UN producto en el selector
+    `cpProducto`: (1) Solo lavado · (2) Lavado + Inspección KTV Colombia (Diagnóstico Visual
+    INCLUIDO sin costo, recuadro gancho con su valor; Informe estándar internacional como
+    adicional opcional) · (3) Solo inspección con informe bajo estándar internacional.
+    El documento sale enfocado en el producto elegido (subtítulo del encabezado cambia).
+  - **Formato 2 — Propuesta de paquetes KTV Care** (Inspect/Essential/Complete, valor mensual).
+  - **Diseño de ambos:** paleta carbón (#171E27) + cian de marca #34C7FF (Pantone 299C) como
+    único azul; **logo blanco INCRUSTADO en base64** (los docs descargados lo muestran siempre);
+    **video del encabezado con URL pública** (landing.ktvworkingdrone.com.co/videos/hero.mp4,
+    con fallback local) — así el video sí se ve al abrir el documento en cualquier parte;
+    **textos justificados**; títulos de sección con barra cian.
+  - **Textos:** lavado = "agua a alta presión" (sin "pura", sin "temperatura controlada");
+    eliminado "informe propio" en todas partes (queda "Diagnóstico Visual KTV").
+  - **Sin m² al cliente** en ningún documento; campo **Observaciones** (lo escribe el comercial).
+    Condiciones de pago, días Aerocivil y ejecución = campos manuales del comercial.
+  - **Precio del informe estándar alineado al Excel KWD-FIN-MPV-001 v1.5:** la inspección usa
+    MEDIO día de operación (nuevo parámetro `DIAS_INSPECCION: 0.5`) → Certificada = 2×fee×EUR +
+    $407.190 (antes sumaba el día completo $814.381 de más). Valores: ~$7,43M / $10,95M / $14,47M.
+    El Excel también confirma márgenes: DV ~85-89%, Certificada ~44-45%.
+  - Probado con Playwright los 3 productos del F1 + F2 sin errores de consola.
 
 **Pendiente (fase de precios):**
 - 🔲 **CRÍTICO antes de dar por terminado el cotizador — costear la INSPECCIÓN PROPIA
