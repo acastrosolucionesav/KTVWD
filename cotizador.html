@@ -294,7 +294,7 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
         <option value="inspeccion">3 · Solo inspección — informe estándar internacional</option>
       </select>
     </div>
-    <p class="foot-note" style="margin-top:2px;">En la opción 2 la Inspección KTV Colombia (Diagnóstico Visual) va incluida sin costo con el lavado, y el Informe Certificado se ofrece como adicional. La opción 3 requiere el área de techo (arriba).</p>
+    <p class="foot-note" style="margin-top:2px;">En la opción 2 la Inspección KTV Colombia (Diagnóstico Visual) va incluida sin costo con el lavado, y el Informe Internacional KTV se ofrece como adicional. La opción 3 requiere el área de techo (arriba).</p>
 
     <hr class="sec-div">
     <button class="print-btn" onclick="descargarCotizacionPuntual()" style="width:100%;justify-content:center;">📄 Descargar cotización sencilla</button>
@@ -595,14 +595,14 @@ function render(){
           '<div class="opt"><div class="opt-hd"><div class="opt-tag">Informe propio KTV</div><div class="opt-name">Diagnóstico Visual</div></div>'+
             '<div class="opt-bd"><div class="opt-total"><div class="tl">Valor</div><div class="tv">'+cop(r.dvPrecio)+'</div><div class="ts">informe KTV Colombia · va incluido en los planes Care</div></div>'+
             '<ul class="opt-feats"><li>Registro fotográfico de alta resolución</li><li>Hallazgos: fisuras, humedad, sellos</li><li>Recomendaciones de mantenimiento</li></ul></div></div>'+
-          '<div class="opt feat"><div class="opt-hd"><span class="opt-badge">Estándar internacional</span><div class="opt-tag">Informe Noruega</div><div class="opt-name">Inspección Certificada</div></div>'+
+          '<div class="opt feat"><div class="opt-hd"><span class="opt-badge">Estándar internacional</span><div class="opt-tag">Informe Internacional</div><div class="opt-name">Informe Internacional KTV</div></div>'+
             '<div class="opt-bd"><div class="opt-total"><div class="tl">Valor (adicional)</div><div class="tv">'+cop(r.inspCert)+'</div><div class="ts">+ IVA · '+cop(r.inspCert*(1+P.IVA))+' IVA incl.</div></div>'+
-            '<ul class="opt-feats"><li>Informe bajo estándar internacional KTV</li><li>Para due diligence, auditorías, aseguradoras</li><li>Nunca se descuenta</li></ul></div></div>'+
+            '<ul class="opt-feats"><li>Informe bajo estándar internacional KTV</li><li>Para due diligence y auditorías técnicas</li><li>Nunca se descuenta</li></ul></div></div>'+
         '</div>';
     } else if(r.inspFueraRango){
-      inspHTML = '<div class="blk-hd"><h2>Inspección de cubierta</h2></div><div class="alert warn"><span class="ai">⚠️</span><span>Techo mayor a 40.000 m²: la inspección certificada se cotiza <b>a solicitud</b> con Noruega.</span></div>';
+      inspHTML = '<div class="blk-hd"><h2>Inspección de cubierta</h2></div><div class="alert warn"><span class="ai">⚠️</span><span>Techo mayor a 40.000 m²: el Informe Internacional KTV se cotiza <b>a solicitud</b> con Noruega.</span></div>';
     } else {
-      inspHTML = '<div class="blk-hd"><h2>Inspección de cubierta</h2></div><div class="alert warn"><span class="ai">📐</span><span>Ingrese el <b>área de techo (m²)</b> para calcular la inspección certificada. Sin la medida, se cotiza <b>tras medición de cubierta</b> — no frena el resto de la cotización.</span></div>';
+      inspHTML = '<div class="blk-hd"><h2>Inspección de cubierta</h2></div><div class="alert warn"><span class="ai">📐</span><span>Ingrese el <b>área de techo (m²)</b> para calcular el Informe Internacional KTV. Sin la medida, se cotiza <b>tras medición de cubierta</b> — no frena el resto de la cotización.</span></div>';
     }
   }
   $('inspBlock').innerHTML = inspHTML;
@@ -635,13 +635,13 @@ function generarPropuesta(){
   const comp = 2*r.m2*P.TARIFA_LISTA*(1-P.CARE_COMPLETE_DESC) + dv;
   const plans = [
     {name:'KTV Care Inspect', tag:'Diagnóstico', anual:dv, feat:false,
-     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> · valor '+cop(dv),
+     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> (con IA) · valor '+cop(dv),
      f:['Inspección anual con informe de estado','Gestión preventiva del activo','Tarifa preferencial en servicios KTV']},
     {name:'KTV Care Essential', tag:'1 lavada / año', anual:ess, feat:false,
-     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> · valor '+cop(dv)+' + 1 lavada de fachada',
+     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> (con IA) · valor '+cop(dv)+' + 1 lavada de fachada',
      f:['Inspección anual con Diagnóstico Visual KTV','1 lavada de fachada al año','Prioridad de agenda preferente','Precio preferente vs. servicio puntual']},
     {name:'KTV Care Complete', tag:'2 lavadas / año', anual:comp, feat:true,
-     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> · valor '+cop(dv)+' + 2 lavadas de fachada',
+     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> (con IA) · valor '+cop(dv)+' + 2 lavadas de fachada',
      f:['Inspección anual con Diagnóstico Visual KTV','2 lavadas de fachada al año','Prioridad máxima + atención de urgencias','Máximo beneficio de precio por volumen']},
   ];
   $('pdId').textContent = id;
@@ -666,15 +666,15 @@ function generarPropuesta(){
 function certBlockHTML(r){
   if(!r.inclInsp) return '';
   if(r.inspCert!==null){
-    return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4>'+
+    return '<div class="pd-cert"><h4>Informe Internacional KTV (adicional opcional)</h4>'+
       '<div class="pc-row"><span><span class="pc-badge">Estándar internacional</span>Soporte técnico bajo el estándar KTV Working Drone, para due diligence y auditorías técnicas</span>'+
       '<span class="pc-val">'+cop(r.inspCert)+' <span style="font-size:11px;font-weight:600;color:var(--muted)">+ IVA</span></span></div>'+
       '<p class="pc-note">Complementa (no reemplaza) el Diagnóstico Visual ya incluido en su plan · valor adicional, no se descuenta.</p></div>';
   }
   if(r.inspFueraRango){
-    return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4><p class="pc-note">Para cubiertas de gran extensión el Informe Certificado se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+    return '<div class="pd-cert"><h4>Informe Internacional KTV (adicional opcional)</h4><p class="pc-note">Para cubiertas de gran extensión el Informe Internacional KTV se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV (con IA).</p></div>';
   }
-  return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4><p class="pc-note">Disponible tras la medición de cubierta. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+  return '<div class="pd-cert"><h4>Informe Internacional KTV (adicional opcional)</h4><p class="pc-note">Disponible tras la medición de cubierta. Su plan ya incluye el Diagnóstico Visual KTV (con IA).</p></div>';
 }
 function cerrarPropuesta(){ document.body.classList.remove('proposal-open'); }
 
@@ -692,13 +692,13 @@ function descargarPropuestaHTML(){
   const cl = esc(cliente), co = esc(contacto);
   const plans = [
     {name:'KTV Care Inspect', tag:'Diagnóstico', anual:dv, feat:false,
-     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> · valor '+cop(dv),
+     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> (con IA) · valor '+cop(dv),
      f:['Inspección anual con informe de estado','Gestión preventiva del activo','Tarifa preferencial en servicios KTV']},
     {name:'KTV Care Essential', tag:'1 lavada / año', anual:ess, feat:false,
-     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> · valor '+cop(dv)+' + 1 lavada de fachada',
+     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> (con IA) · valor '+cop(dv)+' + 1 lavada de fachada',
      f:['Inspección anual con Diagnóstico Visual KTV','1 lavada de fachada al año','Prioridad de agenda preferente','Precio preferente vs. servicio puntual']},
     {name:'KTV Care Complete', tag:'2 lavadas / año', anual:comp, feat:true,
-     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> · valor '+cop(dv)+' + 2 lavadas de fachada',
+     dvNote:'Incluye <b>Diagnóstico Visual KTV</b> (con IA) · valor '+cop(dv)+' + 2 lavadas de fachada',
      f:['Inspección anual con Diagnóstico Visual KTV','2 lavadas de fachada al año','Prioridad máxima + atención de urgencias','Máximo beneficio de precio por volumen']},
   ];
   const plansHTML = plans.map(p =>
@@ -712,14 +712,14 @@ function descargarPropuestaHTML(){
   let certHTML = '';
   if(r.inclInsp){
     if(r.inspCert!==null){
-      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4>'+
+      certHTML = '<div class="certbox"><h4>Informe Internacional KTV (adicional opcional)</h4>'+
         '<div class="cb-row"><span><span class="cb-badge">Estándar internacional</span>Soporte técnico bajo el estándar KTV Working Drone, para due diligence y auditorías técnicas</span>'+
         '<span class="cb-val">'+cop(r.inspCert)+' <span style="font-size:11px;font-weight:600;color:var(--muted)">+ IVA</span></span></div>'+
         '<p class="cb-note">Complementa (no reemplaza) el Diagnóstico Visual ya incluido en su plan · valor adicional, no se descuenta.</p></div>';
     } else if(r.inspFueraRango){
-      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4><p class="cb-note">Para cubiertas de gran extensión el Informe Certificado se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+      certHTML = '<div class="certbox"><h4>Informe Internacional KTV (adicional opcional)</h4><p class="cb-note">Para cubiertas de gran extensión el Informe Internacional KTV se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV (con IA).</p></div>';
     } else {
-      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4><p class="cb-note">Disponible tras la medición de cubierta. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+      certHTML = '<div class="certbox"><h4>Informe Internacional KTV (adicional opcional)</h4><p class="cb-note">Disponible tras la medición de cubierta. Su plan ya incluye el Diagnóstico Visual KTV (con IA).</p></div>';
     }
   }
   const obs = esc($('cpObs').value.trim());
@@ -861,7 +861,7 @@ function descargarCotizacionPuntual(){
     const cs=r.inspCert, civ=cs*P.IVA, ct=cs+civ;
     return '<div class="ct-sec-t">'+titulo+'</div>'+
       '<table class="ct-tbl"><thead><tr><th>Descripción</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
-      '<tr><td class="j"><b>Inspección con Informe bajo Estándar Internacional KTV</b> — inspección de fachada y cubierta con dron e informe técnico emitido bajo el estándar internacional de KTV Working Drone, para due diligence, auditorías y respaldo técnico.</td><td class="r">'+M(cs)+'</td></tr>'+
+      '<tr><td class="j"><b>Informe Internacional KTV</b> — inspección de fachada y cubierta con dron e informe técnico internacional de KTV Working Drone, para due diligence, auditorías y respaldo técnico.</td><td class="r">'+M(cs)+'</td></tr>'+
       '<tr class="tot"><td class="r">IVA 19%</td><td class="r">'+M(civ)+'</td></tr>'+
       '<tr class="tot big"><td class="r">TOTAL INSPECCIÓN</td><td class="r">'+M(ct)+'</td></tr>'+
       '</tbody></table>'+(nota?'<p class="ct-note">'+nota+'</p>':'');
@@ -875,11 +875,11 @@ function descargarCotizacionPuntual(){
     subDoc = 'Lavado de fachada + Inspección KTV Colombia';
     const valorTxt = r.inspCert!==null ? ' (valor '+M(r.dvPrecio)+')' : '';
     cuerpo = lavadoTbl('Servicio de lavado de fachada')+
-      '<div class="ct-gift"><b>Inspección KTV Colombia — incluida sin costo con su lavado.</b> Durante la operación realizamos la inspección de su fachada y le entregamos el <b>Diagnóstico Visual KTV</b>'+valorTxt+': registro fotográfico y de video en alta resolución, hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento. <b>Sin costo adicional.</b></div>';
+      '<div class="ct-gift"><b>Inspección KTV Colombia — incluida sin costo con su lavado.</b> Durante la operación realizamos la inspección de su fachada y le entregamos el <b>Diagnóstico Visual KTV</b> (elaborado con apoyo de inteligencia artificial)'+valorTxt+': registro fotográfico y de video en alta resolución, hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento. <b>Sin costo adicional.</b></div>';
     if(r.inspCert!==null){
-      cuerpo += certTbl('Informe bajo estándar internacional (adicional opcional)','Complementa el Diagnóstico Visual KTV incluido. Valor adicional — no se descuenta.');
+      cuerpo += certTbl('Informe Internacional KTV (adicional opcional)','Complementa el Diagnóstico Visual KTV incluido. Valor adicional — no se descuenta.');
     } else {
-      cuerpo += '<p class="ct-note">Si desea el <b>Informe bajo Estándar Internacional KTV</b> (adicional opcional), se cotiza tras la medición del área de cubierta.</p>';
+      cuerpo += '<p class="ct-note">Si desea el <b>Informe Internacional KTV</b> (adicional opcional), se cotiza tras la medición del área de cubierta.</p>';
     }
   } else {
     subDoc = 'Inspección de fachada y cubierta — informe bajo estándar internacional';

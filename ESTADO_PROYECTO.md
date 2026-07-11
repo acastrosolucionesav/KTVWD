@@ -112,6 +112,35 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
     $407.190 (antes sumaba el día completo $814.381 de más). Valores: ~$7,43M / $10,95M / $14,47M.
     El Excel también confirma márgenes: DV ~85-89%, Certificada ~44-45%.
   - Probado con Playwright los 3 productos del F1 + F2 sin errores de consola.
+- **Paso 5 — Naming correcto según KWD-SIS-PROMPT-001 v2 (2026-07-11):**
+  - Renombrado en TODO cotizador.html: nunca decir "Certificado"/"Inspección Certificada" →
+    ahora **"Informe Internacional KTV"**. Nunca prometer validez ante aseguradoras (se quitó
+    esa mención de un texto interno que la tenía).
+  - **Diagnóstico Visual KTV** ahora se presenta siempre como *"elaborado con apoyo de
+    inteligencia artificial"* (descripción completa) / *"(con IA)"* (etiquetas cortas) —
+    decisión de posicionamiento que se mantiene siempre, por instrucción de Gerencia.
+  - "Certificado de Explotador UAS" (Aerocivil) NO se tocó — es un producto real distinto,
+    no es el informe.
+
+**Pendiente — Fase 2: sistema completo con backend (KWD-SIS-PROMPT-001 v2 recibido)**
+- Llegó el prompt maestro v2: define **2 familias de productos separadas** (Familia 1:
+  Inspección sola / Lavado+Inspección / Solo lavado — servicios puntuales; Familia 2: los
+  planes Care recurrentes) y **2 reglas de confidencialidad**: Regla A (fee a Noruega y
+  costos NUNCA visibles a nadie fuera de Gerencia, no configurable) y Regla B (mostrar/no
+  mostrar el Informe Internacional como ítem, configurable por cotización).
+- Hoy `cotizador.html` es un archivo estático sin backend, sin roles, sin base de datos —
+  la Fase 2 es un sistema NUEVO (no una extensión del archivo), con: `usuarios` (roles
+  Comercial/Director Comercial/Gerencia), `parametros` editables, `cotizaciones` +
+  `cotizacion_puntual`/`cotizacion_care` (Familia 1 y 2 como tablas separadas),
+  `auditoria`, `aperturas`, `alertas`. Propuesta de arquitectura completa ya presentada a
+  Gerencia en el chat — pendiente de aprobación final antes de programar.
+- Decisiones de infraestructura en curso: dominio = **subdominio nuevo del dominio que ya
+  tienen** (ej. `app.ktvworkingdrone.com.co`), separado del landing público por seguridad
+  (login + datos confidenciales nunca en el mismo origen que lo público sin login). Hosting
+  backend/DB: pendiente de decidir (Gerencia pidió que Claude proponga uno concreto — sin
+  resolver aún). Token Pipedrive: se pide cuando se llegue al Módulo 3 (no bloquea Módulo 1).
+- Orden de construcción: Módulo 1 (cotizador con las 2 familias + Reglas A/B) primero,
+  mostrado funcionando, antes de Módulo 2 (presentador), 3 (Pipedrive), 4 (alertas).
 
 **Pendiente (fase de precios):**
 - 🔲 **CRÍTICO antes de dar por terminado el cotizador — costear la INSPECCIÓN PROPIA
