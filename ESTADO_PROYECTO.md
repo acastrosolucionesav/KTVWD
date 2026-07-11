@@ -121,6 +121,23 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
     decisión de posicionamiento que se mantiene siempre, por instrucción de Gerencia.
   - "Certificado de Explotador UAS" (Aerocivil) NO se tocó — es un producto real distinto,
     no es el informe.
+- **Paso 6 — Correcciones de flujo (2026-07-11):**
+  - **"Solo inspección" estaba mal armada:** vendía directo el Informe Internacional KTV como
+    único producto. Corregido según v2: la base pagada es el **Diagnóstico Visual KTV**
+    (cobrado, no hay lavado con qué regalarlo) + el **Informe Internacional KTV como adicional
+    activable** (mismo switch `inclInsp` + techo que ya usan las otras 2 opciones).
+  - **Paquetes ya no dice "Agendar inspección sin costo":** ese CTA era de prospección fría;
+    la propuesta de paquetes se presenta DESPUÉS de la cotización/inspección inicial. Ahora
+    tiene un bloque **"Aceptación de la propuesta"** con el número de propuesta y un enlace de
+    WhatsApp para "Confirmar aceptación" — sin firma física (no hay documentos físicos). La
+    condición "inspección técnica inicial sin costo" se cambió por "alcance y valor definitivo
+    ya confirmados con la inspección inicial realizada".
+  - **Pendiente para Fase 2 (anotado, no implementado aún):** cuando el cliente acepte desde el
+    link real de la propuesta, el sistema debe (a) marcar la cotización como
+    `aceptada_por_cliente` con fecha/hora, (b) generar automáticamente la **Orden de Servicio
+    Comercial interna para Operaciones — SIN cifras** (ya definido en skill: solo "Anticipo
+    confirmado Sí/No"), (c) quedar en auditoría quién aceptó y cuándo. Un HTML descargado no
+    puede disparar esto — necesita el backend de Fase 2 (Módulo 2).
 
 **Pendiente — Fase 2: sistema completo con backend (KWD-SIS-PROMPT-001 v2 recibido)**
 - Llegó el prompt maestro v2: define **2 familias de productos separadas** (Familia 1:

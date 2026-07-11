@@ -809,10 +809,12 @@ function descargarPropuestaHTML(){
       '<li><b>Vigencia:</b> propuesta válida por 30 días calendario desde su emisión.</li>'+
       '<li><b>Contrato:</b> a 1 o 3 años (el de 3 años congela el valor el primer año y lo ajusta por IPC en los siguientes).</li>'+
       '<li><b>Pago:</b> de contado o diferido hasta en 12 cuotas mensuales (el diferido es una facilidad, no un recargo ni un descuento).</li>'+
-      '<li><b>Inspección técnica inicial sin costo</b> para confirmar el alcance y el valor definitivo.</li>'+
+      '<li><b>Alcance y valor definitivo:</b> ya confirmados con la inspección inicial realizada a su fachada.</li>'+
       '<li>El inicio de la operación está sujeto a la agenda de permisos de la Aeronáutica Civil.</li>'+
     '</ul></div>'+
-    '<div class="cta"><a href="https://wa.me/573142358441?text=Hola%2C%20quiero%20avanzar%20con%20la%20propuesta%20'+encodeURIComponent(id)+'">Agendar inspección sin costo →</a></div>'+
+    '<div class="st" style="margin-top:30px">Aceptación de la propuesta</div>'+
+    '<p class="fine">Esta propuesta ya incorpora los resultados de su inspección inicial. Para aceptarla, confirme por WhatsApp o correo indicando el número de propuesta <b>'+id+'</b> — al confirmar, KTV inicia la programación del servicio.</p>'+
+    '<div class="cta"><a href="https://wa.me/573142358441?text=Confirmo%20la%20aceptaci%C3%B3n%20de%20la%20propuesta%20'+encodeURIComponent(id)+'">Confirmar aceptación de la propuesta →</a></div>'+
     '<div class="ft"><span>KTV Working Drone Colombia S.A.S. — NIT 901.830.814-8</span><span>mercadeo@ktvworkingdrone.com.co · +57 314 235 8441</span></div>'+
   '</div>'+
 '</div></body></html>';
@@ -830,12 +832,7 @@ function descargarCotizacionPuntual(){
   const r = calc();
   const producto = $('cpProducto').value;   // lavado | lavado_insp | inspeccion
   if(producto!=='inspeccion' && r.m2<=0){ alert('Ingrese el área de fachada (m²) para cotizar el lavado.'); return; }
-  if(producto==='inspeccion' && r.inspCert===null){
-    alert(r.inspFueraRango
-      ? 'Techo mayor a 40.000 m²: el informe estándar internacional se cotiza a solicitud con Noruega.'
-      : 'Ingrese el área de techo (m²) para cotizar la inspección con informe estándar internacional.');
-    return;
-  }
+  if(producto==='inspeccion' && r.techo<=0){ alert('Ingrese el área de techo (m²) para cotizar el Diagnóstico Visual KTV.'); return; }
   const cliente = $('cliente').value.trim() || 'Cliente';
   const contacto = $('contacto').value.trim();
   const id = genId();
@@ -882,8 +879,19 @@ function descargarCotizacionPuntual(){
       cuerpo += '<p class="ct-note">Si desea el <b>Informe Internacional KTV</b> (adicional opcional), se cotiza tras la medición del área de cubierta.</p>';
     }
   } else {
-    subDoc = 'Inspección de fachada y cubierta — informe bajo estándar internacional';
-    cuerpo = certTbl('Servicio de inspección con informe estándar internacional','');
+    subDoc = 'Inspección de fachada y cubierta — Diagnóstico Visual KTV';
+    const ds=r.dvPrecio, div=ds*P.IVA, dt=ds+div;
+    cuerpo = '<div class="ct-sec-t">Diagnóstico Visual KTV</div>'+
+      '<table class="ct-tbl"><thead><tr><th>Descripción</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
+      '<tr><td class="j"><b>Diagnóstico Visual KTV</b> (elaborado con apoyo de inteligencia artificial) — inspección de fachada y cubierta con dron: registro fotográfico y de video en alta resolución, hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento.</td><td class="r">'+M(ds)+'</td></tr>'+
+      '<tr class="tot"><td class="r">IVA 19%</td><td class="r">'+M(div)+'</td></tr>'+
+      '<tr class="tot big"><td class="r">TOTAL DIAGNÓSTICO</td><td class="r">'+M(dt)+'</td></tr>'+
+      '</tbody></table>';
+    if(r.inspCert!==null){
+      cuerpo += certTbl('Informe Internacional KTV (adicional opcional)','Complementa el Diagnóstico Visual KTV. Valor adicional — no se descuenta.');
+    } else if(r.inclInsp){
+      cuerpo += '<p class="ct-note">El <b>Informe Internacional KTV</b> (adicional opcional) se cotiza tras la medición del área de cubierta.</p>';
+    }
   }
 
   const obsSection = obs ? '<div class="ct-sec-t">Observaciones</div><p class="ct-note j">'+obs.replace(/\n/g,'<br>')+'</p>' : '';
