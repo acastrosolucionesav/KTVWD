@@ -85,9 +85,35 @@ descargables a #34C7FF. NO volver a #2E75B6.
   adicional; lo incluido en todos los planes es el Diagnóstico Visual). Aplicado en
   `generarPropuesta()` (vista en pantalla) y `descargarPropuestaHTML()` (documento que recibe el
   cliente) en cotizador.html — probado en navegador real con Playwright.
+- **Paso 4 — Formatos de cotización (2026-07-11):**
+  - **Paleta:** todo revertido al azul de marca real **#34C7FF (Pantone 299C)**.
+  - **Sin m² al cliente:** ni la cotización sencilla ni la propuesta de paquetes muestran metros
+    cuadrados (ni de fachada ni de cubierta). El m² sigue del lado interno para el cálculo de
+    días/margen. Se agregó campo **Observaciones** (lo escribe el comercial, se muestra al
+    cliente) en ambos documentos — pensado para la trazabilidad/Pipedrive.
+  - **Sin galería de videos:** se quitó la galería "El dron en acción" de la propuesta de paquetes
+    (los brochure ya muestran videos). Se mantiene el video de fondo del encabezado.
+  - **Cotización sencilla con 3 escenarios** (controles `cpLavado` + `cpDV` + switch inspección):
+    (1) lavado solo; (2) lavado + Diagnóstico Visual REGALADO (recuadro "incluido sin costo") +
+    Informe Certificado como adicional pagado; (3) inspección sola (DV cobrado + certificado).
+    El texto del lavado ya NO dice "agua desmineralizada" (ahora "agua pura"). Requerimientos y
+    exclusión de fachada solo aparecen cuando hay lavado. Probado los 3 escenarios + paquetes con
+    Playwright.
 
 **Pendiente (fase de precios):**
-- 🔲 Cerrar el costeo del dron con importación/nacionalización.
+- 🔲 **CRÍTICO antes de dar por terminado el cotizador — costear la INSPECCIÓN PROPIA
+  (Diagnóstico Visual).** Aclaración de Gerencia (2026-07-11):
+  - El **Informe Certificado de Noruega** SÍ está costeado: los 798/1.198/1.598 EUR son lo que
+    Noruega nos cobra **por generar el informe con su ingeniero** (ya incluye ese trabajo).
+    Nuestro fee/margen va ENCIMA de ese valor. (El "2×" actual es nuestro markup sobre ese costo.)
+  - El **Diagnóstico Visual** (informe PROPIO que construiremos juntos, donde el cliente entra a
+    ver los videos) NO está costeado de verdad: hoy `dvPrecio` = $3,5/4,5/5,5M son números fijos
+    anclados al precio de referencia, sin verificación. Falta construir el costo real: **valor del
+    dron de inspección (Matrice 4T) depreciado + construcción del informe (hora-ingeniero/edición
+    de videos) + día(s) de campo + 3,5% Noruega**, y que el motor calcule y muestre su MARGEN
+    (hoy `calc()` solo costea el lavado, la inspección no tiene costo ni margen en el motor).
+- 🔲 Cerrar el costeo del dron con importación/nacionalización (Matrice 4T EUR 8.900 sin
+  transporte ni nacionalización) — es insumo del punto anterior.
 - 🔲 Módulo 2 (backend): links únicos, desactivación, tracking de apertura, Pipedrive (futuro).
 
 ## 6. Cómo retomar (para el próximo Claude)

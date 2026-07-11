@@ -35,8 +35,9 @@ body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);back
 .panel .hint{font-size:12px;color:var(--muted);margin-bottom:18px;}
 .fg{margin-bottom:14px;}
 .fg label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
-.fg input,.fg select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);background:var(--off);border:1.5px solid rgba(52,199,255,.28);border-radius:10px;padding:11px 12px;outline:none;transition:border-color .2s;}
-.fg input:focus,.fg select:focus{border-color:var(--blue);}
+.fg input,.fg select,.fg textarea{width:100%;font-family:inherit;font-size:14px;color:var(--ink);background:var(--off);border:1.5px solid rgba(52,199,255,.28);border-radius:10px;padding:11px 12px;outline:none;transition:border-color .2s;}
+.fg textarea{resize:vertical;min-height:64px;line-height:1.5;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--blue);}
 .fg select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%2300AADF' stroke-width='1.6' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .sec-div{border:none;border-top:1px dashed rgba(52,199,255,.3);margin:20px 0 16px;}
@@ -282,9 +283,22 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
       <div class="fg"><label>Permiso Aerocivil</label><input type="text" id="cpAero" value="30 a 40 días hábiles"></div>
       <div class="fg"><label>Ejecución en sitio</label><input type="text" id="cpEjec" value="15 a 20 días hábiles"></div>
     </div>
+    <div class="fg"><label>Observaciones (las escribe el comercial · se muestran al cliente)</label><textarea id="cpObs" placeholder="Aclaraciones de alcance, condiciones especiales, notas de la visita… (opcional)"></textarea></div>
 
     <hr class="sec-div">
-    <button class="print-btn" onclick="descargarCotizacionPuntual()" style="width:100%;justify-content:center;">📄 Descargar cotización puntual (1 lavado)</button>
+    <div class="sec-lbl">Cotización puntual — ítems a incluir</div>
+    <div class="row2">
+      <div class="fg"><label>Incluir lavado</label>
+        <select id="cpLavado"><option value="1" selected>Sí</option><option value="0">No (solo inspección)</option></select>
+      </div>
+      <div class="fg"><label>Diagnóstico Visual</label>
+        <select id="cpDV"><option value="regalo" selected>Regalar con el lavado</option><option value="cobrar">Cobrar</option><option value="no">No incluir</option></select>
+      </div>
+    </div>
+    <p class="foot-note" style="margin-top:2px;">El Informe Certificado siempre se ofrece como adicional opcional (según el switch de inspección de arriba). El Diagnóstico Visual solo se puede regalar cuando hay lavado.</p>
+
+    <hr class="sec-div">
+    <button class="print-btn" onclick="descargarCotizacionPuntual()" style="width:100%;justify-content:center;">📄 Descargar cotización sencilla</button>
     <button class="print-btn" onclick="descargarPropuestaHTML()" style="width:100%;justify-content:center;margin-top:8px;">🌐 Descargar propuesta de paquetes (web)</button>
     <button class="print-btn" onclick="generarPropuesta()" style="width:100%;justify-content:center;margin-top:8px;background:var(--blue-nk);">👁️ Ver propuesta de paquetes en pantalla</button>
     <p class="foot-note" style="margin-top:10px;">Documentos con marca de agua y trazabilidad. Súbelos a Vercel/Hostinger junto a <b>videos/</b> e <b>img/</b>, o ábrelos local.</p>
@@ -357,8 +371,9 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
 
       <div class="pd-sec-t">Su programa a la medida — valor mensual</div>
       <div class="pd-plans" id="pdPlans"></div>
-      <p class="pd-fine">Valores antes de IVA (19%), calculados para un área de fachada de <b id="pdM2"></b> m². El pago puede diferirse hasta en 12 cuotas mensuales sin variar el valor del contrato.</p>
+      <p class="pd-fine">Valores antes de IVA (19%). El pago puede diferirse hasta en 12 cuotas mensuales sin variar el valor del contrato.</p>
       <div id="pdCert"></div>
+      <div id="pdObs"></div>
 
       <div class="pd-cond">
         <h4>Condiciones</h4>
@@ -631,7 +646,6 @@ function generarPropuesta(){
   $('pdId').textContent = id;
   $('pdTo').innerHTML = 'Preparado para: <b>'+esc(cliente)+'</b>'+(contacto?' &nbsp;·&nbsp; At.: '+esc(contacto):'');
   $('pdDate').textContent = 'Bogotá, '+new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
-  $('pdM2').textContent = r.m2.toLocaleString('es-CO');
   $('pdPlans').innerHTML = plans.map(p=>`
     <div class="pdp ${p.feat?'feat':''}">
       <div class="pdp-h">${p.feat?'<span class="pdp-badge">Recomendado</span>':''}<div class="t">${p.tag}</div><div class="n">${p.name}</div></div>
@@ -642,6 +656,8 @@ function generarPropuesta(){
       </div>
     </div>`).join('');
   $('pdCert').innerHTML = certBlockHTML(r);
+  const obsP = $('cpObs').value.trim();
+  $('pdObs').innerHTML = obsP ? '<div class="pd-sec-t" style="margin-top:26px">Observaciones</div><p class="pd-fine">'+esc(obsP).replace(/\n/g,'<br>')+'</p>' : '';
   $('pdWm').style.backgroundImage = wmBg(cliente+' · '+id+' · CONFIDENCIAL');
   document.body.classList.add('proposal-open');
   window.scrollTo(0,0);
@@ -652,12 +668,12 @@ function certBlockHTML(r){
     return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4>'+
       '<div class="pc-row"><span><span class="pc-badge">Estándar internacional</span>Soporte técnico bajo el estándar KTV Working Drone, para due diligence y auditorías técnicas</span>'+
       '<span class="pc-val">'+cop(r.inspCert)+' <span style="font-size:11px;font-weight:600;color:var(--muted)">+ IVA</span></span></div>'+
-      '<p class="pc-note">Aplica sobre '+r.techo.toLocaleString('es-CO')+' m² de cubierta · complementa (no reemplaza) el Diagnóstico Visual ya incluido en su plan · valor adicional, no se descuenta.</p></div>';
+      '<p class="pc-note">Complementa (no reemplaza) el Diagnóstico Visual ya incluido en su plan · valor adicional, no se descuenta.</p></div>';
   }
   if(r.inspFueraRango){
-    return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4><p class="pc-note">Para cubiertas mayores a 40.000 m² el Informe Certificado se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+    return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4><p class="pc-note">Para cubiertas de gran extensión el Informe Certificado se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
   }
-  return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4><p class="pc-note">Disponible una vez se mida el área de cubierta. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+  return '<div class="pd-cert"><h4>Informe Certificado (adicional opcional)</h4><p class="pc-note">Disponible tras la medición de cubierta. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
 }
 function cerrarPropuesta(){ document.body.classList.remove('proposal-open'); }
 
@@ -698,13 +714,15 @@ function descargarPropuestaHTML(){
       certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4>'+
         '<div class="cb-row"><span><span class="cb-badge">Estándar internacional</span>Soporte técnico bajo el estándar KTV Working Drone, para due diligence y auditorías técnicas</span>'+
         '<span class="cb-val">'+cop(r.inspCert)+' <span style="font-size:11px;font-weight:600;color:var(--muted)">+ IVA</span></span></div>'+
-        '<p class="cb-note">Aplica sobre '+r.techo.toLocaleString('es-CO')+' m² de cubierta · complementa (no reemplaza) el Diagnóstico Visual ya incluido en su plan · valor adicional, no se descuenta.</p></div>';
+        '<p class="cb-note">Complementa (no reemplaza) el Diagnóstico Visual ya incluido en su plan · valor adicional, no se descuenta.</p></div>';
     } else if(r.inspFueraRango){
-      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4><p class="cb-note">Para cubiertas mayores a 40.000 m² el Informe Certificado se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4><p class="cb-note">Para cubiertas de gran extensión el Informe Certificado se cotiza a solicitud. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
     } else {
-      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4><p class="cb-note">Disponible una vez se mida el área de cubierta. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
+      certHTML = '<div class="certbox"><h4>Informe Certificado (adicional opcional)</h4><p class="cb-note">Disponible tras la medición de cubierta. Su plan ya incluye el Diagnóstico Visual KTV.</p></div>';
     }
   }
+  const obs = esc($('cpObs').value.trim());
+  const obsSecP = obs ? '<div class="st" style="margin-top:26px">Observaciones</div><p class="fine">'+obs.replace(/\n/g,'<br>')+'</p>' : '';
   const wm = wmBg(cliente+' · '+id+' · CONFIDENCIAL');
 
   const html =
@@ -781,14 +799,9 @@ function descargarPropuestaHTML(){
     '</div>'+
     '<div class="st">Su programa a la medida — valor mensual</div>'+
     '<div class="plans">'+plansHTML+'</div>'+
-    '<p class="fine">Valores antes de IVA (19%), calculados para un área de fachada de <b>'+r.m2.toLocaleString('es-CO')+'</b> m². El pago puede diferirse hasta en 12 cuotas mensuales sin variar el valor del contrato.</p>'+
+    '<p class="fine">Valores antes de IVA (19%). El pago puede diferirse hasta en 12 cuotas mensuales sin variar el valor del contrato.</p>'+
     certHTML+
-    '<div class="st" style="margin-top:30px">El dron en acción</div>'+
-    '<div class="vids">'+
-      '<div class="vc"><span>Lavado de fachada</span><video controls muted playsinline preload="metadata"><source src="videos/accion-1.mp4" type="video/mp4"></video></div>'+
-      '<div class="vc"><span>Operación en altura</span><video controls muted playsinline preload="metadata"><source src="videos/accion-2.mp4" type="video/mp4"></video></div>'+
-      '<div class="vc"><span>KTV Working Drone</span><video controls muted playsinline preload="metadata"><source src="videos/hero.mp4" type="video/mp4"></video></div>'+
-    '</div>'+
+    obsSecP+
     '<div class="cond"><h4>Condiciones</h4><ul>'+
       '<li><b>Vigencia:</b> propuesta válida por 30 días calendario desde su emisión.</li>'+
       '<li><b>Contrato:</b> a 1 o 3 años (el de 3 años congela el valor el primer año y lo ajusta por IPC en los siguientes).</li>'+
@@ -812,7 +825,12 @@ function descargarPropuestaHTML(){
 /* ===== Descargar COTIZACIÓN PUNTUAL (1 lavado / inspección) — Documento web ===== */
 function descargarCotizacionPuntual(){
   const r = calc();
-  if(r.m2<=0){ alert('Ingrese el área de fachada (m²) para generar la cotización.'); return; }
+  const incLavado = $('cpLavado').value==='1' && r.m2>0;
+  let dvMode = $('cpDV').value;                        // regalo | cobrar | no
+  if(dvMode==='regalo' && !incLavado) dvMode='cobrar'; // no se puede regalar sin lavado
+  const inspOn = r.inclInsp;
+  const certOk = inspOn && r.inspCert!==null;
+  if(!incLavado && !certOk){ alert('Para generar la cotización incluya el lavado (ingrese m²) o una inspección con área de techo medida.'); return; }
   const cliente = $('cliente').value.trim() || 'Cliente';
   const contacto = $('contacto').value.trim();
   const id = genId();
@@ -820,24 +838,66 @@ function descargarCotizacionPuntual(){
   const ant = Math.round(+$('cpAnt').value||0), saldo = Math.round(+$('cpSaldo').value||0);
   const pagoNota = esc($('cpPagoNota').value.trim());
   const aero = esc($('cpAero').value.trim()), ejec = esc($('cpEjec').value.trim());
+  const obs = esc($('cpObs').value.trim());
   const cl = esc(cliente), co = esc(contacto);
   const M = n => 'COP ' + Math.round(n).toLocaleString('es-CO');
 
-  const sub = r.precioLavado, iva = sub*P.IVA, tot = sub+iva;
-  // inspección opcional
-  let inspSection = '';
-  if(r.inclInsp && r.inspCert!==null){
-    const isub=r.inspCert, iiva=isub*P.IVA, itot=isub+iiva;
-    inspSection =
-      '<div class="ct-sec-t">Inspección de cubierta (adicional)</div>'+
-      '<table class="ct-tbl"><thead><tr><th>Descripción</th><th class="r">Área techo</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
-      '<tr><td><b>Inspección Certificada</b> — informe técnico de cubierta bajo estándar internacional KTV.</td><td class="r">'+r.techo.toLocaleString('es-CO')+' m²</td><td class="r">'+M(isub)+'</td></tr>'+
-      '<tr class="tot"><td colspan="2" class="r">IVA 19%</td><td class="r">'+M(iiva)+'</td></tr>'+
-      '<tr class="tot big"><td colspan="2" class="r">TOTAL INSPECCIÓN</td><td class="r">'+M(itot)+'</td></tr>'+
+  // ---- Lavado (sin mostrar m²) ----
+  let lavadoSection = '';
+  if(incLavado){
+    const sub=r.precioLavado, iva=sub*P.IVA, tot=sub+iva;
+    lavadoSection =
+      '<div class="ct-sec-t">Servicio de lavado de fachada</div>'+
+      '<table class="ct-tbl"><thead><tr><th>Descripción del servicio</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
+      '<tr><td><b>Servicio Integral de Lavado KTV WD</b> — intervención especializada en altura con drones. Incluye lavado externo de fachada, cristales y ventanales con agua pura a alta presión y temperatura controlada, y los productos aplicados durante el proceso.</td><td class="r">'+M(sub)+'</td></tr>'+
+      '<tr class="tot"><td class="r">Subtotal (sin IVA)</td><td class="r">'+M(sub)+'</td></tr>'+
+      '<tr class="tot"><td class="r">IVA 19%</td><td class="r">'+M(iva)+'</td></tr>'+
+      '<tr class="tot big"><td class="r">TOTAL LAVADO</td><td class="r">'+M(tot)+'</td></tr>'+
       '</tbody></table>';
-  } else if(r.inclInsp){
-    inspSection = '<div class="ct-sec-t">Inspección de cubierta (adicional)</div><p class="ct-note">La inspección certificada se cotiza <b>tras medición del área de cubierta</b>.</p>';
   }
+
+  // ---- Diagnóstico Visual: regalo (gancho) / cobrar / no ----
+  const dvDesc = '<b>Diagnóstico Visual KTV</b> — informe propio de estado de la fachada: registro fotográfico y de video de alta resolución, hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento.';
+  let dvGiftHTML='', dvPaidSection='';
+  if(certOk && dvMode==='regalo'){
+    dvGiftHTML = '<div class="ct-gift"><b>Diagnóstico Visual KTV — incluido sin costo con su lavado.</b> Le entregamos nuestro informe propio de estado de fachada (valor '+M(r.dvPrecio)+'): registro fotográfico y de video de alta resolución, hallazgos y recomendaciones de mantenimiento. <b>Sin costo.</b></div>';
+  } else if(certOk && dvMode==='cobrar'){
+    const ds=r.dvPrecio, div=ds*P.IVA, dt=ds+div;
+    dvPaidSection =
+      '<div class="ct-sec-t">Diagnóstico Visual de fachada</div>'+
+      '<table class="ct-tbl"><thead><tr><th>Descripción</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
+      '<tr><td>'+dvDesc+'</td><td class="r">'+M(ds)+'</td></tr>'+
+      '<tr class="tot"><td class="r">IVA 19%</td><td class="r">'+M(div)+'</td></tr>'+
+      '<tr class="tot big"><td class="r">TOTAL DIAGNÓSTICO</td><td class="r">'+M(dt)+'</td></tr>'+
+      '</tbody></table>';
+  }
+
+  // ---- Informe Certificado (adicional opcional) ----
+  let certSection = '';
+  if(certOk){
+    const cs=r.inspCert, civ=cs*P.IVA, ct=cs+civ;
+    certSection =
+      '<div class="ct-sec-t">Informe Certificado (adicional opcional)</div>'+
+      '<table class="ct-tbl"><thead><tr><th>Descripción</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
+      '<tr><td><b>Informe Certificado</b> — soporte técnico de cubierta bajo estándar internacional KTV, para due diligence, auditorías y respaldo técnico.</td><td class="r">'+M(cs)+'</td></tr>'+
+      '<tr class="tot"><td class="r">IVA 19%</td><td class="r">'+M(civ)+'</td></tr>'+
+      '<tr class="tot big"><td class="r">TOTAL INFORME CERTIFICADO</td><td class="r">'+M(ct)+'</td></tr>'+
+      '</tbody></table>'+
+      '<p class="ct-note">Complementa el Diagnóstico Visual. Valor adicional — no se descuenta.</p>';
+  } else if(inspOn){
+    certSection = '<div class="ct-sec-t">Inspección de cubierta (adicional)</div><p class="ct-note">La inspección se cotiza <b>tras medición del área de cubierta</b>.</p>';
+  }
+
+  // ---- Observaciones (las escribe el comercial) ----
+  const obsSection = obs ? '<div class="ct-sec-t">Observaciones</div><p class="ct-note">'+obs.replace(/\n/g,'<br>')+'</p>' : '';
+
+  // Requerimientos y exclusión aplican solo cuando hay lavado
+  const reqExclSection = incLavado
+    ? '<div class="ct-sec-t">Requerimientos en sitio (a cargo del cliente)</div>'+
+      '<ul class="ct-ul"><li>Punto de agua potable (llave con toma de ½, ¾ o 1 pulgada).</li><li>Red eléctrica: toma tradicional 110V.</li><li>Espacio de estacionamiento para vehículos operativos y acceso a puntos altos.</li><li>Permisos internos de la copropiedad y ventanas cerradas antes del servicio.</li></ul>'+
+      '<div class="ct-excl"><b>Exclusión por estado de fachada y ventanales.</b> KTV emplea tecnología de alta precisión, sin embargo no se hace responsable por filtraciones, humedades o daños interiores derivados de ventanas mal cerradas, empaques deteriorados, siliconas vencidas, fisuras preexistentes o sellos rotos. El cliente verifica el estado de estos elementos antes de la operación.</div>'
+    : '<div class="ct-sec-t">Requerimientos en sitio (a cargo del cliente)</div>'+
+      '<ul class="ct-ul"><li>Espacio de estacionamiento para vehículos operativos y acceso a puntos altos.</li><li>Permisos internos de la copropiedad para el sobrevuelo de inspección.</li></ul>';
 
   const wm = wmBg(cliente+' · '+id+' · CONFIDENCIAL');
   const html =
@@ -870,6 +930,7 @@ function descargarCotizacionPuntual(){
 '.ct-tbl tr.tot td{background:var(--off);font-weight:700;color:var(--ink)}'+
 '.ct-tbl tr.big td{background:linear-gradient(150deg,var(--blue),var(--dk));color:#fff;font-size:16px}'+
 '.ct-note{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px}'+
+'.ct-gift{background:#EBF8FF;border:1px solid rgba(52,199,255,.35);border-left:4px solid var(--blue);border-radius:12px;padding:14px 18px;font-size:13.5px;color:var(--body);line-height:1.6;margin:2px 0 6px}.ct-gift b{color:var(--nk)}'+
 '.ct-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}'+
 '.ct-card{background:var(--off);border:1px solid rgba(52,199,255,.16);border-radius:12px;padding:16px 18px}'+
 '.ct-card h4{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--nk);margin-bottom:8px}'+
@@ -893,14 +954,11 @@ function descargarCotizacionPuntual(){
     '<div class="ct-date">Bogotá, '+fecha+'</div>'+
     '<p class="ct-lead">Agradecemos su interés en nuestros servicios especializados de intervención de fachadas en gran altura con drones de última tecnología. A continuación presentamos nuestra propuesta económica, elaborada según los requerimientos de su inmueble, combinando ingeniería aeronáutica con mano de obra técnica calificada.</p>'+
 
-    '<div class="ct-sec-t">Servicio de lavado de fachada</div>'+
-    '<table class="ct-tbl"><thead><tr><th>Descripción del servicio</th><th class="r">Precio/m²</th><th class="r">Área (m²)</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
-    '<tr><td><b>Servicio Integral de Lavado KTV WD</b> — intervención especializada en altura con drones. Incluye lavado externo de fachada, cristales y ventanales con agua desmineralizada a alta presión y temperatura controlada. Incluye los productos aplicados durante el proceso.</td><td class="r">'+M(r.tarifa)+'</td><td class="r">'+r.m2.toLocaleString('es-CO')+'</td><td class="r">'+M(sub)+'</td></tr>'+
-    '<tr class="tot"><td colspan="3" class="r">Subtotal (sin IVA)</td><td class="r">'+M(sub)+'</td></tr>'+
-    '<tr class="tot"><td colspan="3" class="r">IVA 19%</td><td class="r">'+M(iva)+'</td></tr>'+
-    '<tr class="tot big"><td colspan="3" class="r">TOTAL</td><td class="r">'+M(tot)+'</td></tr>'+
-    '</tbody></table>'+
-    inspSection+
+    lavadoSection+
+    dvGiftHTML+
+    dvPaidSection+
+    certSection+
+    obsSection+
 
     '<div class="ct-sec-t">Condiciones de pago</div>'+
     '<div class="ct-grid">'+
@@ -916,10 +974,7 @@ function descargarCotizacionPuntual(){
     '</div>'+
     '<p class="ct-note" style="margin-top:10px">La operación está sujeta a condiciones climáticas seguras (sin lluvias fuertes ni vientos extremos). En caso de fuerza mayor, los días se reprograman sin penalización.</p>'+
 
-    '<div class="ct-sec-t">Requerimientos en sitio (a cargo del cliente)</div>'+
-    '<ul class="ct-ul"><li>Punto de agua potable (llave con toma de ½, ¾ o 1 pulgada).</li><li>Red eléctrica: toma tradicional 110V.</li><li>Espacio de estacionamiento para vehículos operativos y acceso a puntos altos.</li><li>Permisos internos de la copropiedad y ventanas cerradas antes del servicio.</li></ul>'+
-
-    '<div class="ct-excl"><b>Exclusión por estado de fachada y ventanales.</b> KTV emplea tecnología de alta precisión, sin embargo no se hace responsable por filtraciones, humedades o daños interiores derivados de ventanas mal cerradas, empaques deteriorados, siliconas vencidas, fisuras preexistentes o sellos rotos. El cliente verifica el estado de estos elementos antes de la operación.</div>'+
+    reqExclSection+
 
     '<div class="ct-sec-t">Aceptación de la propuesta</div>'+
     '<p class="ct-note">Propuesta válida por 30 días calendario. Al confirmar la recepción de este documento, las partes manifiestan su acuerdo con la propuesta económica y las condiciones aquí descritas. KTV se compromete a ejecutar bajo los más altos estándares de seguridad aeronáutica vigentes.</p>'+
