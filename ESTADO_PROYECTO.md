@@ -13,13 +13,14 @@
 El motor comercial digital de KTV: páginas públicas de venta + un cotizador interno que
 genera propuestas sin errores.
 
-**Paleta (manual de marca REAL del franquiciante — ya aplicada en TODO):** azul corporativo
-**#34C7FF (Pantone 299C)**, azul de apoyo oscuro **#00AADF**, navy **#1F4E78**. Fondos claros
-#EBF8FF / #F7FBFF.
-⚠️ CORRECCIÓN 2026-07-11: una sesión anterior asumió por error que el azul era #2E75B6 (creyendo
-que #34C7FF era "contaminación" del diseño viejo) y reemplazó todo. Al recibir el manual de marca
-real (Pantone 299C = #34C7FF) se revirtió landing + brochure + cotizador + ambos documentos
-descargables a #34C7FF. NO volver a #2E75B6.
+**Paleta (azul REAL de marca — ya aplicada en TODO):** azul corporativo **#02BEFD (Pantone 299C,
+cian saturado real del material KTV Care)**, apoyo oscuro **#00AADF** (títulos sobre blanco),
+carbón **#171E27** (zonas oscuras: encabezados, filas de total). Fondos claros #EBF8FF / #F7FBFF.
+⚠️ HISTORIA DE COLOR (para no repetir el lío): (1) una sesión asumió #2E75B6 por error. (2) Se
+"corrigió" a #34C7FF por el texto "web code" del manual — pero ese es un cian PASTEL que se ve
+lavado. (3) 2026-07-11: al medir la portada real del PDF KTV Care resultó **#02BEFD** (saturado);
+ese es el que Gerencia reconoce como su marca. Todo (landing, brochure, cotizador, ambos formatos)
+quedó en **#02BEFD**. NO usar #34C7FF (pastel) ni #2E75B6 (viejo).
 
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,
