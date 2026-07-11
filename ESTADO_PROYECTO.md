@@ -13,10 +13,14 @@
 El motor comercial digital de KTV: páginas públicas de venta + un cotizador interno que
 genera propuestas sin errores.
 
-**Paleta (azul DEFINITIVO de marca — ya aplicada en TODO):** UN SOLO azul corporativo
-**#66C3F8 (RGB 102,195,248)** — medido por Gerencia con cuentagotas del PowerPoint oficial de
-marca (2026-07-11). Carbón **#171E27** para zonas oscuras (encabezados/filas de total) y para el
-TEXTO de títulos sobre blanco (la barrita del título va en #66C3F8). Fondos claros #EBF8FF/#F7FBFF.
+**Paleta (azul DEFINITIVO de marca — CONFIRMADO Y CERRADO por Gerencia 2026-07-11):** UN SOLO
+azul corporativo **#66C3F8 (RGB 102,195,248)** — medido por Gerencia con cuentagotas del
+PowerPoint oficial de marca. No hay un segundo azul "oscuro"; es el único. Carbón **#171E27**
+únicamente para el fondo de zonas neutras oscuras (hero/encabezado con video) y para el TEXTO de
+títulos de sección sobre blanco. Fondos claros #EBF8FF/#F7FBFF.
+**Regla de aplicación:** toda caja destacada (filas de TOTAL, encabezados de tabla, tarjeta
+"Recomendado", botones CTA) lleva el azul **como relleno sólido** (fondo azul + texto blanco) —
+el carbón nunca reemplaza al azul en un elemento prominente, solo es color de texto/neutro.
 ⚠️ HISTORIA DE COLOR (pasamos por 5 azules — no repetir): #2E75B6 (error inicial) → #34C7FF
 ("web code" del manual, pastel) → #02BEFD (portada PDF KTV Care) → #41B6E6 (sRGB declarado del
 manual) → **#66C3F8 DEFINITIVO (medido del PPT por Gerencia y confirmado)**. El manual es
