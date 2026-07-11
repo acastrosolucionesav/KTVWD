@@ -13,14 +13,15 @@
 El motor comercial digital de KTV: páginas públicas de venta + un cotizador interno que
 genera propuestas sin errores.
 
-**Paleta (azul REAL de marca — ya aplicada en TODO):** azul corporativo **#02BEFD (Pantone 299C,
-cian saturado real del material KTV Care)**, apoyo oscuro **#00AADF** (títulos sobre blanco),
-carbón **#171E27** (zonas oscuras: encabezados, filas de total). Fondos claros #EBF8FF / #F7FBFF.
-⚠️ HISTORIA DE COLOR (para no repetir el lío): (1) una sesión asumió #2E75B6 por error. (2) Se
-"corrigió" a #34C7FF por el texto "web code" del manual — pero ese es un cian PASTEL que se ve
-lavado. (3) 2026-07-11: al medir la portada real del PDF KTV Care resultó **#02BEFD** (saturado);
-ese es el que Gerencia reconoce como su marca. Todo (landing, brochure, cotizador, ambos formatos)
-quedó en **#02BEFD**. NO usar #34C7FF (pastel) ni #2E75B6 (viejo).
+**Paleta (azul REAL de marca — ya aplicada en TODO):** UN SOLO azul corporativo **#41B6E6
+(Pantone 299C; sRGB R:65 G:182 B:230 — el que declara el manual y usa su propio header)**.
+Carbón **#171E27** para zonas oscuras (encabezados/filas de total) y para el TEXTO de títulos
+sobre blanco (la barrita del título va en #41B6E6). Fondos claros #EBF8FF / #F7FBFF.
+⚠️ HISTORIA DE COLOR (para no repetir el lío — pasamos por 4 azules): (1) #2E75B6 asumido por
+error. (2) #34C7FF por el "web code" del manual → PASTEL, se ve lavado. (3) #02BEFD medido de la
+portada del PDF KTV Care → saturado, tampoco. (4) 2026-07-11 DEFINITIVO: Gerencia mostró el header
+del propio manual = el **sRGB #41B6E6**. Ese es. Todo (landing, brochure, cotizador, ambos
+formatos) quedó en #41B6E6. NO usar #34C7FF, #02BEFD ni #2E75B6.
 
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,
