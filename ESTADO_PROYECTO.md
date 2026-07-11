@@ -13,9 +13,13 @@
 El motor comercial digital de KTV: páginas públicas de venta + un cotizador interno que
 genera propuestas sin errores.
 
-**Paleta (manual de marca — ya aplicada en TODO):** azul corporativo **#2E75B6**, azul
-corporativo oscuro **#245E92**, azul oscuro/navy **#1F4E78**. (Se eliminó el cian #34C7FF del
-diseño original del landing; todo está alineado al manual.)
+**Paleta (manual de marca REAL del franquiciante — ya aplicada en TODO):** azul corporativo
+**#34C7FF (Pantone 299C)**, azul de apoyo oscuro **#00AADF**, navy **#1F4E78**. Fondos claros
+#EBF8FF / #F7FBFF.
+⚠️ CORRECCIÓN 2026-07-11: una sesión anterior asumió por error que el azul era #2E75B6 (creyendo
+que #34C7FF era "contaminación" del diseño viejo) y reemplazó todo. Al recibir el manual de marca
+real (Pantone 299C = #34C7FF) se revirtió landing + brochure + cotizador + ambos documentos
+descargables a #34C7FF. NO volver a #2E75B6.
 
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,

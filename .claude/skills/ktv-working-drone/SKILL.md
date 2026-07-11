@@ -20,7 +20,7 @@ para que Claude trabaje sin re-explicar nada y sin contradecir decisiones ya tom
 
 ## 2. Estándares de documentos (obligatorios)
 
-- Código de documentos: prefijo **KWD-**. Azul corporativo **#2E75B6**, azul oscuro #1F4E78, logo ktvwd23.png. Todo en español.
+- Código de documentos: prefijo **KWD-**. **Azul corporativo oficial #34C7FF (Pantone 299C — según manual de marca del franquiciante; alternativo 298C si el material queda muy oscuro; CMYK C65/M8/Y0/K0; sRGB 65/182/230).** Azul oscuro de apoyo #00AADF, navy #1F4E78, logo ktvwd23.png. Todo en español. NOTA: una sesión anterior había asumido por error que el azul era #2E75B6 y lo aplicó a landing/brochure/cotizador; se revirtió a #34C7FF el 2026-07-11 al recibir el manual real. NO volver a #2E75B6.
 - **Protocolo de trabajo:** pausar antes de generar cualquier documento; confirmar alcance con preguntas de opción múltiple; trabajar un punto a la vez; documentos separados, nunca combinados; versionar (v1.0, v1.1...) y actualizar el **Índice Maestro KWD-GES-IDX-001**, que es la única fuente de verdad sobre qué documento está vigente.
 - Al corregir un documento, retirar la versión obsoleta y registrar en el índice el porqué del reemplazo.
 - Documentos vigentes: KWD-EST-EMC-001 (+A1) estudio de mercado; KWD-COM-PSV-001 v1.2 (+A1 v1.1) portafolio y KTV Care; KWD-FIN-MPV-001 v1.5 modelo de precios; KWD-EXP-MOD-001 v1.0 expansión; KWD-COM-PCM-001 v1.0 plan de comisiones y metas; KWD-JUR-ANC-001 y KWD-JUR-AMA-001 (borradores para Aseo Diamante, sujetos a revisión legal); KWD-COM-BRO-001 brochure de paquetes con precios (cuentas clave); KWD-COM-WEB-001 correcciones del brochure público; KWD-SIS-PROMPT-001 prompt maestro para Claude Code; KWD-GES-IDX-001 índice maestro.
