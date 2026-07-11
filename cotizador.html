@@ -674,7 +674,8 @@ function descargarPropuestaHTML(){
 '.wrap{position:relative;z-index:1;max-width:960px;margin:24px auto;background:#fff;box-shadow:0 12px 44px rgba(31,78,120,.14);border-radius:16px;overflow:hidden}'+
 '.hero{position:relative;min-height:56vh;display:flex;align-items:flex-end;overflow:hidden;color:#fff;padding:44px 44px 40px}'+
 '.hero video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}'+
-'.hero .ov{position:absolute;inset:0;background:linear-gradient(150deg,rgba(0,150,210,.80),rgba(20,38,64,.95));z-index:1}'+
+'.hero .ov{position:absolute;inset:0;background:linear-gradient(150deg,rgba(0,120,180,.58),rgba(15,30,50,.86));z-index:1}'+
+'.hero .hc h1,.hero .hc .sub,.hero .eyebrow{text-shadow:0 2px 14px rgba(0,0,0,.5)}'+
 '.hero .hc{position:relative;z-index:2;max-width:640px}'+
 '.hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 14px;border-radius:50px;display:inline-block;margin-bottom:16px}'+
 '.hero h1{font-size:clamp(30px,5vw,44px);font-weight:800;line-height:1.08;margin-bottom:10px;letter-spacing:-.01em}'+
@@ -796,9 +797,10 @@ function descargarCotizacionPuntual(){
 '*{margin:0;padding:0;box-sizing:border-box}body{font-family:\'Open Sans\',Verdana,sans-serif;color:var(--body);line-height:1.6;background:#eef4f9}'+
 '.wm{position:fixed;inset:0;z-index:0;background-repeat:repeat;pointer-events:none}'+
 '.wrap{position:relative;z-index:1;max-width:900px;margin:24px auto;background:#fff;box-shadow:0 12px 44px rgba(31,78,120,.14);border-radius:16px;overflow:hidden}'+
-'.hd{position:relative;overflow:hidden;background:linear-gradient(150deg,var(--nk),#0C1E33);color:#fff;padding:30px 44px;min-height:150px;display:flex;flex-direction:column;justify-content:center}'+
-'.hd video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.35}'+
-'.hd .ov{position:absolute;inset:0;background:linear-gradient(150deg,rgba(31,78,120,.85),rgba(12,30,51,.92));z-index:1}'+
+'.hd{position:relative;overflow:hidden;background:linear-gradient(150deg,var(--nk),#0C1E33);color:#fff;padding:36px 44px;min-height:220px;display:flex;flex-direction:column;justify-content:center}'+
+'.hd video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}'+
+'.hd .ov{position:absolute;inset:0;background:linear-gradient(135deg,rgba(20,45,75,.58) 0%,rgba(12,30,51,.85) 100%);z-index:1}'+
+'.hd h1,.hd .rf,.hd-row{text-shadow:0 2px 14px rgba(0,0,0,.5)}'+
 '.hd-row{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}'+
 '.hd img{height:34px;display:block}'+
 '.hd .id{font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 12px;border-radius:8px}'+
@@ -830,7 +832,7 @@ function descargarCotizacionPuntual(){
 '</style></head><body>'+
 '<div class="wm" style="background-image:'+wm+'"></div>'+
 '<div class="wrap">'+
-  '<div class="hd"><video autoplay muted loop playsinline preload="auto"><source src="videos/hero-side.mp4" type="video/mp4"></video><div class="ov"></div>'+
+  '<div class="hd"><video autoplay muted loop playsinline preload="auto"><source src="videos/hero.mp4" type="video/mp4"></video><div class="ov"></div>'+
     '<div class="hd-row"><img src="img/logo-footer.png" alt="KTV Working Drone"><span class="id">'+id+'</span></div>'+
     '<h1>Propuesta Económica</h1><div class="rf">Intervención de fachadas con tecnología de drones</div>'+
   '</div>'+
