@@ -139,25 +139,36 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
     confirmado Sí/No"), (c) quedar en auditoría quién aceptó y cuándo. Un HTML descargado no
     puede disparar esto — necesita el backend de Fase 2 (Módulo 2).
 
-**Pendiente — Fase 2: sistema completo con backend (KWD-SIS-PROMPT-001 v2 recibido)**
-- Llegó el prompt maestro v2: define **2 familias de productos separadas** (Familia 1:
-  Inspección sola / Lavado+Inspección / Solo lavado — servicios puntuales; Familia 2: los
-  planes Care recurrentes) y **2 reglas de confidencialidad**: Regla A (fee a Noruega y
-  costos NUNCA visibles a nadie fuera de Gerencia, no configurable) y Regla B (mostrar/no
-  mostrar el Informe Internacional como ítem, configurable por cotización).
-- Hoy `cotizador.html` es un archivo estático sin backend, sin roles, sin base de datos —
-  la Fase 2 es un sistema NUEVO (no una extensión del archivo), con: `usuarios` (roles
-  Comercial/Director Comercial/Gerencia), `parametros` editables, `cotizaciones` +
-  `cotizacion_puntual`/`cotizacion_care` (Familia 1 y 2 como tablas separadas),
-  `auditoria`, `aperturas`, `alertas`. Propuesta de arquitectura completa ya presentada a
-  Gerencia en el chat — pendiente de aprobación final antes de programar.
-- Decisiones de infraestructura en curso: dominio = **subdominio nuevo del dominio que ya
-  tienen** (ej. `app.ktvworkingdrone.com.co`), separado del landing público por seguridad
-  (login + datos confidenciales nunca en el mismo origen que lo público sin login). Hosting
-  backend/DB: pendiente de decidir (Gerencia pidió que Claude proponga uno concreto — sin
-  resolver aún). Token Pipedrive: se pide cuando se llegue al Módulo 3 (no bloquea Módulo 1).
-- Orden de construcción: Módulo 1 (cotizador con las 2 familias + Reglas A/B) primero,
-  mostrado funcionando, antes de Módulo 2 (presentador), 3 (Pipedrive), 4 (alertas).
+**Fase 2 — sistema con backend (KWD-SIS-PROMPT-001 v2): Módulo 1 EN PROGRESO, demo funcionando**
+- Nace `sistema/` (Next.js 16 + TypeScript + Prisma 7 + SQLite en dev) — un sistema NUEVO,
+  no una extensión de `cotizador.html` (que queda solo como referencia de fórmulas/estética).
+  Ver `sistema/README.md` para cómo correrlo y las decisiones de stack en detalle.
+- **Hosting decidido** (Gerencia pidió que se propusiera uno concreto): Vercel + Neon
+  Postgres para producción, proyecto Vercel separado del landing público, en subdominio
+  propio (ej. `app.ktvworkingdrone.com.co`) — nunca el mismo origen que lo público sin login.
+  Hoy en desarrollo corre con SQLite local; falta el swap real a Postgres/Neon al desplegar
+  (documentado en el README del sistema).
+- **Módulo 1 (Cotizador) — lo que YA funciona, probado de punta a punta con Playwright:**
+  - Login con 3 roles (Comercial/Director Comercial/Gerencia), sesión con `jose`+cookie
+    httpOnly (NextAuth v5 seguía en beta con soporte incierto en Next 16 — se optó por el
+    patrón que la propia documentación oficial de Next 16 recomienda: DAL + DTO).
+  - Cotizador Familia 1 completo (los 3 servicios puntuales), con el motor de precios
+    portado 1:1 de `cotizador.html`/Excel (`src/lib/pricing.ts`).
+  - **Regla A real (no cosmética):** el documento de cliente sale de un DTO
+    (`src/lib/dto.ts`) que estructuralmente no tiene fee/costo/margen — verificado que el
+    rol Comercial NO ve "Fee Noruega" en ninguna pantalla, y que Gerencia sí lo ve en el
+    panel interno.
+  - **Regla B** (mostrar/no mostrar Informe Internacional) funcionando por cotización.
+  - Aprobación: cotizaciones bajo el margen mínimo quedan `PENDIENTE_APROBACION`, solo
+    Gerencia aprueba/rechaza.
+  - Propuesta pública sin login (`/propuesta/[id]`) con el naming correcto y sin m².
+  - **Al aceptar el cliente, se genera automáticamente la Orden de Servicio interna SIN
+    CIFRAS** (verificado en base de datos: solo `anticipoConfirmado: false`) + auditoría
+    completa (creó → envió → aceptó_cliente).
+- **Pendiente de Módulo 1 antes de pasar al Módulo 2:** formulario de Familia 2 (Care) —
+  el motor de precios ya existe (`calcularCare`), falta la UI; panel de administración de
+  `parametros` (hoy solo se editan por seed/SQL). Luego: Módulo 2 (presentador), 3
+  (Pipedrive — token se pide en ese momento), 4 (alertas).
 
 **Pendiente (fase de precios):**
 - 🔲 **CRÍTICO antes de dar por terminado el cotizador — costear la INSPECCIÓN PROPIA

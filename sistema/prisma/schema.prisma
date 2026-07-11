@@ -1,0 +1,214 @@
+// KTV Working Drone — Sistema Comercial
+// Modelo de datos: Familia 1 (servicios puntuales) y Familia 2 (KTV Care) como
+// entidades SEPARADAS, unidas por Cotizacion. Ver KWD-SIS-PROMPT-001 v2.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Rol {
+  COMERCIAL
+  DIRECTOR_COMERCIAL
+  GERENCIA
+}
+
+enum Familia {
+  PUNTUAL
+  CARE
+}
+
+enum EstadoCotizacion {
+  BORRADOR
+  PENDIENTE_APROBACION
+  APROBADA
+  RECHAZADA
+  ENVIADA
+}
+
+enum ServicioPuntual {
+  INSPECCION_SOLA
+  LAVADO_MAS_INSPECCION
+  SOLO_LAVADO
+}
+
+enum TipoInforme {
+  DIAGNOSTICO_VISUAL
+  INTERNACIONAL
+}
+
+enum Superficie {
+  VIDRIO
+  MIXTA
+  DIFICIL
+}
+
+enum NivelRecargo {
+  BAJO
+  MEDIO
+  ALTO
+}
+
+enum PlanCare {
+  INSPECT
+  ESSENTIAL
+  COMPLETE
+}
+
+enum FormaPago {
+  CONTADO
+  DIFERIDO_12
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  rol          Rol
+  activo       Boolean  @default(true)
+  creadoAt     DateTime @default(now())
+
+  cotizacionesCreadas  Cotizacion[] @relation("CreadoPor")
+  cotizacionesAprobadas Cotizacion[] @relation("AprobadoPor")
+  auditorias           Auditoria[]
+}
+
+// Parámetros editables por Gerencia — nunca hardcodeados en el motor.
+model Parametro {
+  clave          String   @id
+  valor          String   // guardado como texto, se castea según unidad en el motor
+  unidad         String
+  actualizadoPor String?
+  actualizadoAt  DateTime @updatedAt
+}
+
+model ClienteProspecto {
+  id                 String   @id @default(cuid())
+  nombre             String
+  empresa            String?
+  contacto           String?
+  canalOrigen        String?
+  pipedrivePersonId  String?
+  pipedriveDealId    String?
+  creadoAt           DateTime @default(now())
+
+  cotizaciones Cotizacion[]
+}
+
+// Entidad común a las 2 familias — nunca se mezclan los datos de una y otra.
+model Cotizacion {
+  id                 String            @id @default(cuid())
+  idTrazabilidad     String            @unique // el que ve el cliente en el documento (KTV-YYYYMMDD-NNNN)
+  familia            Familia
+  clienteId          String
+  cliente            ClienteProspecto  @relation(fields: [clienteId], references: [id])
+  creadoPorId        String
+  creadoPor          Usuario           @relation("CreadoPor", fields: [creadoPorId], references: [id])
+  estado             EstadoCotizacion  @default(BORRADOR)
+  requiereAprobacion Boolean           @default(false)
+  aprobadoPorId      String?
+  aprobadoPor        Usuario?          @relation("AprobadoPor", fields: [aprobadoPorId], references: [id])
+  aprobadoAt         DateTime?
+  enviadoAt          DateTime?
+  vigenteHasta       DateTime?
+  snapshotParametros String            // JSON congelado en el momento de generar (foto congelada)
+  totalCliente       Float             // único número que ve el cliente (+ mensual si aplica, en CotizacionCare)
+  observaciones       String?
+
+  aceptadaPorCliente Boolean  @default(false)
+  aceptadaAt         DateTime?
+
+  creadoAt DateTime @default(now())
+
+  puntual      CotizacionPuntual?
+  care         CotizacionCare?
+  auditorias   Auditoria[]
+  aperturas    Apertura[]
+  ordenServicio OrdenServicio?
+}
+
+// ============ FAMILIA 1 — Servicios puntuales (no recurrentes) ============
+model CotizacionPuntual {
+  id            String     @id @default(cuid())
+  cotizacionId  String     @unique
+  cotizacion    Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  servicio                    ServicioPuntual
+  tipoInformeBase             TipoInforme?     // el informe que va en la línea base (null si SOLO_LAVADO)
+  mostrarInformeInternacional Boolean          @default(false) // REGLA B: por cotización
+
+  // --- Solo interno: nunca se imprime en el documento del cliente ---
+  m2Fachada       Float?
+  superficie      Superficie?
+  tipoEdificio    NivelRecargo?
+  dificultad      NivelRecargo?
+  ciudadFuera     Boolean       @default(false)
+  movilizacion    Float         @default(0)
+  rangoTecho      Float?
+
+  diasOperacion   Float?
+  costoOperacion  Float?   // costo interno del lavado y/o inspección
+  feeNoruega      Float?   // CONFIDENCIAL — Regla A, nunca sale de acá
+  margenPct       Float?   // CONFIDENCIAL — Regla A
+
+  precioLavado           Float? // sin IVA
+  precioInformeBase      Float? // sin IVA (DV o Internacional, según tipoInformeBase)
+  precioInformeAdicional Float? // sin IVA (Internacional cuando es adicional, no base)
+
+  // --- Campos manuales del comercial (varían por operación) ---
+  anticipoPct       Int?
+  saldoPct          Int?
+  condicionPagoNota String?
+  permisoAerocivil  String?
+  ejecucionSitio    String?
+}
+
+// ============ FAMILIA 2 — KTV Care (programas recurrentes) ============
+model CotizacionCare {
+  id           String     @id @default(cuid())
+  cotizacionId String     @unique
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  plan          PlanCare
+  contratoAnios Int       @default(1)
+  formaPago     FormaPago @default(CONTADO)
+
+  m2Fachada  Float?  // solo interno
+  rangoTecho Float?  // solo interno
+
+  valorAnual   Float
+  valorMensual Float
+}
+
+// Orden de Servicio Comercial interna para Operaciones — NUNCA lleva cifras.
+model OrdenServicio {
+  id           String     @id @default(cuid())
+  cotizacionId String     @unique
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id])
+  anticipoConfirmado Boolean @default(false)
+  notasOperativas    String?
+  creadoAt     DateTime @default(now())
+}
+
+model Auditoria {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id])
+  usuarioId    String
+  usuario      Usuario    @relation(fields: [usuarioId], references: [id])
+  accion       String     // creo | edito | aprobo | rechazo | envio | acepto_cliente
+  detalle      String?
+  timestamp    DateTime   @default(now())
+}
+
+model Apertura {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id])
+  timestamp    DateTime   @default(now())
+}
