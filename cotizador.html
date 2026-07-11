@@ -264,9 +264,22 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
     </div>
 
     <hr class="sec-div">
-    <button class="print-btn" onclick="descargarPropuestaHTML()" style="width:100%;justify-content:center;">🌐 Descargar propuesta web (HTML + video)</button>
-    <button class="print-btn" onclick="generarPropuesta()" style="width:100%;justify-content:center;margin-top:8px;background:var(--blue-nk);">👁️ Ver propuesta en pantalla</button>
-    <p class="foot-note" style="margin-top:10px;">La propuesta web es una página con video y marca de agua, lista para subir a Hostinger y enviar por link. Guárdala en la misma carpeta que <b>videos/</b>.</p>
+    <div class="sec-lbl">Cotización puntual — campos manuales</div>
+    <div class="row2">
+      <div class="fg"><label>Anticipo %</label><input type="number" id="cpAnt" value="60" min="0" max="100"></div>
+      <div class="fg"><label>Saldo %</label><input type="number" id="cpSaldo" value="40" min="0" max="100"></div>
+    </div>
+    <div class="fg"><label>Condición de pago (texto)</label><input type="text" id="cpPagoNota" value="60% con la Orden de Compra; 40% antes de finalizar el servicio."></div>
+    <div class="row2">
+      <div class="fg"><label>Permiso Aerocivil</label><input type="text" id="cpAero" value="30 a 40 días hábiles"></div>
+      <div class="fg"><label>Ejecución en sitio</label><input type="text" id="cpEjec" value="15 a 20 días hábiles"></div>
+    </div>
+
+    <hr class="sec-div">
+    <button class="print-btn" onclick="descargarCotizacionPuntual()" style="width:100%;justify-content:center;">📄 Descargar cotización puntual (1 lavado)</button>
+    <button class="print-btn" onclick="descargarPropuestaHTML()" style="width:100%;justify-content:center;margin-top:8px;">🌐 Descargar propuesta de paquetes (web)</button>
+    <button class="print-btn" onclick="generarPropuesta()" style="width:100%;justify-content:center;margin-top:8px;background:var(--blue-nk);">👁️ Ver propuesta de paquetes en pantalla</button>
+    <p class="foot-note" style="margin-top:10px;">Documentos con marca de agua y trazabilidad. Súbelos a Vercel/Hostinger junto a <b>videos/</b> e <b>img/</b>, o ábrelos local.</p>
   </div>
 
   <!-- ============ RESULTS ============ -->
@@ -739,6 +752,133 @@ function descargarPropuestaHTML(){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'Propuesta-'+cliente.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+id+'.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ===== Descargar COTIZACIÓN PUNTUAL (1 lavado / inspección) — Documento web ===== */
+function descargarCotizacionPuntual(){
+  const r = calc();
+  if(r.m2<=0){ alert('Ingrese el área de fachada (m²) para generar la cotización.'); return; }
+  const cliente = $('cliente').value.trim() || 'Cliente';
+  const contacto = $('contacto').value.trim();
+  const id = genId();
+  const fecha = new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  const ant = Math.round(+$('cpAnt').value||0), saldo = Math.round(+$('cpSaldo').value||0);
+  const pagoNota = esc($('cpPagoNota').value.trim());
+  const aero = esc($('cpAero').value.trim()), ejec = esc($('cpEjec').value.trim());
+  const cl = esc(cliente), co = esc(contacto);
+  const M = n => 'COP ' + Math.round(n).toLocaleString('es-CO');
+
+  const sub = r.precioLavado, iva = sub*P.IVA, tot = sub+iva;
+  // inspección opcional
+  let inspSection = '';
+  if(r.inclInsp && r.inspCert!==null){
+    const isub=r.inspCert, iiva=isub*P.IVA, itot=isub+iiva;
+    inspSection =
+      '<div class="ct-sec-t">Inspección de cubierta (adicional)</div>'+
+      '<table class="ct-tbl"><thead><tr><th>Descripción</th><th class="r">Área techo</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
+      '<tr><td><b>Inspección Certificada</b> — informe técnico de cubierta bajo estándar internacional KTV.</td><td class="r">'+r.techo.toLocaleString('es-CO')+' m²</td><td class="r">'+M(isub)+'</td></tr>'+
+      '<tr class="tot"><td colspan="2" class="r">IVA 19%</td><td class="r">'+M(iiva)+'</td></tr>'+
+      '<tr class="tot big"><td colspan="2" class="r">TOTAL INSPECCIÓN</td><td class="r">'+M(itot)+'</td></tr>'+
+      '</tbody></table>';
+  } else if(r.inclInsp){
+    inspSection = '<div class="ct-sec-t">Inspección de cubierta (adicional)</div><p class="ct-note">La inspección certificada se cotiza <b>tras medición del área de cubierta</b>.</p>';
+  }
+
+  const wm = wmBg(cliente+' · '+id+' · CONFIDENCIAL');
+  const html =
+'<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'+
+'<title>Cotización — '+cl+'</title>'+
+'<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">'+
+'<style>'+
+':root{--blue:#34C7FF;--dk:#00AADF;--nk:#1F4E78;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--off:#F7FBFF;}'+
+'*{margin:0;padding:0;box-sizing:border-box}body{font-family:\'Open Sans\',Verdana,sans-serif;color:var(--body);line-height:1.6;background:#eef4f9}'+
+'.wm{position:fixed;inset:0;z-index:0;background-repeat:repeat;pointer-events:none}'+
+'.wrap{position:relative;z-index:1;max-width:900px;margin:24px auto;background:#fff;box-shadow:0 12px 44px rgba(31,78,120,.14);border-radius:16px;overflow:hidden}'+
+'.hd{position:relative;overflow:hidden;background:linear-gradient(150deg,var(--nk),#0C1E33);color:#fff;padding:30px 44px;min-height:150px;display:flex;flex-direction:column;justify-content:center}'+
+'.hd video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.35}'+
+'.hd .ov{position:absolute;inset:0;background:linear-gradient(150deg,rgba(31,78,120,.85),rgba(12,30,51,.92));z-index:1}'+
+'.hd-row{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}'+
+'.hd img{height:34px;display:block}'+
+'.hd .id{font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 12px;border-radius:8px}'+
+'.hd h1{position:relative;z-index:2;font-size:22px;font-weight:800;margin-top:16px}'+
+'.hd .rf{position:relative;z-index:2;font-size:13px;opacity:.9;margin-top:2px}'+
+'.bd{padding:34px 44px 40px}'+
+'.ct-to{font-size:15px;margin-bottom:2px}.ct-to b{color:var(--ink)}.ct-date{font-size:13px;color:var(--muted);margin-bottom:18px}'+
+'.ct-lead{font-size:14.5px;line-height:1.7;margin-bottom:26px}'+
+'.ct-sec-t{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--dk);margin:26px 0 12px}'+
+'.ct-tbl{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:8px}'+
+'.ct-tbl th{background:var(--nk);color:#fff;text-align:left;padding:11px 14px;font-size:12px;font-weight:700;letter-spacing:.03em}'+
+'.ct-tbl th.r,.ct-tbl td.r{text-align:right}'+
+'.ct-tbl td{padding:13px 14px;border-bottom:1px solid rgba(52,199,255,.16);vertical-align:top}'+
+'.ct-tbl .sub td{font-size:12px;color:var(--muted)}'+
+'.ct-tbl tr.tot td{background:var(--off);font-weight:700;color:var(--ink)}'+
+'.ct-tbl tr.big td{background:linear-gradient(150deg,var(--blue),var(--dk));color:#fff;font-size:16px}'+
+'.ct-note{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px}'+
+'.ct-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}'+
+'.ct-card{background:var(--off);border:1px solid rgba(52,199,255,.16);border-radius:12px;padding:16px 18px}'+
+'.ct-card h4{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--nk);margin-bottom:8px}'+
+'.ct-card p{font-size:13.5px;color:var(--body);line-height:1.55}'+
+'.ct-card .big2{font-size:20px;font-weight:800;color:var(--dk)}'+
+'.ct-ul{list-style:none;margin:4px 0}.ct-ul li{font-size:13.5px;display:flex;gap:8px;margin-bottom:6px;line-height:1.5}.ct-ul li::before{content:\'\\2713\';color:var(--dk);font-weight:800;flex-shrink:0}'+
+'.ct-excl{background:#FFF5F5;border:1px solid #FEB2B2;border-radius:12px;padding:16px 18px;font-size:13px;color:#9B2C2C;line-height:1.6;margin-top:14px}'+
+'.ct-sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}'+
+'.ct-sign div{border-top:1.5px solid var(--ink);padding-top:8px;font-size:13px}.ct-sign b{display:block;color:var(--ink)}'+
+'.ct-ft{margin-top:28px;padding-top:16px;border-top:1px solid rgba(52,199,255,.16);font-size:12px;color:var(--muted);text-align:center;line-height:1.7}'+
+'@media(max-width:700px){.ct-grid,.ct-sign{grid-template-columns:1fr}}'+
+'</style></head><body>'+
+'<div class="wm" style="background-image:'+wm+'"></div>'+
+'<div class="wrap">'+
+  '<div class="hd"><video autoplay muted loop playsinline preload="auto"><source src="videos/hero-side.mp4" type="video/mp4"></video><div class="ov"></div>'+
+    '<div class="hd-row"><img src="img/logo-footer.png" alt="KTV Working Drone"><span class="id">'+id+'</span></div>'+
+    '<h1>Propuesta Económica</h1><div class="rf">Intervención de fachadas con tecnología de drones</div>'+
+  '</div>'+
+  '<div class="bd">'+
+    '<div class="ct-to">Señores: <b>'+cl+'</b>'+(co?' &nbsp;·&nbsp; At.: '+co:'')+'</div>'+
+    '<div class="ct-date">Bogotá, '+fecha+'</div>'+
+    '<p class="ct-lead">Agradecemos su interés en nuestros servicios especializados de intervención de fachadas en gran altura con drones de última tecnología. A continuación presentamos nuestra propuesta económica, elaborada según los requerimientos de su inmueble, combinando ingeniería aeronáutica con mano de obra técnica calificada.</p>'+
+
+    '<div class="ct-sec-t">Servicio de lavado de fachada</div>'+
+    '<table class="ct-tbl"><thead><tr><th>Descripción del servicio</th><th class="r">Precio/m²</th><th class="r">Área (m²)</th><th class="r">Total (sin IVA)</th></tr></thead><tbody>'+
+    '<tr><td><b>Servicio Integral de Lavado KTV WD</b> — intervención especializada en altura con drones. Incluye lavado externo de fachada, cristales y ventanales con agua desmineralizada a alta presión y temperatura controlada. Incluye los productos aplicados durante el proceso.</td><td class="r">'+M(r.tarifa)+'</td><td class="r">'+r.m2.toLocaleString('es-CO')+'</td><td class="r">'+M(sub)+'</td></tr>'+
+    '<tr class="tot"><td colspan="3" class="r">Subtotal (sin IVA)</td><td class="r">'+M(sub)+'</td></tr>'+
+    '<tr class="tot"><td colspan="3" class="r">IVA 19%</td><td class="r">'+M(iva)+'</td></tr>'+
+    '<tr class="tot big"><td colspan="3" class="r">TOTAL</td><td class="r">'+M(tot)+'</td></tr>'+
+    '</tbody></table>'+
+    inspSection+
+
+    '<div class="ct-sec-t">Condiciones de pago</div>'+
+    '<div class="ct-grid">'+
+      '<div class="ct-card"><h4>Anticipo</h4><div class="big2">'+ant+'%</div></div>'+
+      '<div class="ct-card"><h4>Saldo</h4><div class="big2">'+saldo+'%</div></div>'+
+    '</div>'+
+    '<p class="ct-note" style="margin-top:12px">'+(pagoNota||'—')+' Opción de pago diferido hasta en 12 cuotas mensuales sujeto a aprobación (no modifica el valor del contrato).</p>'+
+
+    '<div class="ct-sec-t">Permisos, tiempos y plazos</div>'+
+    '<div class="ct-grid">'+
+      '<div class="ct-card"><h4>Permiso Aeronáutica Civil</h4><p><b>'+aero+'</b><br>Tramitación y radicación a cargo de KTV.</p></div>'+
+      '<div class="ct-card"><h4>Ejecución en sitio</h4><p><b>'+ejec+'</b><br>Una vez aprobados permisos y recibido el anticipo.</p></div>'+
+    '</div>'+
+    '<p class="ct-note" style="margin-top:10px">La operación está sujeta a condiciones climáticas seguras (sin lluvias fuertes ni vientos extremos). En caso de fuerza mayor, los días se reprograman sin penalización.</p>'+
+
+    '<div class="ct-sec-t">Requerimientos en sitio (a cargo del cliente)</div>'+
+    '<ul class="ct-ul"><li>Punto de agua potable (llave con toma de ½, ¾ o 1 pulgada).</li><li>Red eléctrica: toma tradicional 110V.</li><li>Espacio de estacionamiento para vehículos operativos y acceso a puntos altos.</li><li>Permisos internos de la copropiedad y ventanas cerradas antes del servicio.</li></ul>'+
+
+    '<div class="ct-excl"><b>Exclusión por estado de fachada y ventanales.</b> KTV emplea tecnología de alta precisión, sin embargo no se hace responsable por filtraciones, humedades o daños interiores derivados de ventanas mal cerradas, empaques deteriorados, siliconas vencidas, fisuras preexistentes o sellos rotos. El cliente verifica el estado de estos elementos antes de la operación.</div>'+
+
+    '<div class="ct-sec-t">Aceptación de la propuesta</div>'+
+    '<p class="ct-note">Propuesta válida por 30 días calendario. Al confirmar la recepción de este documento, las partes manifiestan su acuerdo con la propuesta económica y las condiciones aquí descritas. KTV se compromete a ejecutar bajo los más altos estándares de seguridad aeronáutica vigentes.</p>'+
+    '<div class="ct-sign"><div><b>KTV Working Drone Colombia</b>Firma autorizada</div><div><b>'+cl+'</b>'+(co||'Firma de aceptación')+'</div></div>'+
+
+    '<div class="ct-ft">KTV Working Drone Colombia S.A.S. — NIT 901.830.814-8 · mercadeo@ktvworkingdrone.com.co · +57 314 235 8441 · ktvworkingdrone.com.co</div>'+
+  '</div>'+
+'</div></body></html>';
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Cotizacion-'+cliente.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+id+'.html';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
 }
