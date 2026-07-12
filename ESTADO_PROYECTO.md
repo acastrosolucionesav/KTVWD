@@ -188,9 +188,22 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
     De paso se corrigió `CARE_ESSENTIAL_DESC` de 0,06 a 0,05: la regla de negocio siempre
     dijo Essential = $5.700/m² y el código tenía $5.640 por error (también en cotizador.html,
     incluido el texto visible del plan).
-- **Pendiente de Módulo 1 antes de pasar al Módulo 2:** panel de administración de
-  `parametros` (hoy solo se editan por seed/SQL). Luego: Módulo 2 (presentador), 3
-  (Pipedrive — token se pide en ese momento), 4 (alertas).
+- ✅ **Panel de administración de parámetros — HECHO (2026-07-12). MÓDULO 1 COMPLETO.**
+  Ruta `/parametros`, SOLO Gerencia (otros roles redirigen a /cotizador; link en NavBar
+  solo visible para Gerencia). Todos los parámetros del motor editables desde pantalla,
+  agrupados con etiquetas en español (Lavado / Costos de operación / Inspección / Care /
+  Financieros), con notas en los sensibles (fee Noruega confidencial, placeholders
+  pendientes). Guarda con rastro (`actualizadoPor`/`actualizadoAt`). Los cambios rigen
+  SOLO para cotizaciones futuras (las creadas conservan su snapshot congelado — el aviso
+  está en la propia pantalla). Probado e2e con Playwright: Gerencia cambia tarifa
+  6000→6500 → cotización nueva sale a $9.750.000 (1.500 m²) → restaurada a 6000;
+  Comercial no puede entrar a /parametros.
+- **Siguiente: Módulo 2 (presentador de propuestas)** — aquí se unen los DOS catálogos
+  existentes con la cotización, por instrucción de Gerencia (2026-07-12): el catálogo de
+  prospección en frío (landing pública, sin precios) y el catálogo de calentamiento
+  (planes.html) deben integrarse al recorrido comercial del sistema: frío → calentamiento
+  → propuesta con precios (link único, tracking de apertura, desactivación). Luego
+  Módulo 3 (Pipedrive — pedir token API a Gerencia en ese momento), 4 (alertas).
 
 **Costeo de la inspección propia (Diagnóstico Visual) — CERRADO 2026-07-12**
 Las 3 respuestas de Gerencia que faltaban ya están aplicadas en **ambos** motores
