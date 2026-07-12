@@ -211,7 +211,11 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const formaPago = String(formData.get('formaPago') || 'CONTADO') as 'CONTADO' | 'DIFERIDO_12';
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
-  const { valorAnual, valorMensual } = calcularCare(parametros, { plan, m2, techo });
+  const care = calcularCare(parametros, { plan, m2, techo });
+  const { valorAnual, valorMensual } = care;
+  // Mismo control que Familia 1: bajo el margen mínimo, la cotización nace bloqueada
+  // hasta aprobación de Gerencia. El desglose se recalcula desde el snapshot congelado.
+  const requiereAprobacion = care.margenP < parametros.MARGEN_MINIMO;
 
   const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto } });
   const vigenteHasta = new Date();
@@ -223,8 +227,8 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       familia: 'CARE',
       clienteId: cliente.id,
       creadoPorId: session.userId,
-      estado: 'BORRADOR',
-      requiereAprobacion: false,
+      estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
+      requiereAprobacion,
       vigenteHasta,
       snapshotParametros: snapshotJson,
       totalCliente: valorAnual,

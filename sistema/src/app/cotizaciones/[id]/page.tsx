@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
+import { calcularCare, type Parametros } from '@/lib/pricing';
 import { aprobarCotizacion, rechazarCotizacion, marcarEnviada } from '@/app/actions/cotizaciones';
 
 const NOMBRES_SERVICIO: Record<string, string> = {
@@ -32,6 +33,16 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
   const esGerencia = session.rol === 'GERENCIA';
   const esPuntual = c.familia === 'PUNTUAL' && c.puntual;
   const esCare = c.familia === 'CARE' && c.care;
+
+  // Desglose Care: se recalcula SIEMPRE desde el snapshot congelado de la cotización
+  // (nunca de los parámetros vigentes de hoy) — misma disciplina que el DTO de cliente.
+  const careCalc = esCare
+    ? calcularCare(JSON.parse(c.snapshotParametros) as Parametros, {
+        plan: c.care!.plan,
+        m2: c.care!.m2Fachada ?? 0,
+        techo: c.care!.rangoTecho ?? 0,
+      })
+    : null;
 
   return (
     <div className="max-w-3xl mx-auto p-8 space-y-6">
@@ -75,22 +86,28 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                 {(c.puntual!.margenPct! * 100).toFixed(1)}%
               </dd>
             </dl>
-          ) : (
-            <p className="text-sm text-gray-400">
-              Familia Care: el desglose de costo/margen en vivo para programas recurrentes aún no está en el motor
-              (pendiente — hoy solo tenemos el margen de referencia documentado en KWD-FIN-MPV-001, ~54-63%).
-            </p>
-          )}
+          ) : careCalc ? (
+            <dl className="grid grid-cols-2 gap-y-2 text-sm">
+              <dt className="text-gray-400">Días de operación / año</dt><dd>{careCalc.diasOperacion}</dd>
+              <dt className="text-gray-400">Costo lavadas ({careCalc.nLavadas}/año)</dt><dd>{cop(careCalc.costoLavadas)}</dd>
+              <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(careCalc.costoInspeccion)}</dd>
+              <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(careCalc.feeNoruega)}</dd>
+              <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(careCalc.comision)}</dd>
+              <dt className="text-gray-400">Costo total / año</dt><dd>{cop(careCalc.costoTotal)}</dd>
+              <dt className="text-gray-400">Margen (año 1)</dt>
+              <dd className={careCalc.margenP < 0.35 ? 'text-red-400 font-bold' : careCalc.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                {(careCalc.margenP * 100).toFixed(1)}%
+              </dd>
+            </dl>
+          ) : null}
         </div>
       ) : (
         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
           <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Estado de margen</h2>
           <p className="text-sm text-gray-600">
-            {esPuntual
-              ? (c.requiereAprobacion
-                  ? '⚠️ Bajo el mínimo autorizado — requiere aprobación de Gerencia. El desglose de costos no es visible para su rol.'
-                  : '✅ Dentro de los márgenes autorizados. El desglose de costos no es visible para su rol.')
-              : 'Programa Care — el desglose de costos no es visible para su rol.'}
+            {c.requiereAprobacion
+              ? '⚠️ Bajo el mínimo autorizado — requiere aprobación de Gerencia. El desglose de costos no es visible para su rol.'
+              : '✅ Dentro de los márgenes autorizados. El desglose de costos no es visible para su rol.'}
           </p>
         </div>
       )}

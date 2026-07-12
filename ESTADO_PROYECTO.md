@@ -176,11 +176,18 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
   Probado con Playwright: crear cotización Care Complete, ver detalle (Comercial no ve
   costos), ver propuesta pública (muestra "Diagnóstico Visual KTV (con IA) · valor de
   referencia", sin m², con aceptación) — todo correcto.
-  - ⚠️ Pendiente marcado en el propio panel: el desglose de costo/margen EN VIVO para Care
-    todavía no está en el motor (`calcularCare` solo devuelve valorAnual/valorMensual, sin
-    costo/fee/margen) — hoy Gerencia ve una nota indicándolo en vez del desglose real. Falta
-    extender `calcularCare` con el costo real (lavadas + inspección) cuando se cierre el
-    costeo completo de la inspección propia (ver pendiente crítico más abajo).
+  - ✅ **Motor de costo/margen real para Care — HECHO (2026-07-12):** `calcularCare` ahora
+    devuelve el desglose completo año 1 (costo lavadas con productividad MIXTA conservadora,
+    costo inspección/DV, fee Noruega 3,5% sobre valor anual, comisión 5% año 1, margen $ y %).
+    Las cotizaciones Care pasan por el MISMO control que Familia 1: bajo el 35% nacen en
+    `PENDIENTE_APROBACION`. El panel de Gerencia en el detalle muestra el desglose real,
+    recalculado SIEMPRE desde el `snapshotParametros` congelado (nunca de los parámetros de
+    hoy). Verificado numéricamente (márgenes 37-77% en todos los planes/tamaños) y con
+    Playwright de punta a punta: Comercial crea Care Essential (150 m², techo 8.000) y NO ve
+    ningún costo; Gerencia ve el desglose con margen 60,7% (coincide exacto con el numérico).
+    De paso se corrigió `CARE_ESSENTIAL_DESC` de 0,06 a 0,05: la regla de negocio siempre
+    dijo Essential = $5.700/m² y el código tenía $5.640 por error (también en cotizador.html,
+    incluido el texto visible del plan).
 - **Pendiente de Módulo 1 antes de pasar al Módulo 2:** panel de administración de
   `parametros` (hoy solo se editan por seed/SQL). Luego: Módulo 2 (presentador), 3
   (Pipedrive — token se pide en ese momento), 4 (alertas).
@@ -269,8 +276,8 @@ Se auditó TODO el motor (los 3 productos puntuales + los 3 planes Care, edifici
 **Pendiente (fase de precios) — ya no crítico, son ajustes finos:**
 - 🔲 Calibrar `PROD_INSPECCION_M2_DIA` con datos reales de Órdenes de Vuelo.
 - 🔲 Definir `COSTO_INFORME_ANALISIS` cuando se construya el proceso de análisis/edición.
-- 🔲 Extender `calcularCare` (Familia 2) para que también muestre costo/margen en vivo,
-  usando esta misma fórmula de inspección.
+- ✅ Extender `calcularCare` (Familia 2) para costo/margen en vivo — HECHO 2026-07-12 (ver arriba).
+- 🔲 Panel de administración de `parametros` (siguiente paso del checklist).
 - 🔲 Módulo 2 (backend): links únicos, desactivación, tracking de apertura, Pipedrive (futuro).
 
 ## 6. Cómo retomar (para el próximo Claude)

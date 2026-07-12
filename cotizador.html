@@ -415,7 +415,7 @@ const P = {
   NEG_LIBRE: 0.02,             // comercial libre hasta −2% ($5.880)
   NEG_GERENCIA: 0.04,          // −2% a −4% aprobación Gerencia; bajo −4% doble aprobación
   IVA: 0.19,
-  CARE_ESSENTIAL_DESC: 0.06,   // 1 lavada a $5.640
+  CARE_ESSENTIAL_DESC: 0.05,   // 1 lavada a $5.700 — alineado a la regla de negocio (antes 0.06/$5.640 por error)
   CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a $5.400 c/u
   DV_PRECIO: 4500000,          // Diagnóstico Visual por defecto (si no hay medida de techo)
   DV_TIERS: [3500000, 4500000, 5500000],    // Diagnóstico Visual por rango de techo
@@ -595,7 +595,7 @@ function render(){
     {name:'Care Inspect', tag:'Diagnóstico', anual:inspectAnual, feat:false,
      feats:['Inspección anual con informe','Gestión preventiva del activo',{no:'Sin lavadas incluidas'},'Tarifa preferencial en servicios']},
     {name:'Care Essential', tag:'1 lavada / año', anual:essAnual, feat:false,
-     feats:['Inspección con informe de estado incluida','1 lavada de fachada al año','Lavada a $5.640/m² (vs $6.000)','Prioridad de agenda preferente']},
+     feats:['Inspección con informe de estado incluida','1 lavada de fachada al año','Lavada a $5.700/m² (vs $6.000)','Prioridad de agenda preferente']},
     {name:'Care Complete', tag:'2 lavadas / año', anual:compAnual, feat:true, badge:'Máximo valor',
      feats:['Inspección anual con Diagnóstico Visual KTV','2 lavadas de fachada al año','Lavadas a $5.400/m² (mejor precio)','Prioridad máxima + urgencias']},
   ];

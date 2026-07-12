@@ -62,7 +62,7 @@ export const PARAMETROS_INICIALES: Parametros = {
   PROD_INSPECCION_M2_DIA: 20000, // placeholder inicial — AJUSTAR con datos reales
   COSTO_INFORME_ANALISIS: 0,     // pendiente — ver nota arriba
   IVA: 0.19,
-  CARE_ESSENTIAL_DESC: 0.06,
+  CARE_ESSENTIAL_DESC: 0.05, // 1 lavada a $5.700/m² — alineado a la regla de negocio (antes 0.06/$5.640 por error)
   CARE_COMPLETE_DESC: 0.10,
   DV_PRECIO: 4500000,
   DV_TIER_1: 3500000,
@@ -98,7 +98,8 @@ export function calcularLavado(p: Parametros, args: {
   const costoOperacion = dias * costoOpDia * (1 + recargo) + args.movilizacion;
   // Cargo mínimo por proyecto: el costo de salir a operar no baja de medio día aunque el
   // edificio sea diminuto — sin este piso, fachadas chicas daban margen negativo (hasta -377%).
-  const precioLavado = Math.max(args.m2 * p.TARIFA_LISTA, p.MINIMO_PROYECTO_LAVADO);
+  // (?? 0: snapshots congelados de cotizaciones anteriores a este parámetro no lo traen)
+  const precioLavado = Math.max(args.m2 * p.TARIFA_LISTA, p.MINIMO_PROYECTO_LAVADO ?? 0);
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = costoOperacion + feeNoruega + comision;
@@ -138,7 +139,7 @@ export function calcularInspeccion(p: Parametros, techo: number) {
   // Piso de mercado: la fórmula (2×fee + operación) daba $7,5M en el tramo pequeño, por
   // debajo de lo que cobran las firmas de patología en Colombia ($9M+, estudio 2026-07).
   const precioInternacional = feeNoruegaCop !== null
-    ? Math.max(2 * feeNoruegaCop + costoOperacionInsp, p.INT_PISO_MERCADO)
+    ? Math.max(2 * feeNoruegaCop + costoOperacionInsp, p.INT_PISO_MERCADO ?? 0) // ?? 0: snapshots viejos sin este parámetro
     : null;
   const feeNoruegaSobreVenta = (venta: number) => venta * p.FEE_NORUEGA;
 
@@ -155,16 +156,42 @@ export function calcularInspeccion(p: Parametros, techo: number) {
   };
 }
 
-export function calcularCare(p: Parametros, args: { plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number }) {
+// Care ahora también devuelve costo y margen REALES (año 1), no solo el valor:
+// - Lavadas: mismas fórmulas de días×costo/día del lavado puntual. El formulario Care no
+//   captura superficie, así que se costea con la productividad MIXTA (la más conservadora
+//   de las habituales) — si el edificio es vidrio puro, el margen real será mejor que este.
+// - Inspección (DV incluido): mismo costoOperacionInspeccion que Familia 1.
+// - Fee Noruega 3,5% sobre todo el valor anual + comisión comercial (5% venta en frío por
+//   defecto — año 1; las renovaciones al 1% mejoran el margen en años siguientes).
+export function calcularCare(p: Parametros, args: {
+  plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number; comisionPct?: number;
+}) {
   const insp = calcularInspeccion(p, args.techo);
   const dv = insp.dvPrecio;
+
+  const nLavadas = args.plan === 'INSPECT' ? 0 : args.plan === 'ESSENTIAL' ? 1 : 2;
+  let valorAnual: number;
   if (args.plan === 'INSPECT') {
-    return { valorAnual: dv, valorMensual: dv / 12 };
+    valorAnual = dv;
+  } else if (args.plan === 'ESSENTIAL') {
+    valorAnual = args.m2 * p.TARIFA_LISTA * (1 - p.CARE_ESSENTIAL_DESC) + dv;
+  } else {
+    valorAnual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) + dv;
   }
-  if (args.plan === 'ESSENTIAL') {
-    const anual = args.m2 * p.TARIFA_LISTA * (1 - p.CARE_ESSENTIAL_DESC) + dv;
-    return { valorAnual: anual, valorMensual: anual / 12 };
-  }
-  const anual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) + dv;
-  return { valorAnual: anual, valorMensual: anual / 12 };
+
+  const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
+  const diasPorLavada = nLavadas > 0 ? Math.ceil((args.m2 / p.PROD_MIXTA) * 2) / 2 : 0;
+  const costoLavadas = diasPorLavada * nLavadas * costoOpDia;
+  const costoInspeccion = insp.costoOperacionInsp;
+  const feeNoruega = valorAnual * p.FEE_NORUEGA;
+  const comision = valorAnual * (args.comisionPct ?? 0.05);
+  const costoTotal = costoLavadas + costoInspeccion + feeNoruega + comision;
+  const margenD = valorAnual - costoTotal;
+  const margenP = valorAnual > 0 ? margenD / valorAnual : 0;
+
+  return {
+    valorAnual, valorMensual: valorAnual / 12,
+    nLavadas, diasOperacion: diasPorLavada * nLavadas + insp.diasOperacionInsp,
+    costoLavadas, costoInspeccion, feeNoruega, comision, costoTotal, margenD, margenP,
+  };
 }
