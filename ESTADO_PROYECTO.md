@@ -321,11 +321,13 @@ Se auditó TODO el motor (los 3 productos puntuales + los 3 planes Care, edifici
 5. Continúa cerrando el costeo del dron de inspección (importación/nacionalización) o el
    Módulo 2 (backend: links únicos, tracking, Pipedrive).
 
-## 7. Nota de paleta pendiente (no bloqueante)
-El **panel interno del cotizador** (`:root` en cotizador.html, línea ~9) todavía define
-`--blue:#34C7FF` (cian, diseño original) en vez de `#2E75B6`. No afecta al cliente: el
-**documento que se descarga y se envía** (`descargarPropuestaHTML()` / `descargarCotizacionPuntual()`)
-ya tiene su propia paleta correcta embebida (`#2E75B6` / `#245E92` / `#1F4E78`), verificado en
-pantalla. Solo la vista previa en pantalla del cotizador (uso exclusivo de Gerencia, nunca se
-publica) conserva el azul cian heredado. Pendiente decidir si vale la pena alinearlo también
-(cambio cosmético, sin impacto en lo que ve el cliente).
+## 7. Fondos oscuros con tinte azul — corregido (2026-07-12)
+Gerencia detectó, viendo capturas reales del sistema y un documento suyo (`v3soloinspeccion.html`,
+propio Downloads), que los encabezados oscuros y el bloque "¿Y después del servicio?" se veían
+**"azul oscuro"** en vez de carbón. Causa: usaban degradado `linear-gradient(#222C38, #0B0F14)`
+(y en `cotizador.html` un overlay con azul de marca al 30% sobre el video del hero) — ninguno
+de los dos es un azul de marca prohibido, pero el resultado visual leía a "marino", no a carbón.
+**Corregido a `#171E27` sólido, sin degradado**, en `sistema/src/app/propuesta/[id]/page.tsx`
+(encabezado + bloque Care) y en `cotizador.html` (`.hero`, `.hd`, overlay de video). Verificado
+con el color computado real del pixel (`rgb(23,30,39)` exacto). Regla añadida a la skill: fondos
+oscuros SIEMPRE carbón plano, nunca degradado ni mezcla con el azul.

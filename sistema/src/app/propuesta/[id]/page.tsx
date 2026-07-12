@@ -66,7 +66,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
   return (
     <div className="min-h-screen bg-[#eef2f6] py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-[#66C3F8]/20">
-        <div className="bg-gradient-to-br from-[#222C38] to-[#0B0F14] text-white px-8 py-8">
+        <div className="bg-[#171E27] text-white px-8 py-8">
           <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C3F8]/40 rounded px-2 py-1">{dto.idTrazabilidad}</span>
           <h1 className="text-2xl font-extrabold mt-4">Propuesta Económica</h1>
           {p && <p className="text-[#66C3F8] text-sm font-semibold mt-1">{NOMBRES_SERVICIO[p.servicio]}</p>}
@@ -147,7 +147,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           {/* Calentamiento: a los clientes de servicio puntual se les presenta el
               programa recurrente (catálogo de planes ya publicado) — sin precios aquí. */}
           {p && (
-            <div className="bg-gradient-to-br from-[#222C38] to-[#0B0F14] rounded-xl p-5 text-white">
+            <div className="bg-[#171E27] rounded-xl p-5 text-white">
               <h3 className="text-xs font-bold uppercase tracking-wide text-[#66C3F8]">¿Y después del servicio?</h3>
               <p className="text-sm text-gray-300 mt-2">
                 Con el <b className="text-white">Programa KTV Care</b> su edificio se mantiene con
