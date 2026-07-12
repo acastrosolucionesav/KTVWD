@@ -242,6 +242,30 @@ Build verificado de nuevo tras el cambio (OK, 8 rutas).
   nada hoy, pero si Gerencia sigue usando ese HTML para cotizar en paralelo hay que
   decidir si se alinea o se retira de uso.
 
+**Auditoría completa de precios + 3 decisiones de Gerencia aplicadas (2026-07-12):**
+Se auditó TODO el motor (los 3 productos puntuales + los 3 planes Care, edificios de 30 a
+5.000 m² de fachada y techos de 3.000 a 50.000 m²). Hallazgos y decisiones:
+1. **Cargo mínimo por proyecto de lavado = $1.500.000** (`MINIMO_PROYECTO_LAVADO`):
+   sin piso, las fachadas chicas daban margen negativo (30 m² → -377%; en combo hasta
+   -1.481%) porque el costo de operar no baja de medio día. Con el piso, Solo Lavado queda
+   en ≥35,3% en TODOS los tamaños. Aplicado en ambos motores.
+2. **Piso de mercado del Informe Internacional = $9.000.000** (`INT_PISO_MERCADO`):
+   el estudio de mercado (jul-2026, YAM/CYPE/Aerially) recomendó $9M-$18M; nuestra fórmula
+   daba $7,5M en el tramo pequeño. Con el piso: $9M (margen 52%) / $11,5-12M / $15,5-16M —
+   todos dentro del rango de mercado. Los tramos mediano/grande no cambian.
+3. **Brecha corta Inspect↔Essential es INTENCIONAL** (decisión previa de Gerencia,
+   reconfirmada): Essential cuesta poco más que Inspect a propósito para empujar la venta
+   hacia Essential. Se DESCARTÓ la propuesta de pisos de brecha mínima entre planes. No
+   tocar.
+   También se corrigieron los "25%" quemados que quedaban en pantallas (alerta y "precio
+   mín. autorizado" de cotizador.html, semáforo del detalle en sistema/) → ahora 35%.
+   **Nota comercial que queda de la auditoría:** el combo Lavado+Inspección con DV
+   regalado en fachadas chicas (< ~1.000 m²) sigue dando margen bajo/negativo aunque con
+   el cargo mínimo — es estructural (se regala un DV que cuesta ~$0,5-1,5M sobre una
+   venta de $1,5-3M). El sistema los bloquea en PENDIENTE_APROBACION; la regla comercial
+   sana es: en edificios chicos NO regalar el DV (vender Solo Lavado, o Solo Inspección,
+   o Care), el combo con regalo es para fachadas grandes.
+
 **Pendiente (fase de precios) — ya no crítico, son ajustes finos:**
 - 🔲 Calibrar `PROD_INSPECCION_M2_DIA` con datos reales de Órdenes de Vuelo.
 - 🔲 Definir `COSTO_INFORME_ANALISIS` cuando se construya el proceso de análisis/edición.

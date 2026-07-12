@@ -37,6 +37,8 @@ export type Parametros = {
   ROOF_FEE_2_EUR: number;
   ROOF_FEE_3_EUR: number;
   MARGEN_MINIMO: number;
+  MINIMO_PROYECTO_LAVADO: number; // cargo mínimo facturable por proyecto de lavado — evita margen negativo en edificios chicos
+  INT_PISO_MERCADO: number;       // piso de mercado del Informe Internacional (estudio 2026-07: firmas de patología cobran $9M+)
 };
 
 // Valores iniciales — idénticos a los de cotizador.html / KWD-FIN-MPV-001 v1.5.
@@ -73,6 +75,8 @@ export const PARAMETROS_INICIALES: Parametros = {
   ROOF_FEE_2_EUR: 1198,
   ROOF_FEE_3_EUR: 1598,
   MARGEN_MINIMO: 0.35, // piso real confirmado por Gerencia 2026-07-12 — 25% nunca se trabaja salvo excepción forzada
+  MINIMO_PROYECTO_LAVADO: 1500000, // aprobado por Gerencia 2026-07-12 — con este piso el lavado más chico posible da ~35% de margen
+  INT_PISO_MERCADO: 9000000,       // aprobado por Gerencia 2026-07-12 — piso del estudio de mercado; solo afecta el tramo pequeño (los otros ya lo superan)
 };
 
 export type Superficie = 'VIDRIO' | 'MIXTA' | 'DIFICIL';
@@ -92,7 +96,9 @@ export function calcularLavado(p: Parametros, args: {
   const dias = Math.ceil((args.m2 / productividad(p, args.superficie)) * 2) / 2;
   const recargo = RECARGO_PCT[args.tipoEdificio] + RECARGO_PCT[args.dificultad];
   const costoOperacion = dias * costoOpDia * (1 + recargo) + args.movilizacion;
-  const precioLavado = args.m2 * p.TARIFA_LISTA;
+  // Cargo mínimo por proyecto: el costo de salir a operar no baja de medio día aunque el
+  // edificio sea diminuto — sin este piso, fachadas chicas daban margen negativo (hasta -377%).
+  const precioLavado = Math.max(args.m2 * p.TARIFA_LISTA, p.MINIMO_PROYECTO_LAVADO);
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = costoOperacion + feeNoruega + comision;
@@ -129,7 +135,11 @@ export function calcularInspeccion(p: Parametros, techo: number) {
   const feeEur = tier !== null ? [p.ROOF_FEE_1_EUR, p.ROOF_FEE_2_EUR, p.ROOF_FEE_3_EUR][tier] : null;
   const { dias: diasOperacionInsp, costo: costoOperacionInsp } = costoOperacionInspeccion(p, techo);
   const feeNoruegaCop = feeEur !== null ? feeEur * p.EUR_COP : null;
-  const precioInternacional = feeNoruegaCop !== null ? 2 * feeNoruegaCop + costoOperacionInsp : null;
+  // Piso de mercado: la fórmula (2×fee + operación) daba $7,5M en el tramo pequeño, por
+  // debajo de lo que cobran las firmas de patología en Colombia ($9M+, estudio 2026-07).
+  const precioInternacional = feeNoruegaCop !== null
+    ? Math.max(2 * feeNoruegaCop + costoOperacionInsp, p.INT_PISO_MERCADO)
+    : null;
   const feeNoruegaSobreVenta = (venta: number) => venta * p.FEE_NORUEGA;
 
   const dvMargenD = dvPrecio - costoOperacionInsp - feeNoruegaSobreVenta(dvPrecio);

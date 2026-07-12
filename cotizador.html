@@ -409,6 +409,8 @@ const P = {
   CONSUMIBLES_DIA: 260034,
   DEPRECIACION_DIA: 683118,
   MARGEN_MIN: 0.35,            // piso real confirmado por Gerencia 2026-07-12 — 25% nunca se trabaja salvo excepción forzada
+  MINIMO_PROYECTO_LAVADO: 1500000, // cargo mínimo facturable por proyecto — evita margen negativo en edificios chicos (Gerencia 2026-07-12)
+  INT_PISO_MERCADO: 9000000,   // piso de mercado del Informe Internacional (estudio 2026-07; solo afecta el tramo pequeño)
   MARGEN_ALERTA: 0.40,         // objetivo — alerta amarilla si baja de aquí
   NEG_LIBRE: 0.02,             // comercial libre hasta −2% ($5.880)
   NEG_GERENCIA: 0.04,          // −2% a −4% aprobación Gerencia; bajo −4% doble aprobación
@@ -461,7 +463,8 @@ function calc(){
   if(fuera){ mov += (+$('mvViatico').value||0) * (+$('mvPers').value||0) * Math.ceil(dias); }
 
   const costoOperacion = dias * costoOpDia * (1 + recE + recD) + mov;
-  const precioLavado = m2 * tarifa;
+  // Cargo mínimo por proyecto: sin este piso, fachadas chicas daban margen negativo.
+  const precioLavado = m2 > 0 ? Math.max(m2 * tarifa, P.MINIMO_PROYECTO_LAVADO) : 0;
   const feeNoruega = precioLavado * P.FEE_NORUEGA;
   const comision = precioLavado * com;
   const costoTotal = costoOperacion + feeNoruega + comision;
@@ -483,7 +486,7 @@ function calc(){
   const diasInspeccion = Math.max(0.5, Math.ceil((techo / P.PROD_INSPECCION_M2_DIA) * 2) / 2);
   const costoDiaInspeccion = (P.CUADRILLA_DIA + P.CONSUMIBLES_DIA + depreciacionDronDia) * (1 + P.PCT_ADMIN + P.PCT_IMPREV);
   const costoOperacionInsp = diasInspeccion * costoDiaInspeccion + P.COSTO_INFORME_ANALISIS;
-  const inspCert = tierIdx>=0 ? (2*P.ROOF_TIERS[tierIdx][2]*eur + costoOperacionInsp) : null;
+  const inspCert = tierIdx>=0 ? Math.max(2*P.ROOF_TIERS[tierIdx][2]*eur + costoOperacionInsp, P.INT_PISO_MERCADO) : null;
   const inspFueraRango = techo > P.ROOF_TIERS[P.ROOF_TIERS.length-1][1];
   const feeSobreVentaInsp = venta => venta * P.FEE_NORUEGA;
   const dvMargenD = dvPrecio - costoOperacionInsp - feeSobreVentaInsp(dvPrecio);
@@ -516,7 +519,7 @@ function render(){
 
     // control por MARGEN (el que de verdad protege la utilidad)
     if(r.margenP < P.MARGEN_MIN){
-      A.push(['err','⛔','Margen '+pct(r.margenP)+' bajo el mínimo (25%). No emitir sin aprobación de Gerencia.']);
+      A.push(['err','⛔','Margen '+pct(r.margenP)+' bajo el mínimo (35%). No emitir sin aprobación de Gerencia.']);
     } else if(r.margenP < P.MARGEN_ALERTA){
       A.push(['warn','⚠️','Margen '+pct(r.margenP)+' bajo el objetivo (40%). Revise la productividad / tipo de superficie: el rendimiento real puede ser menor al supuesto.']);
     }
@@ -550,7 +553,7 @@ function render(){
     ['Margen %', pct(r.margenP),mc],
     ['Tarifa USD/m² (ref.)', r.usdM2.toFixed(2),uc],
     ['Precio piso (margen 0)', cop(r.precioPiso),''],
-    ['Precio mín. autorizado (25%)', cop(r.precioMin25),''],
+    ['Precio mín. autorizado (35%)', cop(r.precioMin25),''],
     ...filasInsp,
   ].map(x=>`<div class="int-item"><div class="il">${x[0]}</div><div class="iv ${x[2]}">${x[1]}</div></div>`).join('');
   $('intNote').textContent = 'Cotizado por m² al cliente; costo verificado por días ('+r.dias.toFixed(1)+' × '+cop(r.costoOpDia)+'). La gasolina de operación ya está incluida en consumibles — nunca se cobra aparte.';
