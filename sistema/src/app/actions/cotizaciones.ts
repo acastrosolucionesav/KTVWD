@@ -64,8 +64,33 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const totalCliente = (precioLavado ?? 0)
     + (servicio === 'INSPECCION_SOLA' ? (precioInformeBase ?? 0) : 0); // el DV gratis en combo no suma al total
 
-  // margen para decidir si requiere aprobación (Regla: <25% sin aprobar => pendiente)
-  const margenP = lavado ? lavado.margenP : insp.dvMargenP;
+  // ------------------------------------------------------------------------
+  // Costo y margen REALES del trato. Cuando el Diagnóstico Visual va de regalo
+  // (LAVADO_MAS_INSPECCION), al cliente no se le cobra — pero SÍ nos cuesta
+  // producirlo (dron + cuadrilla), y ese costo se absorbe aquí para que el
+  // margen reportado no quede inflado: "se lo regalamos al cliente, pero
+  // internamente sí lo costeamos para no perder margen sin darnos cuenta".
+  // ------------------------------------------------------------------------
+  let costoOperacionTotal: number;
+  let feeNoruegaTotal: number;
+  let comisionTotal: number;
+  if (servicio === 'SOLO_LAVADO') {
+    costoOperacionTotal = lavado!.costoOperacion;
+    feeNoruegaTotal = lavado!.feeNoruega;
+    comisionTotal = lavado!.comision;
+  } else if (servicio === 'LAVADO_MAS_INSPECCION') {
+    costoOperacionTotal = lavado!.costoOperacion + insp.costoOperacionInsp; // + costo del DV regalado
+    feeNoruegaTotal = lavado!.feeNoruega; // el DV gratis no factura, no genera fee sobre esa parte
+    comisionTotal = lavado!.comision;
+  } else {
+    // INSPECCION_SOLA: el DV se cobra, su propio costo/fee ya vienen de calcularInspeccion
+    costoOperacionTotal = insp.costoOperacionInsp;
+    feeNoruegaTotal = insp.dvPrecio * parametros.FEE_NORUEGA;
+    comisionTotal = 0;
+  }
+  const costoTotalTrato = costoOperacionTotal + feeNoruegaTotal + comisionTotal;
+  const margenD = totalCliente - costoTotalTrato;
+  const margenP = totalCliente > 0 ? margenD / totalCliente : 0;
   const requiereAprobacion = margenP < parametros.MARGEN_MINIMO;
 
   const cliente = await prisma.clienteProspecto.create({
@@ -97,9 +122,9 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
           tipoEdificio: incluyeLavado ? tipoEdificio : null,
           dificultad: incluyeLavado ? dificultad : null,
           rangoTecho: techo || null,
-          diasOperacion: lavado?.dias ?? null,
-          costoOperacion: lavado?.costoOperacion ?? insp.costoOperacionInsp,
-          feeNoruega: lavado?.feeNoruega ?? insp.feeNoruegaCop ?? null,
+          diasOperacion: (lavado?.dias ?? 0) + (servicio !== 'SOLO_LAVADO' ? insp.diasOperacionInsp : 0),
+          costoOperacion: costoOperacionTotal,
+          feeNoruega: feeNoruegaTotal,
           margenPct: margenP,
           precioLavado,
           precioInformeBase,

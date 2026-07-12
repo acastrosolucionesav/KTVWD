@@ -204,6 +204,29 @@ ligeramente a **~42%** (sigue sobre el objetivo de 40%). El motor ahora sí cost
 el margen de la inspección (antes solo costeaba el lavado) — visible en el panel interno de
 `cotizador.html` y en el detalle de cotización de `sistema/`.
 
+**Bug corregido — margen real de "Lavado + Inspección" en `sistema/` (2026-07-12):**
+Gerencia preguntó si el Diagnóstico Visual que se regala en el combo Lavado+Inspección se
+está costeando internamente aunque al cliente se le presente como gratis. Al verificar el
+código de `crearCotizacionPuntual` se encontró que SÍ tenía un hueco real: el cálculo de
+margen para `LAVADO_MAS_INSPECCION` ignoraba por completo el costo de producir el DV
+regalado (dron + cuadrilla), solo restaba el costo del lavado. Corregido: ahora
+`costoOperacionTotal` para ese caso = costo del lavado + `costoOperacionInsp` del DV
+regalado (el DV gratis no genera fee Noruega porque no factura esa parte). Verificado con
+números reales (300 m² fachada + techo 8.000 m²): el margen reportado ANTES del fix era
+44,6% (pasaba como BORRADOR sin revisión); el margen REAL después del fix es 17,0% —
+por debajo del mínimo (25%), por lo que esa cotización debería quedar
+`PENDIENTE_APROBACION` y antes no quedaba. Es decir: sin este fix se estaban aprobando
+automáticamente combos que en la práctica no cumplían el margen mínimo. Build verificado
+(`npm run build` OK, 8 rutas). Pendiente de push a `claude/ktv-working-drone-system-ms0e2u`.
+- ⚠️ **Hallazgo pendiente de decisión de Gerencia (no corregido todavía):** el
+  `cotizador.html` viejo (Formato 1, "Opción B: Lavado + Diagnóstico") todavía SUMA el
+  valor del DV al precio total (lo cobra), no lo regala como gancho — es decir, no sigue
+  la regla de "Lavado + Inspección KTV Colombia" del Paso 4/KWD-SIS-PROMPT-001 v2 donde el
+  DV va incluido sin costo. `cotizador.html` es solo la herramienta de referencia (el
+  sistema real que se está usando para cotizar es `sistema/`), así que esto no bloquea
+  nada hoy, pero si Gerencia sigue usando ese HTML para cotizar en paralelo hay que
+  decidir si se alinea o se retira de uso.
+
 **Pendiente (fase de precios) — ya no crítico, son ajustes finos:**
 - 🔲 Calibrar `PROD_INSPECCION_M2_DIA` con datos reales de Órdenes de Vuelo.
 - 🔲 Definir `COSTO_INFORME_ANALISIS` cuando se construya el proceso de análisis/edición.
