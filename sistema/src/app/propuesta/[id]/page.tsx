@@ -1,10 +1,20 @@
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { getCotizacionClienteDTO } from '@/lib/dto';
+import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import AceptarButton from './AceptarButton';
 
 // PÁGINA PÚBLICA — sin login. Solo puede recibir el DTO de cliente (dto.ts),
 // que estructuralmente no tiene fee/costo/margen. Regla A vive acá.
+// Módulo 2: el [id] de la ruta es el linkToken NO adivinable (nunca el
+// idTrazabilidad secuencial). Cada visita de un NO-usuario queda registrada
+// como apertura; las vistas del equipo (con sesión) no ensucian el tracking.
+
+// Catálogos públicos existentes — el recorrido comercial completo:
+// prospección en frío (landing) → calentamiento (planes) → esta propuesta.
+const URL_CATALOGO_FRIO = 'https://colombia.ktvworkingdrone.com.co';
+const URL_CATALOGO_PLANES = 'https://colombia.ktvworkingdrone.com.co/planes.html';
 
 function cop(n: number | null | undefined) {
   if (n === null || n === undefined) return '—';
@@ -22,7 +32,34 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
   const dto = await getCotizacionClienteDTO(id);
   if (!dto) notFound();
 
-  await prisma.apertura.create({ data: { cotizacion: { connect: { idTrazabilidad: id } } } }).catch(() => {});
+  // Link desactivado: mensaje amable, sin exponer ningún dato de la propuesta.
+  if (!dto.linkActivo) {
+    return (
+      <div className="min-h-screen bg-[#eef2f6] flex items-center justify-center px-4">
+        <div className="max-w-md bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center">
+          <p className="text-4xl mb-3">⏸</p>
+          <h1 className="text-lg font-extrabold text-[#171E27]">Esta propuesta ya no está disponible</h1>
+          <p className="text-sm text-gray-500 mt-2">
+            El enlace fue desactivado o la propuesta fue actualizada. Comuníquese con su asesor
+            KTV Working Drone para recibir la versión vigente.
+          </p>
+          <a href={URL_CATALOGO_FRIO} className="inline-block mt-5 bg-[#66C3F8] text-white text-sm font-bold rounded-full px-6 py-2">
+            Conocer KTV Working Drone →
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Tracking de apertura: solo cuentan los visitantes SIN sesión (el cliente);
+  // las vistas internas del equipo no se registran.
+  const session = await getSession();
+  if (!session) {
+    const ua = (await headers()).get('user-agent');
+    await prisma.apertura.create({
+      data: { cotizacion: { connect: { linkToken: id } }, userAgent: ua?.slice(0, 250) ?? null },
+    }).catch(() => {});
+  }
 
   const p = dto.puntual;
 
@@ -104,7 +141,34 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
           <div className="border-t pt-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#66C3F8] mb-2">Aceptación de la propuesta</h3>
-            <AceptarButton idTrazabilidad={dto.idTrazabilidad} aceptada={dto.aceptadaPorCliente} />
+            <AceptarButton linkToken={dto.linkToken} aceptada={dto.aceptadaPorCliente} />
+          </div>
+
+          {/* Calentamiento: a los clientes de servicio puntual se les presenta el
+              programa recurrente (catálogo de planes ya publicado) — sin precios aquí. */}
+          {p && (
+            <div className="bg-gradient-to-br from-[#222C38] to-[#0B0F14] rounded-xl p-5 text-white">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-[#66C3F8]">¿Y después del servicio?</h3>
+              <p className="text-sm text-gray-300 mt-2">
+                Con el <b className="text-white">Programa KTV Care</b> su edificio se mantiene con
+                lavados planificados, inspección anual incluida y precio preferencial frente al
+                servicio puntual.
+              </p>
+              <a href={URL_CATALOGO_PLANES} target="_blank" rel="noopener" className="inline-block mt-3 bg-[#66C3F8] text-white text-sm font-bold rounded-full px-5 py-2">
+                Conocer los planes KTV Care →
+              </a>
+            </div>
+          )}
+
+          {/* Enlace institucional (catálogo de prospección en frío) */}
+          <div className="text-center text-xs text-gray-400 border-t pt-5">
+            <p>
+              KTV Working Drone Colombia S.A.S. · Único operador con Certificado de Explotador UAS
+              vigente de Aerocivil en su categoría.
+            </p>
+            <a href={URL_CATALOGO_FRIO} target="_blank" rel="noopener" className="text-[#66C3F8] font-semibold hover:underline">
+              colombia.ktvworkingdrone.com.co
+            </a>
           </div>
         </div>
       </div>

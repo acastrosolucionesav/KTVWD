@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
 import { calcularCare, type Parametros } from '@/lib/pricing';
-import { aprobarCotizacion, rechazarCotizacion, marcarEnviada } from '@/app/actions/cotizaciones';
+import { aprobarCotizacion, rechazarCotizacion, marcarEnviada, toggleLinkPropuesta } from '@/app/actions/cotizaciones';
 
 const NOMBRES_SERVICIO: Record<string, string> = {
   INSPECCION_SOLA: 'Solo inspección',
@@ -26,7 +26,11 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
   const session = await verifySession();
   const c = await prisma.cotizacion.findUnique({
     where: { id },
-    include: { cliente: true, puntual: true, care: true, auditorias: { include: { usuario: true }, orderBy: { timestamp: 'desc' } } },
+    include: {
+      cliente: true, puntual: true, care: true,
+      auditorias: { include: { usuario: true }, orderBy: { timestamp: 'desc' } },
+      aperturas: { orderBy: { timestamp: 'desc' } },
+    },
   });
   if (!c) notFound();
 
@@ -123,7 +127,48 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         {(c.estado === 'APROBADA' || c.estado === 'BORRADOR') && (
           <form action={marcarEnviada.bind(null, c.id)}><button className="bg-[#66C3F8] text-white text-sm font-bold rounded-full px-5 py-2">Marcar como enviada</button></form>
         )}
-        <a href={`/propuesta/${c.idTrazabilidad}`} target="_blank" className="text-sm text-[#171E27] underline self-center">Ver propuesta pública (lo que abre el cliente) →</a>
+        <a href={`/propuesta/${c.linkToken}`} target="_blank" className="text-sm text-[#171E27] underline self-center">Ver propuesta pública (lo que abre el cliente) →</a>
+      </div>
+
+      {/* ---- Módulo 2: link único + tracking de apertura ---- */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">Link único de la propuesta</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Envíe este enlace al cliente. Es único, no adivinable, y puede desactivarse en
+              cualquier momento (por ejemplo, al vencer la propuesta o emitir una nueva versión).
+            </p>
+          </div>
+          <form action={toggleLinkPropuesta.bind(null, c.id)}>
+            <button className={`text-sm font-bold rounded-full px-5 py-2 ${c.linkActivo ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-[#66C3F8] text-white'}`}>
+              {c.linkActivo ? 'Desactivar link' : 'Reactivar link'}
+            </button>
+          </form>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <code className={`flex-1 text-xs rounded-lg border px-3 py-2 overflow-x-auto whitespace-nowrap ${c.linkActivo ? 'bg-gray-50 border-gray-200 text-[#171E27]' : 'bg-gray-100 border-gray-200 text-gray-400 line-through'}`}>
+            {(process.env.NEXT_PUBLIC_APP_URL || '')}/propuesta/{c.linkToken}
+          </code>
+          <span className={`text-xs font-bold px-2 py-1 rounded-full ${c.linkActivo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+            {c.linkActivo ? 'ACTIVO' : 'INACTIVO'}
+          </span>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">
+            Aperturas del cliente: {c.aperturas.length}
+          </h3>
+          {c.aperturas.length > 0 ? (
+            <ul className="text-xs text-gray-500 mt-1 space-y-0.5">
+              {c.aperturas.slice(0, 5).map((a) => (
+                <li key={a.id}>👁 {a.timestamp.toLocaleString('es-CO')}</li>
+              ))}
+              {c.aperturas.length > 5 && <li className="text-gray-400">… y {c.aperturas.length - 5} más</li>}
+            </ul>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">El cliente aún no ha abierto la propuesta. (Las vistas del equipo no cuentan.)</p>
+          )}
+        </div>
       </div>
 
       {/* ---- Auditoría ---- */}

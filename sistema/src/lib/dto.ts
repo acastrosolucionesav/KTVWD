@@ -14,6 +14,8 @@ import { calcularInspeccion, type Parametros } from '@/lib/pricing';
 
 export type CotizacionClienteDTO = {
   idTrazabilidad: string;
+  linkToken: string;
+  linkActivo: boolean;
   familia: 'PUNTUAL' | 'CARE';
   clienteNombre: string;
   clienteContacto: string | null;
@@ -50,15 +52,19 @@ const NOMBRES_INFORME = {
   INTERNACIONAL: 'Informe Internacional KTV',
 } as const;
 
-export async function getCotizacionClienteDTO(idTrazabilidad: string): Promise<CotizacionClienteDTO | null> {
+// Módulo 2: la búsqueda pública es por linkToken (no adivinable), nunca por
+// idTrazabilidad (secuencial por fecha — un tercero podría enumerarlo).
+export async function getCotizacionClienteDTO(linkToken: string): Promise<CotizacionClienteDTO | null> {
   const c = await prisma.cotizacion.findUnique({
-    where: { idTrazabilidad },
+    where: { linkToken },
     include: { cliente: true, puntual: true, care: true },
   });
   if (!c) return null;
 
   const base: CotizacionClienteDTO = {
     idTrazabilidad: c.idTrazabilidad,
+    linkToken: c.linkToken,
+    linkActivo: c.linkActivo,
     familia: c.familia,
     clienteNombre: c.cliente.nombre,
     clienteContacto: c.cliente.contacto,

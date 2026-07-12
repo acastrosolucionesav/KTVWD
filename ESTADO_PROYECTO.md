@@ -198,12 +198,31 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
   está en la propia pantalla). Probado e2e con Playwright: Gerencia cambia tarifa
   6000→6500 → cotización nueva sale a $9.750.000 (1.500 m²) → restaurada a 6000;
   Comercial no puede entrar a /parametros.
-- **Siguiente: Módulo 2 (presentador de propuestas)** — aquí se unen los DOS catálogos
-  existentes con la cotización, por instrucción de Gerencia (2026-07-12): el catálogo de
-  prospección en frío (landing pública, sin precios) y el catálogo de calentamiento
-  (planes.html) deben integrarse al recorrido comercial del sistema: frío → calentamiento
-  → propuesta con precios (link único, tracking de apertura, desactivación). Luego
-  Módulo 3 (Pipedrive — pedir token API a Gerencia en ese momento), 4 (alertas).
+- ✅ **Módulo 2 (presentador de propuestas) — HECHO (2026-07-12):**
+  - **Link único NO adivinable:** cada cotización tiene un `linkToken` (cuid) y la página
+    pública `/propuesta/[token]` busca SOLO por ese token — nunca por `idTrazabilidad`
+    (que es secuencial por fecha y un tercero podría enumerar). Migración
+    `modulo2_presentador` con backfill de tokens aleatorios para filas existentes
+    (producción-segura, sin reset).
+  - **Desactivación:** botón Desactivar/Reactivar link en el detalle (cualquier usuario,
+    queda en auditoría `desactivo_link`/`reactivo_link`). Link inactivo → el cliente ve
+    un mensaje amable SIN ningún dato de la propuesta, y `aceptarPropuesta` se bloquea.
+  - **Tracking de apertura:** cada visita SIN sesión registra `Apertura` (con user-agent);
+    las vistas del equipo logueado NO cuentan. El detalle muestra el contador y las
+    últimas 5 aperturas.
+  - **Catálogos integrados al recorrido** (instrucción de Gerencia): la propuesta pública
+    de Familia 1 incluye el bloque de calentamiento "Programa KTV Care" con link al
+    catálogo de planes (colombia.ktvworkingdrone.com.co/planes.html), y toda propuesta
+    lleva el pie institucional con link a la landing de prospección en frío. Recorrido:
+    frío → calentamiento → propuesta con precios.
+  - Probado e2e con Playwright (5 flujos): link generado ≠ idTrazabilidad; vista interna
+    no cuenta apertura; cliente sin sesión cuenta (2 aperturas); desactivar oculta TODO y
+    reactivar restaura; aceptación del cliente dispara Orden de Servicio + auditoría.
+  - Para producción: definir `NEXT_PUBLIC_APP_URL` (el detalle lo usa para mostrar el
+    link completo a copiar).
+- **Siguiente: Módulo 3 (Pipedrive — pedir token API a Gerencia en ese momento)**, luego
+  Módulo 4 (alertas). En paralelo: preparación de despliegue (Vercel + Neon Postgres +
+  subdominio app.ktvworkingdrone.com.co).
 
 **Costeo de la inspección propia (Diagnóstico Visual) — CERRADO 2026-07-12**
 Las 3 respuestas de Gerencia que faltaban ya están aplicadas en **ambos** motores

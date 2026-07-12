@@ -169,9 +169,9 @@ export async function marcarEnviada(cotizacionId: string) {
 // Aceptación del cliente — dispara la Orden de Servicio interna SIN CIFRAS
 // (KWD-SIS-PROMPT-001 v2). Esta acción la invoca la página pública /propuesta.
 // ============================================================================
-export async function aceptarPropuesta(idTrazabilidad: string) {
-  const c = await prisma.cotizacion.findUnique({ where: { idTrazabilidad } });
-  if (!c || c.aceptadaPorCliente) return;
+export async function aceptarPropuesta(linkToken: string) {
+  const c = await prisma.cotizacion.findUnique({ where: { linkToken } });
+  if (!c || !c.linkActivo || c.aceptadaPorCliente) return; // link desactivado = no se puede aceptar
 
   await prisma.$transaction([
     prisma.cotizacion.update({
@@ -185,8 +185,22 @@ export async function aceptarPropuesta(idTrazabilidad: string) {
       data: { cotizacionId: c.id, usuarioId: c.creadoPorId, accion: 'acepto_cliente', detalle: 'Aceptada desde el link público de la propuesta' },
     }),
   ]);
-  revalidatePath(`/propuesta/${idTrazabilidad}`);
+  revalidatePath(`/propuesta/${linkToken}`);
   revalidatePath('/cotizaciones');
+}
+
+// Módulo 2 — activar/desactivar el link público de una propuesta. Cualquier
+// usuario del sistema puede hacerlo (queda en auditoría quién y cuándo).
+export async function toggleLinkPropuesta(cotizacionId: string) {
+  const session = await verifySession();
+  const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionId } });
+  if (!c) return;
+  await prisma.cotizacion.update({ where: { id: c.id }, data: { linkActivo: !c.linkActivo } });
+  await prisma.auditoria.create({
+    data: { cotizacionId: c.id, usuarioId: session.userId, accion: c.linkActivo ? 'desactivo_link' : 'reactivo_link' },
+  });
+  revalidatePath(`/cotizaciones/${c.id}`);
+  revalidatePath(`/propuesta/${c.linkToken}`);
 }
 
 // ============================================================================

@@ -104,6 +104,10 @@ model ClienteProspecto {
 model Cotizacion {
   id                 String            @id @default(cuid())
   idTrazabilidad     String            @unique // el que ve el cliente en el documento (KTV-YYYYMMDD-NNNN)
+  // Módulo 2 — presentador: el link público usa este token NO adivinable
+  // (el idTrazabilidad es secuencial por fecha, sería enumerable por terceros).
+  linkToken          String            @unique @default(cuid())
+  linkActivo         Boolean           @default(true)
   familia            Familia
   clienteId          String
   cliente            ClienteProspecto  @relation(fields: [clienteId], references: [id])
@@ -210,5 +214,6 @@ model Apertura {
   id           String     @id @default(cuid())
   cotizacionId String
   cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id])
+  userAgent    String?    // referencia del dispositivo/navegador del cliente
   timestamp    DateTime   @default(now())
 }
