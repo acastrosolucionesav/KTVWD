@@ -42,7 +42,7 @@ para que Claude trabaje sin re-explicar nada y sin contradecir decisiones ya tom
 | Estructura (NO va al costo por proyecto) | Jefe de Pilotos $4,93M/mes, Líder Operaciones $4,93M/mes, Gerente SMS $3,12M/mes → costos fijos |
 | Productividades de partida | vidrio 1.350 / mixta 900 / difícil 600 m²/día — calibrar con m²/día real de cada Orden de Vuelo |
 | Recargos | Tipo edificio y dificultad: Bajo 0% / Medio 5% / Alto 10% |
-| Margen mínimo sin aprobación | 25%. Bajo eso: aprobación Gerencia. Bajo USD 1,5/m²: doble aprobación |
+| Margen mínimo sin aprobación | **35%** (confirmado por Gerencia 2026-07-12 — el 25% NUNCA se trabaja salvo excepción forzada; no confundir con el piso de tarifa). Bajo 35%: aprobación Gerencia. Bajo USD 1,5/m²: doble aprobación |
 | Fijos mensuales | ~$20,7M (BlueTag + comercial + estructura + admin). Punto de equilibrio ~7.660 m²/mes |
 | Inversión franquicia a recuperar | ~$663,6M (los equipos NO: se recuperan vía depreciación por proyecto) |
 

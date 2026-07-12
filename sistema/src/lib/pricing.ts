@@ -72,7 +72,7 @@ export const PARAMETROS_INICIALES: Parametros = {
   ROOF_FEE_1_EUR: 798,
   ROOF_FEE_2_EUR: 1198,
   ROOF_FEE_3_EUR: 1598,
-  MARGEN_MINIMO: 0.25,
+  MARGEN_MINIMO: 0.35, // piso real confirmado por Gerencia 2026-07-12 — 25% nunca se trabaja salvo excepción forzada
 };
 
 export type Superficie = 'VIDRIO' | 'MIXTA' | 'DIFICIL';

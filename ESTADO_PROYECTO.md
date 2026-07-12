@@ -52,7 +52,11 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
 ## 4. Decisiones de negocio ya tomadas (NO re-litigar)
 - **Tarifa lista lavado:** $6.000/m². Escalones de negociación puntual: comercial libre
   hasta −2% ($5.880); −2% a −4% ($5.760) requiere Gerencia; bajo −4% doble aprobación.
-- **El control real es por MARGEN**, no por precio: alerta amarilla bajo 40%, roja bajo 25%.
+- **El control real es por MARGEN**, no por precio: alerta amarilla bajo 40%, roja (bloquea,
+  requiere aprobación de Gerencia) bajo **35%** — corregido 2026-07-12: el 25% que estaba
+  como piso en el código NUNCA se trabaja salvo excepción forzada; el mínimo real es 35%.
+  Ya corregido en `pricing.ts` (`PARAMETROS_INICIALES.MARGEN_MINIMO`), en el `Parametro`
+  de la BD de dev, y en `cotizador.html` (`P.MARGEN_MIN`).
 - **USD 1,5/m²** ya NO bloquea (Noruega confirmó que se puede vender a cualquier precio
   pagando el fee 3,5%); queda solo como referencia.
 - **Planes Care:** Inspect (0 lavadas) / Essential ($5.640/m², 1 lavada, "Más popular") /
@@ -217,7 +221,18 @@ números reales (300 m² fachada + techo 8.000 m²): el margen reportado ANTES d
 por debajo del mínimo (25%), por lo que esa cotización debería quedar
 `PENDIENTE_APROBACION` y antes no quedaba. Es decir: sin este fix se estaban aprobando
 automáticamente combos que en la práctica no cumplían el margen mínimo. Build verificado
-(`npm run build` OK, 8 rutas). Pendiente de push a `claude/ktv-working-drone-system-ms0e2u`.
+(`npm run build` OK, 8 rutas). Push hecho a `claude/ktv-working-drone-system-ms0e2u`.
+
+**Corrección del piso de margen mínimo: 25% → 35% (2026-07-12, mismo día):**
+Gerencia aclaró, tras ver el ejemplo del 17%, que el 25% que estaba como piso NUNCA se
+trabaja salvo excepción forzada — el mínimo real establecido es **35%**. Corregido
+`MARGEN_MINIMO` de 0,25 a 0,35 en `sistema/src/lib/pricing.ts` (con su comentario de
+origen), en el registro `Parametro` de la base de datos de desarrollo (ya estaba
+sembrado con 0,25 y el seed no lo sobreescribe — se actualizó directo en la BD), y en
+`cotizador.html` (`P.MARGEN_MIN`). Se confirmó además que la tarifa de lavado en
+`sistema/` siempre usa `TARIFA_LISTA` ($6.000/m²) sin ningún campo de descuento en el
+formulario — no hace falta cambio de código para "trabajar el metro a 6.000", ya es así.
+Build verificado de nuevo tras el cambio (OK, 8 rutas).
 - ⚠️ **Hallazgo pendiente de decisión de Gerencia (no corregido todavía):** el
   `cotizador.html` viejo (Formato 1, "Opción B: Lavado + Diagnóstico") todavía SUMA el
   valor del DV al precio total (lo cobra), no lo regala como gancho — es decir, no sigue
