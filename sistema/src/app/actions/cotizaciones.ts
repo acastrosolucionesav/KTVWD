@@ -5,10 +5,11 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavado, calcularInspeccion, type NivelRecargo, type Superficie } from '@/lib/pricing';
+import { calcularLavado, calcularInspeccion, calcularCare, type NivelRecargo, type Superficie } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
+export type CrearCareState = { error?: string; ok?: boolean } | undefined;
 
 // ============================================================================
 // Crear cotización puntual (Familia 1). Aquí se calcula TODO (incluido fee y
@@ -161,4 +162,55 @@ export async function aceptarPropuesta(idTrazabilidad: string) {
   ]);
   revalidatePath(`/propuesta/${idTrazabilidad}`);
   revalidatePath('/cotizaciones');
+}
+
+// ============================================================================
+// Crear cotización Care (Familia 2 — programa recurrente). Tabla SEPARADA de
+// CotizacionPuntual, tal como exige KWD-SIS-PROMPT-001 v2: nunca se mezclan
+// los datos de las 2 familias.
+// ============================================================================
+export async function crearCotizacionCare(_state: CrearCareState, formData: FormData): Promise<CrearCareState> {
+  const session = await verifySession();
+  const { parametros, snapshotJson } = await getParametrosVigentes();
+
+  const plan = String(formData.get('plan')) as 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+  const clienteNombre = String(formData.get('clienteNombre') || '').trim();
+  const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
+  if (!clienteNombre) return { error: 'El nombre del cliente es obligatorio.' };
+
+  const m2 = Number(formData.get('m2') || 0);
+  if (plan !== 'INSPECT' && m2 <= 0) return { error: 'Ingrese el área de fachada (m²) para las lavadas del plan.' };
+
+  const techo = Number(formData.get('techo') || 0);
+  const contratoAnios = Number(formData.get('contratoAnios') || 1);
+  const formaPago = String(formData.get('formaPago') || 'CONTADO') as 'CONTADO' | 'DIFERIDO_12';
+  const observaciones = String(formData.get('observaciones') || '').trim() || null;
+
+  const { valorAnual, valorMensual } = calcularCare(parametros, { plan, m2, techo });
+
+  const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto } });
+  const vigenteHasta = new Date();
+  vigenteHasta.setDate(vigenteHasta.getDate() + 30);
+
+  const cotizacion = await prisma.cotizacion.create({
+    data: {
+      idTrazabilidad: generarIdTrazabilidad(),
+      familia: 'CARE',
+      clienteId: cliente.id,
+      creadoPorId: session.userId,
+      estado: 'BORRADOR',
+      requiereAprobacion: false,
+      vigenteHasta,
+      snapshotParametros: snapshotJson,
+      totalCliente: valorAnual,
+      observaciones,
+      care: {
+        create: { plan, contratoAnios, formaPago, m2Fachada: m2 || null, rangoTecho: techo || null, valorAnual, valorMensual },
+      },
+      auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
+    },
+  });
+
+  revalidatePath('/cotizaciones');
+  redirect(`/cotizaciones/${cotizacion.id}`);
 }

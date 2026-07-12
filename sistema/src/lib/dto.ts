@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
+import { calcularInspeccion, type Parametros } from '@/lib/pricing';
 
 // ============================================================================
 // REGLA A (KWD-SIS-PROMPT-001 v2): el fee a Noruega y cualquier desglose de
@@ -87,13 +88,17 @@ export async function getCotizacionClienteDTO(idTrazabilidad: string): Promise<C
 
   if (c.familia === 'CARE' && c.care) {
     const care = c.care;
+    // El DV incluido se recalcula del snapshot CONGELADO al crear la cotización
+    // (nunca de los parámetros vigentes hoy — "cotización enviada = foto congelada").
+    const snapshot = JSON.parse(c.snapshotParametros) as Parametros;
+    const insp = calcularInspeccion(snapshot, care.rangoTecho ?? 0);
     base.care = {
       plan: care.plan,
       contratoAnios: care.contratoAnios,
       formaPago: care.formaPago,
       valorAnual: care.valorAnual,
       valorMensual: care.valorMensual,
-      informeIncluidoValor: 0, // se completa en la capa de presentación desde parametros públicos si aplica
+      informeIncluidoValor: insp.dvPrecio,
       informeInternacional: null,
     };
   }

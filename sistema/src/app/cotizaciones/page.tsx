@@ -10,6 +10,18 @@ const ESTADO_COLOR: Record<string, string> = {
   ENVIADA: 'bg-[#66C3F8]/20 text-[#171E27]',
 };
 
+const NOMBRES_SERVICIO: Record<string, string> = {
+  INSPECCION_SOLA: 'Solo inspección',
+  LAVADO_MAS_INSPECCION: 'Lavado + Inspección KTV Colombia',
+  SOLO_LAVADO: 'Solo lavado',
+};
+
+const NOMBRES_PLAN: Record<string, string> = {
+  INSPECT: 'KTV Care Inspect',
+  ESSENTIAL: 'KTV Care Essential',
+  COMPLETE: 'KTV Care Complete',
+};
+
 export default async function CotizacionesPage() {
   await verifySession();
   const cotizaciones = await prisma.cotizacion.findMany({
@@ -26,7 +38,9 @@ export default async function CotizacionesPage() {
             className="block bg-white rounded-xl border border-gray-200 hover:border-[#66C3F8] p-4 flex items-center justify-between">
             <div>
               <div className="font-bold text-[#171E27]">{c.cliente.nombre}</div>
-              <div className="text-xs text-gray-500">{c.idTrazabilidad} · {c.familia === 'PUNTUAL' ? c.puntual?.servicio : c.care?.plan}</div>
+              <div className="text-xs text-gray-500">
+                {c.idTrazabilidad} · {c.familia === 'PUNTUAL' ? NOMBRES_SERVICIO[c.puntual?.servicio ?? ''] : NOMBRES_PLAN[c.care?.plan ?? '']}
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {c.requiereAprobacion && c.estado === 'PENDIENTE_APROBACION' && (

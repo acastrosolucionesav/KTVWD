@@ -165,8 +165,19 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
   - **Al aceptar el cliente, se genera automáticamente la Orden de Servicio interna SIN
     CIFRAS** (verificado en base de datos: solo `anticipoConfirmado: false`) + auditoría
     completa (creó → envió → aceptó_cliente).
-- **Pendiente de Módulo 1 antes de pasar al Módulo 2:** formulario de Familia 2 (Care) —
-  el motor de precios ya existe (`calcularCare`), falta la UI; panel de administración de
+- **Familia 2 (Care) — YA construida y probada (2026-07-12):** formulario `/care` (plan,
+  cliente, m², techo, contrato 1/3 años, forma de pago, observaciones), página de detalle
+  y propuesta pública funcionando. El DTO recalcula el valor del Diagnóstico Visual incluido
+  desde el `snapshotParametros` CONGELADO de la cotización (nunca de parámetros vigentes hoy).
+  Probado con Playwright: crear cotización Care Complete, ver detalle (Comercial no ve
+  costos), ver propuesta pública (muestra "Diagnóstico Visual KTV (con IA) · valor de
+  referencia", sin m², con aceptación) — todo correcto.
+  - ⚠️ Pendiente marcado en el propio panel: el desglose de costo/margen EN VIVO para Care
+    todavía no está en el motor (`calcularCare` solo devuelve valorAnual/valorMensual, sin
+    costo/fee/margen) — hoy Gerencia ve una nota indicándolo en vez del desglose real. Falta
+    extender `calcularCare` con el costo real (lavadas + inspección) cuando se cierre el
+    costeo completo de la inspección propia (ver pendiente crítico más abajo).
+- **Pendiente de Módulo 1 antes de pasar al Módulo 2:** panel de administración de
   `parametros` (hoy solo se editan por seed/SQL). Luego: Módulo 2 (presentador), 3
   (Pipedrive — token se pide en ese momento), 4 (alertas).
 
@@ -182,6 +193,14 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
     dron de inspección (Matrice 4T) depreciado + construcción del informe (hora-ingeniero/edición
     de videos) + día(s) de campo + 3,5% Noruega**, y que el motor calcule y muestre su MARGEN
     (hoy `calc()` solo costea el lavado, la inspección no tiene costo ni margen en el motor).
+  - **Dron 4T — dato confirmado 2026-07-12:** EUR 8.900 es el precio BASE real, verificado por
+    Gerencia directo en BlueTag (la tienda oficial de KTV, referencia WS00000236). Gerencia
+    confirmó explícitamente que **ese valor NO incluye transporte ni nacionalización** — falta
+    sumar esos dos rubros para tener el costo puesto en Colombia (pendiente: número exacto del
+    agente de aduana). Mientras tanto se usa un estimado editable de importación.
+  - Aún pendientes de responder: (a) si los días de campo por inspección varían según el rango
+    de techo o se quedan en medio día fijo, (b) quién construye el informe (análisis + edición
+    de videos) y cuánto cuesta por informe.
 - 🔲 Cerrar el costeo del dron con importación/nacionalización (Matrice 4T EUR 8.900 sin
   transporte ni nacionalización) — es insumo del punto anterior.
 - 🔲 Módulo 2 (backend): links únicos, desactivación, tracking de apertura, Pipedrive (futuro).

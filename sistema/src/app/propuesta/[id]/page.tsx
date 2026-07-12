@@ -81,9 +81,14 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           {dto.care && (
             <div className="border-2 border-[#66C3F8] rounded-xl overflow-hidden">
               <div className="bg-[#66C3F8] text-white px-4 py-2 text-xs font-bold uppercase">KTV Care {dto.care.plan}</div>
-              <div className="px-4 py-3">
-                <span className="text-2xl font-extrabold text-[#171E27]">{cop(dto.care.valorMensual)}</span> <span className="text-sm text-gray-500">/ mes</span>
-                <p className="text-xs text-gray-400">{cop(dto.care.valorAnual)} / año + IVA · contrato {dto.care.contratoAnios} año(s)</p>
+              <div className="px-4 py-3 space-y-3">
+                <div>
+                  <span className="text-2xl font-extrabold text-[#171E27]">{cop(dto.care.valorMensual)}</span> <span className="text-sm text-gray-500">/ mes</span>
+                  <p className="text-xs text-gray-400">{cop(dto.care.valorAnual)} / año + IVA · contrato {dto.care.contratoAnios} año(s)</p>
+                </div>
+                <div className="bg-[#EBF8FF] border border-[#66C3F8]/40 rounded-lg px-3 py-2 text-xs text-gray-700">
+                  Incluye <b className="text-[#171E27]">Diagnóstico Visual KTV</b> (con IA) · valor de referencia {cop(dto.care.informeIncluidoValor)}
+                </div>
               </div>
             </div>
           )}
