@@ -17,8 +17,12 @@ export type Parametros = {
   CUADRILLA_DIA: number;
   CONSUMIBLES_DIA: number;
   DEPRECIACION_DIA: number;
-  DIAS_INSPECCION: number;
-  COSTO_DIA_INSPECCION: number;
+  // --- Costeo de la inspección propia (confirmado con Gerencia 2026-07-12) ---
+  DRON_4T_EUR: number;              // precio base Matrice 4T, verificado en BlueTag
+  FACTOR_IMPORT_TRANSPORTE: number; // 50% del valor del dron — confirmado por Gerencia
+  DRON_4T_VIDA_ANIOS: number;       // vida útil, igual convención que el resto de equipos
+  PROD_INSPECCION_M2_DIA: number;   // ⚠️ PLACEHOLDER — falta calibrar con Órdenes de Vuelo reales
+  COSTO_INFORME_ANALISIS: number;   // ⚠️ PENDIENTE — aún no definido con Gerencia (hoy en 0, no cerrar costeo sin esto)
   IVA: number;
   CARE_ESSENTIAL_DESC: number;
   CARE_COMPLETE_DESC: number;
@@ -50,8 +54,11 @@ export const PARAMETROS_INICIALES: Parametros = {
   CUADRILLA_DIA: 524049,
   CONSUMIBLES_DIA: 260034,
   DEPRECIACION_DIA: 683118,
-  DIAS_INSPECCION: 0.5,
-  COSTO_DIA_INSPECCION: 814381,
+  DRON_4T_EUR: 8900,
+  FACTOR_IMPORT_TRANSPORTE: 0.5,
+  DRON_4T_VIDA_ANIOS: 2,
+  PROD_INSPECCION_M2_DIA: 20000, // placeholder inicial — AJUSTAR con datos reales
+  COSTO_INFORME_ANALISIS: 0,     // pendiente — ver nota arriba
   IVA: 0.19,
   CARE_ESSENTIAL_DESC: 0.06,
   CARE_COMPLETE_DESC: 0.10,
@@ -101,11 +108,26 @@ function tierTecho(p: Parametros, techo: number): 0 | 1 | 2 | null {
   return null;
 }
 
+// Costeo real de la inspección (confirmado con Gerencia 2026-07-12):
+// - Dron 4T puesto en Colombia = precio base BlueTag × (1 + 50% import/transporte),
+//   depreciado con la misma convención que el resto de equipos (valor/vida/366).
+// - Días de campo escalan con el área de techo (no un medio día fijo) — productividad
+//   PLACEHOLDER hasta calibrar con Órdenes de Vuelo reales.
+// - Costo de construir el informe (análisis + edición de videos): aún NO definido con
+//   Gerencia — hoy suma 0, así que el margen mostrado es optimista hasta que se defina.
+function costoOperacionInspeccion(p: Parametros, techo: number) {
+  const dron4tLandedCop = p.DRON_4T_EUR * (1 + p.FACTOR_IMPORT_TRANSPORTE) * p.EUR_COP;
+  const depreciacionDronDia = dron4tLandedCop / p.DRON_4T_VIDA_ANIOS / 366;
+  const dias = Math.max(0.5, Math.ceil((techo / p.PROD_INSPECCION_M2_DIA) * 2) / 2);
+  const costoDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + depreciacionDronDia) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
+  return { dias, costo: dias * costoDia + p.COSTO_INFORME_ANALISIS };
+}
+
 export function calcularInspeccion(p: Parametros, techo: number) {
   const tier = tierTecho(p, techo);
   const dvPrecio = tier !== null ? [p.DV_TIER_1, p.DV_TIER_2, p.DV_TIER_3][tier] : p.DV_PRECIO;
   const feeEur = tier !== null ? [p.ROOF_FEE_1_EUR, p.ROOF_FEE_2_EUR, p.ROOF_FEE_3_EUR][tier] : null;
-  const costoOperacionInsp = p.COSTO_DIA_INSPECCION * p.DIAS_INSPECCION;
+  const { dias: diasOperacionInsp, costo: costoOperacionInsp } = costoOperacionInspeccion(p, techo);
   const feeNoruegaCop = feeEur !== null ? feeEur * p.EUR_COP : null;
   const precioInternacional = feeNoruegaCop !== null ? 2 * feeNoruegaCop + costoOperacionInsp : null;
   const feeNoruegaSobreVenta = (venta: number) => venta * p.FEE_NORUEGA;
@@ -116,7 +138,7 @@ export function calcularInspeccion(p: Parametros, techo: number) {
     : null;
 
   return {
-    tier, dvPrecio, feeEur, feeNoruegaCop, costoOperacionInsp, precioInternacional,
+    tier, dvPrecio, feeEur, feeNoruegaCop, diasOperacionInsp, costoOperacionInsp, precioInternacional,
     fueraDeRango: techo > p.ROOF_TIER_3_MAX,
     dvMargenD, dvMargenP: dvPrecio > 0 ? dvMargenD / dvPrecio : 0,
     intMargenD, intMargenP: precioInternacional && intMargenD !== null ? intMargenD / precioInternacional : null,

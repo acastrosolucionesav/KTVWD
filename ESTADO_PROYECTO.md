@@ -181,28 +181,34 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
   `parametros` (hoy solo se editan por seed/SQL). Luego: Módulo 2 (presentador), 3
   (Pipedrive — token se pide en ese momento), 4 (alertas).
 
-**Pendiente (fase de precios):**
-- 🔲 **CRÍTICO antes de dar por terminado el cotizador — costear la INSPECCIÓN PROPIA
-  (Diagnóstico Visual).** Aclaración de Gerencia (2026-07-11):
-  - El **Informe Certificado de Noruega** SÍ está costeado: los 798/1.198/1.598 EUR son lo que
-    Noruega nos cobra **por generar el informe con su ingeniero** (ya incluye ese trabajo).
-    Nuestro fee/margen va ENCIMA de ese valor. (El "2×" actual es nuestro markup sobre ese costo.)
-  - El **Diagnóstico Visual** (informe PROPIO que construiremos juntos, donde el cliente entra a
-    ver los videos) NO está costeado de verdad: hoy `dvPrecio` = $3,5/4,5/5,5M son números fijos
-    anclados al precio de referencia, sin verificación. Falta construir el costo real: **valor del
-    dron de inspección (Matrice 4T) depreciado + construcción del informe (hora-ingeniero/edición
-    de videos) + día(s) de campo + 3,5% Noruega**, y que el motor calcule y muestre su MARGEN
-    (hoy `calc()` solo costea el lavado, la inspección no tiene costo ni margen en el motor).
-  - **Dron 4T — dato confirmado 2026-07-12:** EUR 8.900 es el precio BASE real, verificado por
-    Gerencia directo en BlueTag (la tienda oficial de KTV, referencia WS00000236). Gerencia
-    confirmó explícitamente que **ese valor NO incluye transporte ni nacionalización** — falta
-    sumar esos dos rubros para tener el costo puesto en Colombia (pendiente: número exacto del
-    agente de aduana). Mientras tanto se usa un estimado editable de importación.
-  - Aún pendientes de responder: (a) si los días de campo por inspección varían según el rango
-    de techo o se quedan en medio día fijo, (b) quién construye el informe (análisis + edición
-    de videos) y cuánto cuesta por informe.
-- 🔲 Cerrar el costeo del dron con importación/nacionalización (Matrice 4T EUR 8.900 sin
-  transporte ni nacionalización) — es insumo del punto anterior.
+**Costeo de la inspección propia (Diagnóstico Visual) — CERRADO 2026-07-12**
+Las 3 respuestas de Gerencia que faltaban ya están aplicadas en **ambos** motores
+(`cotizador.html` y `sistema/src/lib/pricing.ts`):
+1. **Dron 4T puesto en Colombia:** EUR 8.900 (precio base confirmado en BlueTag, ref.
+   WS00000236) **× 1,5** (import + transporte = 50% del valor del dron, confirmado por
+   Gerencia) → depreciado con la misma convención que el resto de equipos (valor/vida/366,
+   vida útil 2 años). Parámetros nuevos: `DRON_4T_EUR`, `FACTOR_IMPORT_TRANSPORTE`,
+   `DRON_4T_VIDA_ANIOS`.
+2. **Días de campo:** ya NO es medio día fijo — escala con el área de techo
+   (`PROD_INSPECCION_M2_DIA`, redondeo a medio día, mínimo medio día). ⚠️ El valor de
+   productividad (20.000 m²/día) es un **placeholder** — falta calibrarlo con Órdenes de
+   Vuelo reales, igual que se hace con la productividad del lavado.
+3. **Costo de construir el informe** (análisis + edición de videos): Gerencia aclaró que
+   esto se construye junto con este proyecto y todavía no hay una cifra — el parámetro
+   `COSTO_INFORME_ANALISIS` queda en **0, marcado como pendiente explícito** (no se inventó
+   un número; cuando se defina, sumarlo ahí).
+
+**Resultado con los datos reales** (antes vs. después, techo 15.000 m²): margen del
+Diagnóstico Visual baja de ~87% a **74,4%**, margen del Informe Internacional sube
+ligeramente a **~42%** (sigue sobre el objetivo de 40%). El motor ahora sí costea y muestra
+el margen de la inspección (antes solo costeaba el lavado) — visible en el panel interno de
+`cotizador.html` y en el detalle de cotización de `sistema/`.
+
+**Pendiente (fase de precios) — ya no crítico, son ajustes finos:**
+- 🔲 Calibrar `PROD_INSPECCION_M2_DIA` con datos reales de Órdenes de Vuelo.
+- 🔲 Definir `COSTO_INFORME_ANALISIS` cuando se construya el proceso de análisis/edición.
+- 🔲 Extender `calcularCare` (Familia 2) para que también muestre costo/margen en vivo,
+  usando esta misma fórmula de inspección.
 - 🔲 Módulo 2 (backend): links únicos, desactivación, tracking de apertura, Pipedrive (futuro).
 
 ## 6. Cómo retomar (para el próximo Claude)

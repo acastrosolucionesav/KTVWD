@@ -417,8 +417,12 @@ const P = {
   CARE_COMPLETE_DESC: 0.10,    // 2 lavadas a $5.400 c/u
   DV_PRECIO: 4500000,          // Diagnóstico Visual por defecto (si no hay medida de techo)
   DV_TIERS: [3500000, 4500000, 5500000],    // Diagnóstico Visual por rango de techo
-  COSTO_DIA_INSPECCION: 814381,             // costo día inspección (cuadrilla+dron+RTK+camioneta +15%)
-  DIAS_INSPECCION: 0.5,                     // días de inspección por sitio (KWD-FIN-MPV-001 v1.5)
+  // ---- Costeo de la inspección propia (confirmado con Gerencia 2026-07-12) ----
+  DRON_4T_EUR: 8900,                 // precio base Matrice 4T, verificado en BlueTag
+  FACTOR_IMPORT_TRANSPORTE: 0.5,     // 50% del valor del dron — confirmado por Gerencia
+  DRON_4T_VIDA_ANIOS: 2,             // vida útil, misma convención que el resto de equipos
+  PROD_INSPECCION_M2_DIA: 20000,     // ⚠️ PLACEHOLDER — falta calibrar con Órdenes de Vuelo reales
+  COSTO_INFORME_ANALISIS: 0,         // ⚠️ PENDIENTE — aún no definido con Gerencia (hoy en 0)
   ROOF_TIERS: [[0,10000,798],[10000,25000,1198],[25000,40000,1598]] // techo m² → fee Noruega EUR
 };
 
@@ -471,11 +475,26 @@ function calc(){
   let tierIdx = -1;
   for(let i=0;i<P.ROOF_TIERS.length;i++){ const t=P.ROOF_TIERS[i]; if(techo>t[0] && techo<=t[1]){ tierIdx=i; break; } }
   const dvPrecio = tierIdx>=0 ? P.DV_TIERS[tierIdx] : P.DV_PRECIO;
-  const inspCert = tierIdx>=0 ? (2*P.ROOF_TIERS[tierIdx][2]*eur + P.COSTO_DIA_INSPECCION*P.DIAS_INSPECCION) : null;
+  // Costeo real de la inspección: dron 4T puesto en Colombia (base BlueTag + 50%
+  // import/transporte, depreciado igual que el resto de equipos) + días que escalan
+  // con el techo (no medio día fijo) + costo de construir el informe (aún en 0, pendiente).
+  const dron4tLandedCop = P.DRON_4T_EUR * (1 + P.FACTOR_IMPORT_TRANSPORTE) * eur;
+  const depreciacionDronDia = dron4tLandedCop / P.DRON_4T_VIDA_ANIOS / 366;
+  const diasInspeccion = Math.max(0.5, Math.ceil((techo / P.PROD_INSPECCION_M2_DIA) * 2) / 2);
+  const costoDiaInspeccion = (P.CUADRILLA_DIA + P.CONSUMIBLES_DIA + depreciacionDronDia) * (1 + P.PCT_ADMIN + P.PCT_IMPREV);
+  const costoOperacionInsp = diasInspeccion * costoDiaInspeccion + P.COSTO_INFORME_ANALISIS;
+  const inspCert = tierIdx>=0 ? (2*P.ROOF_TIERS[tierIdx][2]*eur + costoOperacionInsp) : null;
   const inspFueraRango = techo > P.ROOF_TIERS[P.ROOF_TIERS.length-1][1];
+  const feeSobreVentaInsp = venta => venta * P.FEE_NORUEGA;
+  const dvMargenD = dvPrecio - costoOperacionInsp - feeSobreVentaInsp(dvPrecio);
+  const dvMargenP = dvPrecio>0 ? dvMargenD/dvPrecio : 0;
+  const feeNoruegaCopInsp = tierIdx>=0 ? P.ROOF_TIERS[tierIdx][2]*eur : null;
+  const intMargenD = (inspCert!==null && feeNoruegaCopInsp!==null) ? (inspCert - feeNoruegaCopInsp - costoOperacionInsp - feeSobreVentaInsp(inspCert)) : null;
+  const intMargenP = (inspCert && intMargenD!==null) ? intMargenD/inspCert : null;
 
   return {m2,sup,tarifa,dias,costoOpDia,costoOperacion,mov,precioLavado,feeNoruega,comision,costoTotal,margenD,margenP,usdM2,precioPiso,precioMin25,
-          trm,eur,techo,inclInsp,dvPrecio,inspCert,inspFueraRango};
+          trm,eur,techo,inclInsp,dvPrecio,inspCert,inspFueraRango,
+          diasInspeccion,costoOperacionInsp,dvMargenP,intMargenP};
 }
 
 function render(){
@@ -511,6 +530,14 @@ function render(){
   /* ---- internal ---- */
   const mc = r.margenP>=P.MARGEN_ALERTA?'g':(r.margenP>=P.MARGEN_MIN?'w':'r');
   const uc = '';
+  const dvmc = r.dvMargenP>=P.MARGEN_ALERTA?'g':(r.dvMargenP>=P.MARGEN_MIN?'w':'r');
+  const intmc = r.intMargenP===null?'':(r.intMargenP>=P.MARGEN_ALERTA?'g':(r.intMargenP>=P.MARGEN_MIN?'w':'r'));
+  const filasInsp = r.techo>0 ? [
+    ['Días de campo inspección', r.diasInspeccion.toFixed(1)+' días',''],
+    ['Costo operación inspección', cop(r.costoOperacionInsp),''],
+    ['Margen % Diagnóstico Visual', pct(r.dvMargenP),dvmc],
+    ...(r.intMargenP!==null ? [['Margen % Informe Internacional', pct(r.intMargenP),intmc]] : []),
+  ] : [];
   $('intGrid').innerHTML = [
     ['Días de operación', r.dias.toFixed(1)+' días',''],
     ['Costo operativo / día', cop(r.costoOpDia),''],
@@ -524,6 +551,7 @@ function render(){
     ['Tarifa USD/m² (ref.)', r.usdM2.toFixed(2),uc],
     ['Precio piso (margen 0)', cop(r.precioPiso),''],
     ['Precio mín. autorizado (25%)', cop(r.precioMin25),''],
+    ...filasInsp,
   ].map(x=>`<div class="int-item"><div class="il">${x[0]}</div><div class="iv ${x[2]}">${x[1]}</div></div>`).join('');
   $('intNote').textContent = 'Cotizado por m² al cliente; costo verificado por días ('+r.dias.toFixed(1)+' × '+cop(r.costoOpDia)+'). La gasolina de operación ya está incluida en consumibles — nunca se cobra aparte.';
 
