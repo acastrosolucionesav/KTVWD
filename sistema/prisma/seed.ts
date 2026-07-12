@@ -1,9 +1,10 @@
+import 'dotenv/config'; // tsx no carga .env solo — a diferencia del CLI de Prisma y de Next
 import { PrismaClient } from '../src/generated/prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 import { PARAMETROS_INICIALES } from '../src/lib/pricing';
 
-const adapter = new PrismaBetterSqlite3({ url: 'file:./dev.db' });
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

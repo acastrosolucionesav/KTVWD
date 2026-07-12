@@ -144,14 +144,43 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
     puede disparar esto — necesita el backend de Fase 2 (Módulo 2).
 
 **Fase 2 — sistema con backend (KWD-SIS-PROMPT-001 v2): Módulo 1 EN PROGRESO, demo funcionando**
-- Nace `sistema/` (Next.js 16 + TypeScript + Prisma 7 + SQLite en dev) — un sistema NUEVO,
+- Nace `sistema/` (Next.js 16 + TypeScript + Prisma 7 + Postgres) — un sistema NUEVO,
   no una extensión de `cotizador.html` (que queda solo como referencia de fórmulas/estética).
   Ver `sistema/README.md` para cómo correrlo y las decisiones de stack en detalle.
-- **Hosting decidido** (Gerencia pidió que se propusiera uno concreto): Vercel + Neon
-  Postgres para producción, proyecto Vercel separado del landing público, en subdominio
-  propio (ej. `app.ktvworkingdrone.com.co`) — nunca el mismo origen que lo público sin login.
-  Hoy en desarrollo corre con SQLite local; falta el swap real a Postgres/Neon al desplegar
-  (documentado en el README del sistema).
+- **Hosting: EN PROGRESO (2026-07-12).** Gerencia ya tenía Vercel (con el sitio público,
+  proyecto `ktvbrochure`) y un segundo proyecto reservado sin conectar: `ktv_propuestas`
+  → dominio **`propuestas.ktvworkingdrone.com.co`** (ya asignado, DNS ya apuntando). Base
+  de datos: **Neon Postgres** (proyecto `ktv-sistema-comercial`, plan Free), cuenta creada
+  por Gerencia con guía paso a paso. Falta: conectar `ktv_propuestas` al repo (Root
+  Directory = `sistema`), variables de entorno, y el primer deploy.
+- **Migración de SQLite a Postgres — HECHA (2026-07-12).** El motor corre 100% en Postgres
+  ahora (`datasource db { provider = "postgresql" }`), tanto en desarrollo como en
+  producción — ya no hay SQLite en el proyecto. Adaptador: `@prisma/adapter-pg` (Postgres
+  estándar por TCP), reemplaza a `@prisma/adapter-better-sqlite3`.
+  - ⚠️ **Restricción de red del entorno de este agente:** no puede conectar directo a Neon
+    (ni por TCP puerto 5432 ni por el endpoint HTTP de `@neondatabase/serverless` — ambos
+    bloqueados por la política de salida de red de este entorno, no es un problema de
+    Neon ni del código). Por eso `prisma migrate deploy` no se puede correr desde aquí
+    contra la base de producción.
+  - **Solución adoptada:** las migraciones se generan sin conexión (`prisma migrate diff
+    --from-empty --to-schema`, que solo lee el schema, no conecta a ninguna base) y el SQL
+    resultante se ejecuta manualmente en el **SQL Editor de Neon** (acceso desde el
+    navegador de Gerencia, sin la restricción). Se generó también el seed de producción
+    (3 usuarios + parámetros) como SQL plano con los hashes de contraseña ya calculados
+    (bcrypt no necesita red) — un solo archivo `00_inicializar_produccion.sql` para pegar
+    y correr una vez. Mismo procedimiento para cualquier cambio de schema futuro, hasta
+    que se confirme que Vercel sí puede correr `prisma migrate deploy` automáticamente en
+    su build (Vercel no tiene la restricción de red de este agente, así que debería
+    funcionar — pendiente de confirmar en el primer deploy real).
+  - **Para las pruebas de este agente:** se instaló PostgreSQL 16 local dentro del propio
+    entorno (base `ktv_dev`, sin salida a internet — cumple lo acordado de nunca tocar la
+    base real para pruebas). Todo el flujo (Familia 1, Familia 2, aceptación de propuesta,
+    parámetros) se reverificó de punta a punta contra Postgres real y pasó limpio (10/10).
+  - **Nota de depuración:** durante esta verificación apareció un falso positivo (un
+    `textContent('body')` capturaba el payload interno de React, no el texto visible) y un
+    bloqueo real de Next.js 16 al acceder por `127.0.0.1` en vez de `localhost` (política
+    `allowedDevOrigins`) — ambos eran del método de prueba, no del sistema; ya identificados
+    y evitados.
 - **Módulo 1 (Cotizador) — lo que YA funciona, probado de punta a punta con Playwright:**
   - Login con 3 roles (Comercial/Director Comercial/Gerencia), sesión con `jose`+cookie
     httpOnly (NextAuth v5 seguía en beta con soporte incierto en Next 16 — se optó por el
