@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useActionState } from 'react';
 import { login } from '@/app/actions/auth';
 
@@ -10,8 +11,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#F7FBFF] px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 border border-[#66C3F8]/30">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-extrabold tracking-tight text-[#171E27]">KTV</div>
-          <div className="text-xs uppercase tracking-widest text-[#66C3F8] font-bold mt-1">Sistema Comercial</div>
+          <Image src="/logo-ktv.png" alt="KTV Working Drone" width={220} height={49} className="mx-auto h-auto w-48" priority />
+          <div className="text-xs uppercase tracking-widest text-[#66C3F8] font-bold mt-2">Sistema Comercial</div>
         </div>
         <form action={action} className="space-y-4">
           <div>

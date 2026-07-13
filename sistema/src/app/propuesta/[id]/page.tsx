@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getCotizacionClienteDTO } from '@/lib/dto';
@@ -13,8 +14,8 @@ import AceptarButton from './AceptarButton';
 
 // Catálogos públicos existentes — el recorrido comercial completo:
 // prospección en frío (landing) → calentamiento (planes) → esta propuesta.
-const URL_CATALOGO_FRIO = 'https://colombia.ktvworkingdrone.com.co';
-const URL_CATALOGO_PLANES = 'https://colombia.ktvworkingdrone.com.co/planes.html';
+const URL_CATALOGO_FRIO = 'https://landing.ktvworkingdrone.com.co';
+const URL_CATALOGO_PLANES = 'https://landing.ktvworkingdrone.com.co/planes.html';
 
 function cop(n: number | null | undefined) {
   if (n === null || n === undefined) return '—';
@@ -67,6 +68,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
     <div className="min-h-screen bg-[#eef2f6] py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-[#66C3F8]/20">
         <div className="bg-[#171E27] text-white px-8 py-8">
+          <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={160} height={35} className="h-7 w-auto mb-4" />
           <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C3F8]/40 rounded px-2 py-1">{dto.idTrazabilidad}</span>
           <h1 className="text-2xl font-extrabold mt-4">Propuesta Económica</h1>
           {p && <p className="text-[#66C3F8] text-sm font-semibold mt-1">{NOMBRES_SERVICIO[p.servicio]}</p>}
@@ -167,7 +169,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               vigente de Aerocivil en su categoría.
             </p>
             <a href={URL_CATALOGO_FRIO} target="_blank" rel="noopener" className="text-[#66C3F8] font-semibold hover:underline">
-              colombia.ktvworkingdrone.com.co
+              landing.ktvworkingdrone.com.co
             </a>
           </div>
         </div>
