@@ -105,6 +105,33 @@ export default function CotizadorForm() {
         <textarea name="observaciones" rows={3} className={input} placeholder="Aclaraciones de alcance, condiciones especiales…" />
       </div>
 
+      <div className="p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20 space-y-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-[#171E27]">Condiciones, permisos y plazos (se muestran al cliente)</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={label}>Anticipo (%)</label>
+            <input name="anticipoPct" type="number" min="0" max="100" className={input} defaultValue={60} />
+          </div>
+          <div>
+            <label className={label}>Saldo (%)</label>
+            <input name="saldoPct" type="number" min="0" max="100" className={input} defaultValue={40} />
+          </div>
+        </div>
+        <div>
+          <label className={label}>Condición de pago (nota)</label>
+          <textarea name="condicionPagoNota" rows={2} className={input}
+            defaultValue="60% con la Orden de Compra; 40% antes de finalizar el servicio. Opción de pago diferido hasta en 12 cuotas mensuales sujeto a aprobación (no modifica el valor del contrato)." />
+        </div>
+        <div>
+          <label className={label}>Permiso Aeronáutica Civil</label>
+          <input name="permisoAerocivil" className={input} defaultValue="30 a 40 días hábiles. Tramitación y radicación a cargo de KTV." />
+        </div>
+        <div>
+          <label className={label}>Ejecución en sitio</label>
+          <input name="ejecucionSitio" className={input} defaultValue="15 a 20 días hábiles. Una vez aprobados permisos y recibido el anticipo." />
+        </div>
+      </div>
+
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
 
       <button type="submit" disabled={pending}

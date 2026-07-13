@@ -43,6 +43,14 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const mostrarInformeInternacional = formData.get('mostrarInformeInternacional') === 'on';
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
+  // Condiciones, permisos y plazos — texto libre que llena el comercial a
+  // mano (varían por operación, no se calculan). Se muestran al cliente.
+  const anticipoPct = formData.get('anticipoPct') ? Number(formData.get('anticipoPct')) : null;
+  const saldoPct = formData.get('saldoPct') ? Number(formData.get('saldoPct')) : null;
+  const condicionPagoNota = String(formData.get('condicionPagoNota') || '').trim() || null;
+  const permisoAerocivil = String(formData.get('permisoAerocivil') || '').trim() || null;
+  const ejecucionSitio = String(formData.get('ejecucionSitio') || '').trim() || null;
+
   const lavado = incluyeLavado
     ? calcularLavado(parametros, { m2, superficie, tipoEdificio, dificultad, movilizacion: 0, comisionPct: 0.05 })
     : null;
@@ -131,6 +139,11 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
           precioLavado,
           precioInformeBase,
           precioInformeAdicional,
+          anticipoPct,
+          saldoPct,
+          condicionPagoNota,
+          permisoAerocivil,
+          ejecucionSitio,
         },
       },
       auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },

@@ -24,6 +24,7 @@ export type CotizacionClienteDTO = {
   observaciones: string | null;
   aceptadaPorCliente: boolean;
   estado: string;
+  totalCliente: number; // único número contractual — sin IVA (Regla general de visualización)
   // Familia 1
   puntual?: {
     servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
@@ -34,6 +35,12 @@ export type CotizacionClienteDTO = {
     informeBaseCobrado: boolean;      // true si el DV se cobra (no hay lavado con qué regalarlo)
     // REGLA B — solo aparece si mostrarInformeInternacional=true en la cotización
     informeInternacional: { precioTotal: number } | null;
+    // Condiciones, permisos y plazos — texto libre del comercial, sin cálculo.
+    anticipoPct: number | null;
+    saldoPct: number | null;
+    condicionPagoNota: string | null;
+    permisoAerocivil: string | null;
+    ejecucionSitio: string | null;
   };
   // Familia 2 — los 3 paquetes se muestran siempre juntos (regla Gerencia 2026-07-13)
   care?: {
@@ -79,6 +86,7 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
     observaciones: c.observaciones,
     aceptadaPorCliente: c.aceptadaPorCliente,
     estado: c.estado,
+    totalCliente: c.totalCliente,
   };
 
   if (c.familia === 'PUNTUAL' && c.puntual) {
@@ -95,6 +103,11 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
       informeInternacional: p.mostrarInformeInternacional && p.precioInformeAdicional
         ? { precioTotal: p.precioInformeAdicional }
         : null,
+      anticipoPct: p.anticipoPct ?? null,
+      saldoPct: p.saldoPct ?? null,
+      condicionPagoNota: p.condicionPagoNota,
+      permisoAerocivil: p.permisoAerocivil,
+      ejecucionSitio: p.ejecucionSitio,
     };
   }
 

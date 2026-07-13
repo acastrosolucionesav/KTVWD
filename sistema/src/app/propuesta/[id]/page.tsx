@@ -28,6 +28,10 @@ const NOMBRES_SERVICIO: Record<string, string> = {
   SOLO_LAVADO: 'Lavado de fachada',
 };
 
+const DESC_LAVADO = 'Servicio Integral de Lavado KTV WD — intervención especializada en altura con drones. Incluye lavado externo de fachada, cristales y ventanales con agua a alta presión, y los productos aplicados durante el proceso.';
+const DESC_DV = 'Inspección de fachada y cubierta con dron (elaborado con apoyo de IA) — registro fotográfico y de video en alta resolución, identificación de hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento.';
+const DESC_INTERNACIONAL = 'Soporte técnico bajo estándar internacional KTV — informe certificado para due diligence, auditorías o interventoría técnica.';
+
 // Copy de checklist por paquete Care — mismo contenido aprobado del catálogo
 // público (landing/planes.html), adaptado a la propuesta con precio real.
 const CARACTERISTICAS_CARE: Record<string, string[]> = {
@@ -89,13 +93,22 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           </div>
 
           {p && (
+            <p className="text-sm text-gray-600">
+              Agradecemos su interés en nuestros servicios especializados de intervención de fachadas en
+              gran altura con drones de última tecnología. A continuación presentamos nuestra propuesta
+              económica, elaborada según los requerimientos de su inmueble, combinando ingeniería
+              aeronáutica con mano de obra técnica calificada.
+            </p>
+          )}
+
+          {p && (
             <>
               {p.incluyeLavado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">Servicio de lavado de fachada</div>
-                  <div className="px-4 py-3 flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Servicio Integral de Lavado KTV WD</span>
-                    <span className="font-bold text-[#171E27]">{cop(p.precioLavadoTotal)}</span>
+                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                    <span className="text-sm text-gray-600">{DESC_LAVADO}</span>
+                    <span className="font-bold text-[#171E27] shrink-0">{cop(p.precioLavadoTotal)}</span>
                   </div>
                 </div>
               )}
@@ -107,21 +120,26 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               {p.informeBaseNombre && p.informeBaseCobrado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{p.informeBaseNombre}</div>
-                  <div className="px-4 py-3 flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Inspección de fachada y cubierta con dron (elaborado con apoyo de IA)</span>
-                    <span className="font-bold text-[#171E27]">{cop(p.informeBaseValor)}</span>
+                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                    <span className="text-sm text-gray-600">{DESC_DV}</span>
+                    <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeBaseValor)}</span>
                   </div>
                 </div>
               )}
               {p.informeInternacional && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">Informe Internacional KTV (adicional opcional)</div>
-                  <div className="px-4 py-3 flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Soporte técnico bajo estándar internacional KTV</span>
-                    <span className="font-bold text-[#171E27]">{cop(p.informeInternacional.precioTotal)}</span>
+                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                    <span className="text-sm text-gray-600">{DESC_INTERNACIONAL}</span>
+                    <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeInternacional.precioTotal)}</span>
                   </div>
                 </div>
               )}
+              <div className="flex flex-col gap-1 items-end text-sm pr-1 pt-2 border-t">
+                <div className="flex justify-between w-56"><span className="text-gray-500">Subtotal (sin IVA)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente)}</span></div>
+                <div className="flex justify-between w-56"><span className="text-gray-500">IVA (19%)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente * 0.19)}</span></div>
+                <div className="flex justify-between w-56"><span className="text-gray-600 font-bold">Total</span><span className="font-extrabold text-[#171E27]">{cop(dto.totalCliente * 1.19)}</span></div>
+              </div>
             </>
           )}
 
@@ -166,12 +184,89 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             </div>
           )}
 
-          <p className="text-xs text-gray-400">Valores antes de IVA (19%). {dto.vigenteHasta ? `Propuesta válida hasta ${new Date(dto.vigenteHasta).toLocaleDateString('es-CO')}.` : ''}</p>
+          {p && (p.anticipoPct != null || p.saldoPct != null || p.condicionPagoNota) && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Condiciones de pago</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {p.anticipoPct != null && (
+                  <div className="bg-[#F7FBFF] rounded-lg p-3">
+                    <p className="text-[11px] font-bold uppercase text-gray-500">Anticipo</p>
+                    <p className="text-xl font-extrabold text-[#171E27]">{p.anticipoPct}%</p>
+                  </div>
+                )}
+                {p.saldoPct != null && (
+                  <div className="bg-[#F7FBFF] rounded-lg p-3">
+                    <p className="text-[11px] font-bold uppercase text-gray-500">Saldo</p>
+                    <p className="text-xl font-extrabold text-[#171E27]">{p.saldoPct}%</p>
+                  </div>
+                )}
+              </div>
+              {p.condicionPagoNota && <p className="text-sm text-gray-600 mt-2">{p.condicionPagoNota}</p>}
+            </div>
+          )}
+
+          {p && (p.permisoAerocivil || p.ejecucionSitio) && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Permisos, tiempos y plazos</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {p.permisoAerocivil && (
+                  <div className="bg-[#F7FBFF] rounded-lg p-3">
+                    <p className="text-[11px] font-bold uppercase text-gray-500">Permiso Aeronáutica Civil</p>
+                    <p className="text-sm text-gray-700 mt-1">{p.permisoAerocivil}</p>
+                  </div>
+                )}
+                {p.ejecucionSitio && (
+                  <div className="bg-[#F7FBFF] rounded-lg p-3">
+                    <p className="text-[11px] font-bold uppercase text-gray-500">Ejecución en sitio</p>
+                    <p className="text-sm text-gray-700 mt-1">{p.ejecucionSitio}</p>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                La operación está sujeta a condiciones climáticas seguras (sin lluvias fuertes ni vientos
+                extremos). En caso de fuerza mayor, los días se reprograman sin penalización.
+              </p>
+            </div>
+          )}
+
+          {p?.incluyeLavado && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Requerimientos en sitio (a cargo del cliente)</h3>
+              <ul className="text-sm text-gray-600 space-y-1.5">
+                <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Punto de agua potable (llave con toma de ½, ¾ o 1 pulgada).</li>
+                <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Red eléctrica: toma tradicional 110V.</li>
+                <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Espacio de estacionamiento para vehículos operativos y acceso a puntos altos.</li>
+                <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Permisos internos de la copropiedad y ventanas cerradas antes del servicio.</li>
+              </ul>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3 text-xs text-red-700">
+                <b>Exclusión por estado de fachada y ventanales.</b> KTV emplea tecnología de alta
+                precisión, sin embargo no se hace responsable por filtraciones, humedades o daños
+                interiores derivados de ventanas mal cerradas, empaques deteriorados, siliconas
+                vencidas, fisuras preexistentes o sellos rotos. El cliente verifica el estado de estos
+                elementos antes de la operación.
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400">Valores antes de IVA (19%) salvo el Total indicado arriba. {dto.vigenteHasta ? `Propuesta válida hasta ${new Date(dto.vigenteHasta).toLocaleDateString('es-CO')}.` : ''}</p>
 
           <div className="border-t pt-6">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#66C2F8] mb-2">Aceptación de la propuesta</h3>
             <AceptarButton linkToken={dto.linkToken} aceptada={dto.aceptadaPorCliente} />
           </div>
+
+          {p && (
+            <div className="grid grid-cols-2 gap-6 pt-8">
+              <div className="border-t border-gray-300 pt-2">
+                <p className="text-sm font-bold text-[#171E27]">KTV Working Drone Colombia</p>
+                <p className="text-xs text-gray-400">Firma autorizada</p>
+              </div>
+              <div className="border-t border-gray-300 pt-2">
+                <p className="text-sm font-bold text-[#171E27]">{dto.clienteNombre}</p>
+                <p className="text-xs text-gray-400">{dto.clienteContacto || 'Firma autorizada'}</p>
+              </div>
+            </div>
+          )}
 
           {/* Calentamiento: a los clientes de servicio puntual se les presenta el
               programa recurrente (catálogo de planes ya publicado) — sin precios aquí. */}
@@ -194,6 +289,9 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             <p>
               KTV Working Drone Colombia S.A.S. · Único operador con Certificado de Explotador UAS
               vigente de Aerocivil en su categoría.
+            </p>
+            <p className="mt-1">
+              KTV Working Drone Colombia S.A.S. — NIT 901.830.814-8 · mercadeo@ktvworkingdrone.com.co · +57 314 235 8441
             </p>
             <a href={URL_CATALOGO_FRIO} target="_blank" rel="noopener" className="text-[#66C2F8] font-semibold hover:underline">
               landing.ktvworkingdrone.com.co
