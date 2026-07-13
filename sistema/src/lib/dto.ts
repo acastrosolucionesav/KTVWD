@@ -25,6 +25,7 @@ export type CotizacionClienteDTO = {
   aceptadaPorCliente: boolean;
   estado: string;
   totalCliente: number; // único número contractual — sin IVA (Regla general de visualización)
+  creadoPorNombre: string; // comercial que crea la cotización — firma la propuesta
   // Familia 1
   puntual?: {
     servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
@@ -70,7 +71,7 @@ const NOMBRES_INFORME = {
 export async function getCotizacionClienteDTO(linkToken: string): Promise<CotizacionClienteDTO | null> {
   const c = await prisma.cotizacion.findUnique({
     where: { linkToken },
-    include: { cliente: true, puntual: true, care: true },
+    include: { cliente: true, puntual: true, care: true, creadoPor: true },
   });
   if (!c) return null;
 
@@ -87,6 +88,7 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
     aceptadaPorCliente: c.aceptadaPorCliente,
     estado: c.estado,
     totalCliente: c.totalCliente,
+    creadoPorNombre: c.creadoPor.nombre,
   };
 
   if (c.familia === 'PUNTUAL' && c.puntual) {

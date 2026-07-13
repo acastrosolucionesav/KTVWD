@@ -88,16 +88,24 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
         <div className="p-8 space-y-6">
           <div>
-            <p className="text-sm text-gray-500">Señores: <b className="text-[#171E27]">{dto.clienteNombre}</b>{dto.clienteContacto ? ` · At.: ${dto.clienteContacto}` : ''}</p>
-            <p className="text-xs text-gray-400">{new Date(dto.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p className="text-xs text-gray-400">Bogotá, {new Date(dto.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p className="text-sm text-gray-600 mt-2">Señores</p>
+            <p className="text-sm font-bold text-[#171E27]">{dto.clienteNombre}</p>
+            {dto.clienteContacto && <p className="text-sm text-gray-500">Atn: {dto.clienteContacto}</p>}
+            {p && (
+              <p className="text-sm text-gray-600 mt-3">
+                <span className="font-bold text-[#66C2F8]">Ref:</span> Propuesta económica — intervención de fachadas con tecnología de drones.
+              </p>
+            )}
           </div>
 
           {p && (
             <p className="text-sm text-gray-600">
-              Agradecemos su interés en nuestros servicios especializados de intervención de fachadas en
-              gran altura con drones de última tecnología. A continuación presentamos nuestra propuesta
-              económica, elaborada según los requerimientos de su inmueble, combinando ingeniería
-              aeronáutica con mano de obra técnica calificada.
+              Agradecemos su invitación a presentar nuestra propuesta económica por servicios
+              especializados en gran altura con la utilización de drones de última tecnología. El
+              presente documento se ha confeccionado atendiendo de forma exclusiva los requerimientos y
+              necesidades expresadas por ustedes para realizar la limpieza y preservación de su
+              infraestructura, combinando alta ingeniería aeronáutica con mano de obra técnica calificada.
             </p>
           )}
 
@@ -139,6 +147,13 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 <div className="flex justify-between w-56"><span className="text-gray-500">Subtotal (sin IVA)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente)}</span></div>
                 <div className="flex justify-between w-56"><span className="text-gray-500">IVA (19%)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente * 0.19)}</span></div>
                 <div className="flex justify-between w-56"><span className="text-gray-600 font-bold">Total</span><span className="font-extrabold text-[#171E27]">{cop(dto.totalCliente * 1.19)}</span></div>
+              </div>
+
+              <div className="bg-[#F7FBFF] rounded-lg p-4 text-xs text-gray-600 space-y-1">
+                <p className="font-bold uppercase tracking-wide text-gray-500 mb-1">Notas</p>
+                <p>· Nuestra propuesta incluye los productos a aplicar durante el proceso de lavado.</p>
+                <p>· El valor de la oferta es antes del IVA (19%).</p>
+                <p>· El inicio de la operación estará sujeto a la agenda disponible de la Aeronáutica Civil.</p>
               </div>
             </>
           )}
@@ -237,7 +252,17 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Red eléctrica: toma tradicional 110V.</li>
                 <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Espacio de estacionamiento para vehículos operativos y acceso a puntos altos.</li>
                 <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Permisos internos de la copropiedad y ventanas cerradas antes del servicio.</li>
+                <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">✓</span> Acceso a baños para el personal técnico.</li>
               </ul>
+
+              <div className="mt-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Equipo tecnológico propuesto en operación</p>
+                <ul className="text-sm text-gray-600 space-y-1.5">
+                  <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">•</span> 1 unidad de lavado especializado con sistema de tratamiento de agua.</li>
+                  <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">•</span> 1 dron profesional de alta resistencia con equipos de repuesto y tripulación aeronáutica certificada.</li>
+                  <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">•</span> 1 equipo técnico de acompañamiento en tierra con sistema de pértiga operativa.</li>
+                </ul>
+              </div>
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3 text-xs text-red-700">
                 <b>Exclusión por estado de fachada y ventanales.</b> KTV emplea tecnología de alta
                 precisión, sin embargo no se hace responsable por filtraciones, humedades o daños
@@ -258,8 +283,8 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           {p && (
             <div className="grid grid-cols-2 gap-6 pt-8">
               <div className="border-t border-gray-300 pt-2">
-                <p className="text-sm font-bold text-[#171E27]">KTV Working Drone Colombia</p>
-                <p className="text-xs text-gray-400">Firma autorizada</p>
+                <p className="text-sm font-bold text-[#171E27]">{dto.creadoPorNombre}</p>
+                <p className="text-xs text-gray-400">KTV Working Drone Colombia</p>
               </div>
               <div className="border-t border-gray-300 pt-2">
                 <p className="text-sm font-bold text-[#171E27]">{dto.clienteNombre}</p>
