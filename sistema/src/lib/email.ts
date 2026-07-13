@@ -1,18 +1,18 @@
 import 'server-only';
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Remitente por defecto de Resend antes de verificar un dominio propio —
-// suficiente para probar; para producción real conviene un dominio KTV.
-const FROM = process.env.RESEND_FROM || 'KTV Sistema Comercial <onboarding@resend.dev>';
+// Remitente: debe ser un correo/dominio verificado en SendGrid (Sender
+// Authentication) o el envío será rechazado.
+const FROM = process.env.SENDGRID_FROM || 'no-responder@ktvworkingdrone.com.co';
 
 export async function enviarCorreoRecuperacion(destinatario: string, urlRestablecer: string) {
-  if (!resend) {
-    console.error('RESEND_API_KEY no configurada — no se pudo enviar el correo de recuperación.');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.error('SENDGRID_API_KEY no configurada — no se pudo enviar el correo de recuperación.');
     return;
   }
-  await resend.emails.send({
+  await sgMail.send({
     from: FROM,
     to: destinatario,
     subject: 'Recuperar contraseña — Sistema Comercial KTV',
