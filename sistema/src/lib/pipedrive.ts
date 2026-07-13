@@ -50,6 +50,21 @@ async function obtenerEtapaPropuestaEnviada(): Promise<number | null> {
   return etapa.id;
 }
 
+// Registra en el trato que el comercial envió un material comercial
+// (brochure de prospección en frío o catálogo de planes de calentamiento).
+// Deja una nota en el historial del trato — no mueve etapa ni toca el valor.
+export async function registrarEnvioMaterial(dealId: number, args: { titulo: string; url: string }) {
+  if (!habilitado()) return { ok: false as const, error: 'Pipedrive no está configurado.' };
+  const nota = `${args.titulo} enviado al cliente por el Sistema Comercial KTV.\nEnlace: ${args.url}`;
+  const res = await fetch(`${BASE}/notes?api_token=${TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: nota, deal_id: dealId }),
+  }).catch(() => null);
+  if (!res || !res.ok) return { ok: false as const, error: 'No se pudo registrar en Pipedrive.' };
+  return { ok: true as const };
+}
+
 // Al marcar una propuesta (Familia 1 o Care) como enviada: nota con el
 // enlace + valor, actualizar el valor del trato, y moverlo a la etapa
 // "Propuesta Enviada". No lanza si Pipedrive no está configurado o falla —
