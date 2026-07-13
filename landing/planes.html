@@ -18,14 +18,12 @@ body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);back
 .nav-btn{background:var(--blue);color:#fff;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;text-decoration:none;padding:11px 24px;border-radius:50px;transition:background .2s,transform .15s;white-space:nowrap;}
 .nav-btn:hover{background:var(--blue-dk);transform:translateY(-1px);}
 
-/* hero premium (diferenciado del landing de prospección: oscuro, sin video) */
-.hero{position:relative;min-height:76vh;display:flex;align-items:center;padding:120px 40px 84px;background:#171E27;overflow:hidden;}
-.hero::before{content:'';position:absolute;width:680px;height:680px;top:-240px;right:-160px;border-radius:50%;background:radial-gradient(circle,rgba(102,194,248,.28),transparent 68%);}
-.hero::after{content:'';position:absolute;width:520px;height:520px;bottom:-240px;left:-140px;border-radius:50%;background:radial-gradient(circle,rgba(102,194,248,.14),transparent 70%);}
-.hero-grid{position:relative;z-index:2;max-width:1180px;margin:0 auto;width:100%;display:grid;grid-template-columns:1.05fr .95fr;gap:50px;align-items:center;}
-.hero-in{max-width:620px;}
-.hero-media{border-radius:22px;overflow:hidden;box-shadow:0 28px 64px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);aspect-ratio:9/12.5;background:#000;}
-.hero-media video{width:100%;height:100%;object-fit:cover;display:block;}
+/* hero con video de fondo + superposición (mismo estilo que el brochure de prospección) */
+.hero{position:relative;min-height:92vh;display:flex;align-items:flex-end;overflow:hidden;padding:0 40px 72px;}
+.hero-video{position:absolute;inset:0;z-index:0;}
+.hero-video video{width:100%;height:100%;object-fit:cover;display:block;}
+.hero-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%);}
+.hero-content{position:relative;z-index:2;max-width:760px;}
 .hero .eyebrow{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:rgba(102,194,248,.18);border:1px solid rgba(102,194,248,.45);padding:8px 18px;border-radius:50px;margin-bottom:24px;}
 .hero h1{font-size:clamp(38px,6vw,66px);font-weight:800;line-height:1.05;color:#fff;letter-spacing:-.02em;margin-bottom:22px;}
 .hero h1 em{font-style:normal;color:var(--blue);}
@@ -149,9 +147,7 @@ footer{background:var(--ink);padding:56px 40px 32px;}
 
 @media(max-width:900px){
   .nav{padding:0 20px;}
-  .hero{padding:100px 22px 64px;}
-  .hero-grid{grid-template-columns:1fr;gap:30px;}
-  .hero-media{aspect-ratio:9/11;max-width:300px;margin:0 auto;order:2;}
+  .hero{padding:0 22px 56px;min-height:88vh;}
   .sec{padding:56px 22px;}
   .plus-in,.resp-in{grid-template-columns:1fr;gap:36px;}
   .care-grid,.diff-grid{grid-template-columns:1fr;}
@@ -171,23 +167,22 @@ footer{background:var(--ink);padding:56px 40px 32px;}
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-grid">
-    <div class="hero-in">
-      <span class="eyebrow">Programas exclusivos de mantenimiento</span>
-      <h1>El mantenimiento de su fachada,<br><em>planificado y sin sorpresas.</em></h1>
-      <p>Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin riesgo de trabajo en alturas.</p>
-      <div class="hero-btns">
-        <a href="#contacto" class="btn-w">Agendar inspección sin costo</a>
-        <a href="#planes" class="btn-o">Ver los programas ↓</a>
-      </div>
-      <div class="hero-stats">
-        <div class="hs"><div class="n">68</div><div class="l">países en la red KTV</div></div>
-        <div class="hs"><div class="n">3–5×</div><div class="l">más rápido que andamios</div></div>
-        <div class="hs"><div class="n">0</div><div class="l">trabajo en alturas</div></div>
-      </div>
+  <div class="hero-video">
+    <video autoplay muted loop playsinline preload="auto"><source src="videos/hero.mp4" type="video/mp4"></video>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <span class="eyebrow">Programas exclusivos de mantenimiento</span>
+    <h1>El mantenimiento de su fachada,<br><em>planificado y sin sorpresas.</em></h1>
+    <p>Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin riesgo de trabajo en alturas.</p>
+    <div class="hero-btns">
+      <a href="#contacto" class="btn-w">Agendar inspección sin costo</a>
+      <a href="#planes" class="btn-o">Ver los programas ↓</a>
     </div>
-    <div class="hero-media">
-      <video autoplay muted loop playsinline preload="auto"><source src="videos/hero-side.mp4" type="video/mp4"></video>
+    <div class="hero-stats">
+      <div class="hs"><div class="n">68</div><div class="l">países en la red KTV</div></div>
+      <div class="hs"><div class="n">3–5×</div><div class="l">más rápido que andamios</div></div>
+      <div class="hs"><div class="n">0</div><div class="l">trabajo en alturas</div></div>
     </div>
   </div>
 </section>
