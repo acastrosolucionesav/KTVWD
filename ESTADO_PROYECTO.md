@@ -30,22 +30,38 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,
   estudio de mercado y el cotizador = confidencial de Gerencia).
-- **Público (Vercel):** el proyecto `ktvbrochure` en Vercel está **conectado a este repo**
-  (rama `main`) y publica en `landing.ktvworkingdrone.com.co`. Cada push despliega solo.
-- **`.vercelignore`** hace que Vercel publique SOLO lo público: `index.html`, `planes.html`,
-  `videos/`, `img/`. **El cotizador y todo lo demás NO se publican** (quedan internos).
-- **El cotizador (`cotizador.html`) es una herramienta INTERNA** — se abre local en el
-  computador de Gerencia, nunca se sube a un link público.
+- **Aislamiento por carpeta (rediseñado 2026-07-12 — hallazgo de seguridad real):**
+  cada proyecto de Vercel conectado a este repo tiene su PROPIA carpeta como "Root
+  Directory", y eso es lo único que decide qué ve cada uno — ya NO se depende de
+  `.vercelignore` (se eliminó por completo, junto con la protección que daba).
+  - **`landing/`** → proyecto Vercel `ktvbrochure`, Root Directory = `landing`,
+    publica en `colombia.ktvworkingdrone.com.co` (y `landing.ktvworkingdrone.com.co`).
+    Contiene SOLO `index.html`, `planes.html`, `videos/`, `img/`.
+  - **`sistema/`** → proyecto Vercel `ktv_propuestas`, Root Directory = `sistema`,
+    publica en `propuestas.ktvworkingdrone.com.co`.
+  - **Por qué el cambio:** con `.vercelignore` compartido entre los dos proyectos, la
+    única forma de que `ktv_propuestas` pudiera construir (`sistema/package.json` no
+    quedara excluido) era aflojar el archivo — pero `ktvbrochure` tiene "Output
+    Directory" vacío (sirve TODO lo que reciba, sin restricción propia), así que
+    aflojarlo habría expuesto públicamente el código del cotizador (fórmulas de
+    precio, fees, motor de negocio). Con Root Directory por carpeta, cada proyecto
+    solo recibe SU carpeta — `ktvbrochure` nunca ve `sistema/` en absoluto, sin
+    importar ningún archivo de ignorados.
+  - Cada push a `main` despliega ambos proyectos automáticamente (cada uno solo
+    reconstruye si cambió algo dentro de su propia carpeta).
+- **El cotizador (`cotizador.html`, en la raíz del repo) sigue siendo una herramienta
+  de REFERENCIA interna** — no se publica en ningún proyecto (no vive dentro de
+  `landing/` ni de `sistema/`), se abre local en el computador de Gerencia.
 
 ## 3. Archivos
 | Archivo | Qué es | Estado |
 |---|---|---|
-| `index.html` | Landing de prospección fría (pública) | ✅ liviano (videos externos) |
-| `planes.html` | Brochure de planes para cuentas clave (público, SIN precios) | ✅ terminado |
-| `cotizador.html` | Cotizador interno: motor de precios + genera propuestas | 🔨 en desarrollo |
-| `videos/` | Videos compartidos (hero.mp4, accion-1, accion-2, hero-side.mp4) | ✅ |
-| `img/` | Logos (logo-nav.png negro, logo-footer.png blanco = ktvwd23) | ✅ |
-| `ktvwd23.png` / `_white.png` | Logos oficiales master | ✅ |
+| `landing/index.html` | Landing de prospección fría (pública) | ✅ liviano (videos externos) |
+| `landing/planes.html` | Brochure de planes para cuentas clave (público, SIN precios) | ✅ terminado |
+| `cotizador.html` | Cotizador interno: motor de precios + genera propuestas (referencia, no se publica) | 🔨 en desarrollo |
+| `landing/videos/` | Videos compartidos (hero.mp4, accion-1, accion-2, hero-side.mp4) | ✅ |
+| `landing/img/` | Logos (logo-nav.png negro, logo-footer.png blanco = ktvwd23) | ✅ |
+| `ktvwd23.png` / `_white.png` | Logos oficiales master (raíz del repo, no publicados) | ✅ |
 | `files (3).zip` + `files (3)/` | Paquete comercial (docx/xlsx) confidencial | referencia |
 | `Propuesta Lavado...Plaza Claro.pdf` | Cotización actual de referencia (formato a replicar en web) | referencia |
 

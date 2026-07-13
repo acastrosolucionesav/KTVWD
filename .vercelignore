@@ -1,9 +1,0 @@
-# Vercel debe publicar SOLO los archivos públicos.
-# Se ignora todo por defecto y se permiten explícitamente los públicos.
-*
-!index.html
-!planes.html
-!videos
-!videos/**
-!img
-!img/**
