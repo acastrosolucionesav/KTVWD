@@ -81,10 +81,11 @@ Escalera de 4 modelos — el producto es el catálogo de la Fase 2; esto define 
 
 ## 7. Canales digitales y sistema comercial
 
-- **Brochure de prospección en frío (landing pública):** colombia.ktvworkingdrone.com.co — SIN precios, para difusión amplia. No incluye robot J1 ni fumigación (esta última no desarrollada). Cifra de velocidad defendible: "3 a 5 veces más rápido" (NO "10x"). Correcciones pendientes en KWD-COM-WEB-001.
+- **Brochure de prospección en frío (landing pública):** **landing.ktvworkingdrone.com.co** (el subdominio real y verificado — "colombia.ktvworkingdrone.com.co" NO existe en DNS, no usar) — SIN precios, para difusión amplia. No incluye robot J1 ni fumigación (esta última no desarrollada). Cifra de velocidad defendible: "3 a 5 veces más rápido" (NO "10x"). Correcciones pendientes en KWD-COM-WEB-001.
 - **Brochure de paquetes (KWD-COM-BRO-001):** CON precios, solo para cuentas clave del estudio de mercado; se envía controladamente.
 - **Sistema comercial (cotizador web + presentador + Pipedrive + agente de alertas):** especificado en KWD-SIS-PROMPT-001 para Claude Code. Se desarrolla por etapas; Gerencia aprueba toda cotización antes de enviar. NO automatizar procesos operativos hasta pasar la inspección de Aerocivil.
 - **Pipedrive:** el registro de llamadas y las alertas básicas ya existen nativas; activar desde Marketplace. El agente a medida se construye vía API.
+- **⚠️ Regla de seguridad Vercel (incidente real 2026-07-12, ver ESTADO_PROYECTO.md §2):** en cualquier proyecto de Vercel conectado a este repo, "Root Directory" por sí solo NO aísla contenido — hay que fijar TAMBIÉN "Output Directory" explícitamente (override activado). Sin esto, un proyecto "Other"/sin build puede servir el repositorio COMPLETO igual, exponiendo `sistema/` y `cotizador.html` (confidencial) al público. Verificar siempre con la URL `.vercel.app` de la build ANTES de asignar el dominio real.
 
 ## 8. Confidencialidad
 

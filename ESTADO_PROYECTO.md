@@ -30,23 +30,37 @@ a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos)
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,
   estudio de mercado y el cotizador = confidencial de Gerencia).
-- **Aislamiento por carpeta (rediseñado 2026-07-12 — hallazgo de seguridad real):**
-  cada proyecto de Vercel conectado a este repo tiene su PROPIA carpeta como "Root
-  Directory", y eso es lo único que decide qué ve cada uno — ya NO se depende de
-  `.vercelignore` (se eliminó por completo, junto con la protección que daba).
+- **Aislamiento por carpeta + Output Directory explícito (2026-07-12 — INCIDENTE DE
+  SEGURIDAD REAL, cerrado el mismo día):** cada proyecto de Vercel conectado a este
+  repo tiene su PROPIA carpeta como "Root Directory" — pero **eso solo no basta**.
+  Ya NO se depende de `.vercelignore` (se eliminó por completo).
   - **`landing/`** → proyecto Vercel `ktvbrochure`, Root Directory = `landing`,
-    publica en `colombia.ktvworkingdrone.com.co` (y `landing.ktvworkingdrone.com.co`).
-    Contiene SOLO `index.html`, `planes.html`, `videos/`, `img/`.
+    Output Directory = `.` (explícito, ver abajo por qué), publica en
+    `landing.ktvworkingdrone.com.co`. Contiene SOLO `index.html`, `planes.html`,
+    `videos/`, `img/`.
   - **`sistema/`** → proyecto Vercel `ktv_propuestas`, Root Directory = `sistema`,
     publica en `propuestas.ktvworkingdrone.com.co`.
-  - **Por qué el cambio:** con `.vercelignore` compartido entre los dos proyectos, la
-    única forma de que `ktv_propuestas` pudiera construir (`sistema/package.json` no
-    quedara excluido) era aflojar el archivo — pero `ktvbrochure` tiene "Output
-    Directory" vacío (sirve TODO lo que reciba, sin restricción propia), así que
-    aflojarlo habría expuesto públicamente el código del cotizador (fórmulas de
-    precio, fees, motor de negocio). Con Root Directory por carpeta, cada proyecto
-    solo recibe SU carpeta — `ktvbrochure` nunca ve `sistema/` en absoluto, sin
-    importar ningún archivo de ignorados.
+  - **⚠️ EL INCIDENTE:** al quitar `.vercelignore` y confiar solo en "Root
+    Directory", `ktvbrochure` (framework "Other", sin Build Command, Output
+    Directory vacío) siguió sirviendo **el repositorio COMPLETO** — se confirmó en
+    vivo que `landing.ktvworkingdrone.com.co/cotizador.html` abría el cotizador
+    interno completo (motor de precios, fees, márgenes) al público, y `sistema/`
+    también habría sido alcanzable. Root Directory solo cambia el directorio de
+    trabajo para instalar/construir; **NO restringe qué se sirve** si Output
+    Directory queda vacío — para un proyecto "Other" sin build, Vercel por defecto
+    sirve el checkout completo, no la carpeta de Root Directory.
+  - **Contención inmediata:** se quitaron los dos dominios de `ktvbrochure`
+    (`landing.ktvworkingdrone.com.co` y `ktvbrochure.vercel.app`) hasta corregir.
+  - **Corrección real:** Output Directory de `ktvbrochure` puesto EXPLÍCITAMENTE en
+    `.` (override activado) — con Root Directory=`landing` + Output Directory=`.`
+    juntos, Vercel sí sirve SOLO esa carpeta. Verificado en vivo tras redeploy:
+    `/cotizador.html` → 404, `/` y `/planes.html` → cargan bien. Dominios
+    reactivados y confirmados correctos.
+  - **Regla para cualquier proyecto nuevo de Vercel conectado a este repo:**
+    Root Directory Y Output Directory deben configurarse juntos, explícitamente,
+    ANTES de asignarle un dominio — nunca asumir que Root Directory solo alcanza
+    para aislar contenido confidencial. Verificar SIEMPRE con la URL `.vercel.app`
+    de la build (no el dominio real) antes de reactivar cualquier dominio público.
   - Cada push a `main` despliega ambos proyectos automáticamente (cada uno solo
     reconstruye si cambió algo dentro de su propia carpeta).
 - **El cotizador (`cotizador.html`, en la raíz del repo) sigue siendo una herramienta
