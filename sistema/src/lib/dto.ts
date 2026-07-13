@@ -35,15 +35,21 @@ export type CotizacionClienteDTO = {
     // REGLA B — solo aparece si mostrarInformeInternacional=true en la cotización
     informeInternacional: { precioTotal: number } | null;
   };
-  // Familia 2
+  // Familia 2 — los 3 paquetes se muestran siempre juntos (regla Gerencia 2026-07-13)
   care?: {
-    plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+    planRecomendado: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
     contratoAnios: number;
     formaPago: 'CONTADO' | 'DIFERIDO_12';
-    valorAnual: number;
-    valorMensual: number;
     informeIncluidoValor: number;
     informeInternacional: { precioTotal: number } | null;
+    paquetes: {
+      plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+      nombre: string;
+      nLavadas: number;
+      valorAnual: number;
+      valorMensual: number;
+      recomendado: boolean;
+    }[];
   };
 };
 
@@ -99,13 +105,16 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
     const snapshot = JSON.parse(c.snapshotParametros) as Parametros;
     const insp = calcularInspeccion(snapshot, care.rangoTecho ?? 0);
     base.care = {
-      plan: care.plan,
+      planRecomendado: care.planRecomendado,
       contratoAnios: care.contratoAnios,
       formaPago: care.formaPago,
-      valorAnual: care.valorAnual,
-      valorMensual: care.valorMensual,
       informeIncluidoValor: insp.dvPrecio,
       informeInternacional: null,
+      paquetes: [
+        { plan: 'INSPECT', nombre: 'KTV Care Inspect', nLavadas: 0, valorAnual: care.valorAnualInspect, valorMensual: care.valorMensualInspect, recomendado: care.planRecomendado === 'INSPECT' },
+        { plan: 'ESSENTIAL', nombre: 'KTV Care Essential', nLavadas: 1, valorAnual: care.valorAnualEssential, valorMensual: care.valorMensualEssential, recomendado: care.planRecomendado === 'ESSENTIAL' },
+        { plan: 'COMPLETE', nombre: 'KTV Care Complete', nLavadas: 2, valorAnual: care.valorAnualComplete, valorMensual: care.valorMensualComplete, recomendado: care.planRecomendado === 'COMPLETE' },
+      ],
     };
   }
 

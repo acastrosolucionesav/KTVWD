@@ -7,7 +7,7 @@ const ESTADO_COLOR: Record<string, string> = {
   PENDIENTE_APROBACION: 'bg-amber-100 text-amber-800',
   APROBADA: 'bg-emerald-100 text-emerald-800',
   RECHAZADA: 'bg-red-100 text-red-800',
-  ENVIADA: 'bg-[#66C3F8]/20 text-[#171E27]',
+  ENVIADA: 'bg-[#66C2F8]/20 text-[#171E27]',
 };
 
 const NOMBRES_SERVICIO: Record<string, string> = {
@@ -35,11 +35,11 @@ export default async function CotizacionesPage() {
       <div className="space-y-3">
         {cotizaciones.map((c) => (
           <Link key={c.id} href={`/cotizaciones/${c.id}`}
-            className="block bg-white rounded-xl border border-gray-200 hover:border-[#66C3F8] p-4 flex items-center justify-between">
+            className="block bg-white rounded-xl border border-gray-200 hover:border-[#66C2F8] p-4 flex items-center justify-between">
             <div>
               <div className="font-bold text-[#171E27]">{c.cliente.nombre}</div>
               <div className="text-xs text-gray-500">
-                {c.idTrazabilidad} · {c.familia === 'PUNTUAL' ? NOMBRES_SERVICIO[c.puntual?.servicio ?? ''] : NOMBRES_PLAN[c.care?.plan ?? '']}
+                {c.idTrazabilidad} · {c.familia === 'PUNTUAL' ? NOMBRES_SERVICIO[c.puntual?.servicio ?? ''] : `KTV Care (recomendado: ${NOMBRES_PLAN[c.care?.planRecomendado ?? '']})`}
               </div>
             </div>
             <div className="flex items-center gap-3">

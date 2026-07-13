@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavado, calcularInspeccion, calcularCare, type NivelRecargo, type Superficie } from '@/lib/pricing';
+import { calcularLavado, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
@@ -212,24 +212,26 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const session = await verifySession();
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
-  const plan = String(formData.get('plan')) as 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+  const planRecomendado = String(formData.get('plan')) as 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
   if (!clienteNombre) return { error: 'El nombre del cliente es obligatorio.' };
 
+  // Los 3 paquetes se cotizan siempre juntos, así que el área de fachada es
+  // obligatoria aunque el plan destacado sea Inspect (Essential/Complete la necesitan).
   const m2 = Number(formData.get('m2') || 0);
-  if (plan !== 'INSPECT' && m2 <= 0) return { error: 'Ingrese el área de fachada (m²) para las lavadas del plan.' };
+  if (m2 <= 0) return { error: 'Ingrese el área de fachada (m²) — se usa para calcular Essential y Complete.' };
 
   const techo = Number(formData.get('techo') || 0);
   const contratoAnios = Number(formData.get('contratoAnios') || 1);
   const formaPago = String(formData.get('formaPago') || 'CONTADO') as 'CONTADO' | 'DIFERIDO_12';
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
-  const care = calcularCare(parametros, { plan, m2, techo });
-  const { valorAnual, valorMensual } = care;
-  // Mismo control que Familia 1: bajo el margen mínimo, la cotización nace bloqueada
-  // hasta aprobación de Gerencia. El desglose se recalcula desde el snapshot congelado.
-  const requiereAprobacion = care.margenP < parametros.MARGEN_MINIMO;
+  const todos = calcularCareTodos(parametros, { m2, techo });
+  // Mismo control que Familia 1: si CUALQUIERA de los 3 paquetes queda bajo el
+  // margen mínimo, la cotización nace bloqueada hasta aprobación de Gerencia
+  // (el cliente puede elegir cualquiera de los 3, no solo el recomendado).
+  const requiereAprobacion = Object.values(todos).some((t) => t.margenP < parametros.MARGEN_MINIMO);
 
   const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto } });
   const vigenteHasta = new Date();
@@ -245,10 +247,15 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       requiereAprobacion,
       vigenteHasta,
       snapshotParametros: snapshotJson,
-      totalCliente: valorAnual,
+      totalCliente: todos[planRecomendado].valorAnual,
       observaciones,
       care: {
-        create: { plan, contratoAnios, formaPago, m2Fachada: m2 || null, rangoTecho: techo || null, valorAnual, valorMensual },
+        create: {
+          planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,
+          valorAnualInspect: todos.INSPECT.valorAnual, valorMensualInspect: todos.INSPECT.valorMensual,
+          valorAnualEssential: todos.ESSENTIAL.valorAnual, valorMensualEssential: todos.ESSENTIAL.valorMensual,
+          valorAnualComplete: todos.COMPLETE.valorAnual, valorMensualComplete: todos.COMPLETE.valorMensual,
+        },
       },
       auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
     },

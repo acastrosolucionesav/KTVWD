@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
-import { calcularCare, type Parametros } from '@/lib/pricing';
+import { calcularCareTodos, type Parametros } from '@/lib/pricing';
 import { aprobarCotizacion, rechazarCotizacion, marcarEnviada, toggleLinkPropuesta } from '@/app/actions/cotizaciones';
 
 const NOMBRES_SERVICIO: Record<string, string> = {
@@ -40,9 +40,9 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
 
   // Desglose Care: se recalcula SIEMPRE desde el snapshot congelado de la cotización
   // (nunca de los parámetros vigentes de hoy) — misma disciplina que el DTO de cliente.
-  const careCalc = esCare
-    ? calcularCare(JSON.parse(c.snapshotParametros) as Parametros, {
-        plan: c.care!.plan,
+  // Los 3 paquetes van juntos en la propuesta, así que el margen se evalúa para los 3.
+  const careTodos = esCare
+    ? calcularCareTodos(JSON.parse(c.snapshotParametros) as Parametros, {
         m2: c.care!.m2Fachada ?? 0,
         techo: c.care!.rangoTecho ?? 0,
       })
@@ -54,23 +54,35 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         <div>
           <h1 className="text-lg font-extrabold text-[#171E27]">{c.cliente.nombre}</h1>
           <p className="text-sm text-gray-500">
-            {c.idTrazabilidad} · {esPuntual ? NOMBRES_SERVICIO[c.puntual!.servicio] : esCare ? NOMBRES_PLAN[c.care!.plan] : '—'}
+            {c.idTrazabilidad} · {esPuntual ? NOMBRES_SERVICIO[c.puntual!.servicio] : esCare ? `KTV Care (recomendado: ${NOMBRES_PLAN[c.care!.planRecomendado]})` : '—'}
           </p>
         </div>
-        <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#66C3F8]/20 text-[#171E27]">{c.estado.replace('_', ' ')}</span>
+        <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#66C2F8]/20 text-[#171E27]">{c.estado.replace('_', ' ')}</span>
       </div>
 
       {/* ---- Lo que ve el cliente ---- */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-3">
-          {esCare ? 'Valor mensual (lo que verá el cliente)' : 'Valor total (lo que verá el cliente)'}
+          {esCare ? 'Los 3 paquetes que verá el cliente (siempre juntos)' : 'Valor total (lo que verá el cliente)'}
         </h2>
-        <p className="text-3xl font-extrabold text-[#171E27]">
-          {esCare ? cop(c.care!.valorMensual) : cop(c.totalCliente)}
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          {esCare ? `${cop(c.care!.valorAnual)} / año` : 'Sin IVA'} · sin metros cuadrados (Regla general de visualización)
-        </p>
+        {esCare && c.care ? (
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              ['INSPECT', c.care.valorMensualInspect, c.care.valorAnualInspect],
+              ['ESSENTIAL', c.care.valorMensualEssential, c.care.valorAnualEssential],
+              ['COMPLETE', c.care.valorMensualComplete, c.care.valorAnualComplete],
+            ] as [string, number, number][]).map(([plan, mensual, anual]) => (
+              <div key={plan} className={`rounded-lg p-3 ${plan === c.care!.planRecomendado ? 'bg-[#66C2F8]/10 border border-[#66C2F8]' : 'bg-gray-50 border border-gray-200'}`}>
+                <div className="text-[10px] font-bold uppercase text-gray-400">{NOMBRES_PLAN[plan]}{plan === c.care!.planRecomendado ? ' ★' : ''}</div>
+                <div className="text-lg font-extrabold text-[#171E27]">{cop(mensual)}<span className="text-xs font-normal text-gray-500"> /mes</span></div>
+                <div className="text-[11px] text-gray-400">{cop(anual)} / año</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-3xl font-extrabold text-[#171E27]">{cop(c.totalCliente)}</p>
+        )}
+        <p className="text-xs text-gray-400 mt-2">Sin IVA · sin metros cuadrados (Regla general de visualización)</p>
         {esPuntual && c.puntual!.mostrarInformeInternacional && c.puntual!.precioInformeAdicional && (
           <p className="text-sm text-gray-600 mt-2">+ Informe Internacional KTV (adicional, activado): {cop(c.puntual!.precioInformeAdicional)}</p>
         )}
@@ -79,7 +91,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
       {/* ---- Regla A: SOLO Gerencia ve esto ---- */}
       {esGerencia ? (
         <div className="bg-[#171E27] text-white rounded-2xl p-6">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#66C3F8] mb-3">Panel interno — desglose de costos (solo Gerencia)</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#66C2F8] mb-3">Panel interno — desglose de costos (solo Gerencia)</h2>
           {esPuntual ? (
             <dl className="grid grid-cols-2 gap-y-2 text-sm">
               <dt className="text-gray-400">Días de operación</dt><dd>{c.puntual!.diasOperacion ?? '—'}</dd>
@@ -90,19 +102,30 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                 {(c.puntual!.margenPct! * 100).toFixed(1)}%
               </dd>
             </dl>
-          ) : careCalc ? (
-            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-gray-400">Días de operación / año</dt><dd>{careCalc.diasOperacion}</dd>
-              <dt className="text-gray-400">Costo lavadas ({careCalc.nLavadas}/año)</dt><dd>{cop(careCalc.costoLavadas)}</dd>
-              <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(careCalc.costoInspeccion)}</dd>
-              <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(careCalc.feeNoruega)}</dd>
-              <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(careCalc.comision)}</dd>
-              <dt className="text-gray-400">Costo total / año</dt><dd>{cop(careCalc.costoTotal)}</dd>
-              <dt className="text-gray-400">Margen (año 1)</dt>
-              <dd className={careCalc.margenP < 0.35 ? 'text-red-400 font-bold' : careCalc.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
-                {(careCalc.margenP * 100).toFixed(1)}%
-              </dd>
-            </dl>
+          ) : careTodos ? (
+            <div className="space-y-4">
+              <p className="text-xs text-gray-400">El cliente puede elegir cualquiera de los 3 — el margen se evalúa para cada uno.</p>
+              {(['INSPECT', 'ESSENTIAL', 'COMPLETE'] as const).map((plan) => {
+                const t = careTodos[plan];
+                return (
+                  <div key={plan}>
+                    <h3 className="text-[11px] font-bold uppercase text-[#66C2F8] mb-1">{NOMBRES_PLAN[plan]}{plan === c.care!.planRecomendado ? ' (recomendado)' : ''}</h3>
+                    <dl className="grid grid-cols-2 gap-y-1 text-sm">
+                      <dt className="text-gray-400">Días de operación / año</dt><dd>{t.diasOperacion}</dd>
+                      <dt className="text-gray-400">Costo lavadas ({t.nLavadas}/año)</dt><dd>{cop(t.costoLavadas)}</dd>
+                      <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(t.costoInspeccion)}</dd>
+                      <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(t.feeNoruega)}</dd>
+                      <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(t.comision)}</dd>
+                      <dt className="text-gray-400">Costo total / año</dt><dd>{cop(t.costoTotal)}</dd>
+                      <dt className="text-gray-400">Margen (año 1)</dt>
+                      <dd className={t.margenP < 0.35 ? 'text-red-400 font-bold' : t.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                        {(t.margenP * 100).toFixed(1)}%
+                      </dd>
+                    </dl>
+                  </div>
+                );
+              })}
+            </div>
           ) : null}
         </div>
       ) : (
@@ -125,7 +148,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
           </>
         )}
         {(c.estado === 'APROBADA' || c.estado === 'BORRADOR') && (
-          <form action={marcarEnviada.bind(null, c.id)}><button className="bg-[#66C3F8] text-white text-sm font-bold rounded-full px-5 py-2">Marcar como enviada</button></form>
+          <form action={marcarEnviada.bind(null, c.id)}><button className="bg-[#66C2F8] text-white text-sm font-bold rounded-full px-5 py-2">Marcar como enviada</button></form>
         )}
         <a href={`/propuesta/${c.linkToken}`} target="_blank" className="text-sm text-[#171E27] underline self-center">Ver propuesta pública (lo que abre el cliente) →</a>
       </div>
@@ -141,7 +164,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
             </p>
           </div>
           <form action={toggleLinkPropuesta.bind(null, c.id)}>
-            <button className={`text-sm font-bold rounded-full px-5 py-2 ${c.linkActivo ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-[#66C3F8] text-white'}`}>
+            <button className={`text-sm font-bold rounded-full px-5 py-2 ${c.linkActivo ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-[#66C2F8] text-white'}`}>
               {c.linkActivo ? 'Desactivar link' : 'Reactivar link'}
             </button>
           </form>

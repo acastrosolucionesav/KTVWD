@@ -195,3 +195,14 @@ export function calcularCare(p: Parametros, args: {
     costoLavadas, costoInspeccion, feeNoruega, comision, costoTotal, margenD, margenP,
   };
 }
+
+// Regla Gerencia 2026-07-13: la propuesta de Care siempre muestra los 3
+// paquetes juntos (comparación), nunca uno solo — este helper calcula los 3
+// de una vez con los mismos m2/techo capturados en el formulario.
+export function calcularCareTodos(p: Parametros, args: { m2: number; techo: number; comisionPct?: number }) {
+  return {
+    INSPECT: calcularCare(p, { plan: 'INSPECT', ...args }),
+    ESSENTIAL: calcularCare(p, { plan: 'ESSENTIAL', ...args }),
+    COMPLETE: calcularCare(p, { plan: 'COMPLETE', ...args }),
+  };
+}

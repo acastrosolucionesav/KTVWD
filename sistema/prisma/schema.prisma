@@ -173,20 +173,27 @@ model CotizacionPuntual {
 }
 
 // ============ FAMILIA 2 — KTV Care (programas recurrentes) ============
+// Regla Gerencia 2026-07-13: los 3 paquetes (Inspect/Essential/Complete) se
+// calculan y se muestran SIEMPRE juntos al cliente, como comparación — nunca
+// uno solo. planRecomendado es únicamente cuál lleva la insignia "RECOMENDADO".
 model CotizacionCare {
   id           String     @id @default(cuid())
   cotizacionId String     @unique
   cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
 
-  plan          PlanCare
-  contratoAnios Int       @default(1)
-  formaPago     FormaPago @default(CONTADO)
+  planRecomendado PlanCare
+  contratoAnios   Int       @default(1)
+  formaPago       FormaPago @default(CONTADO)
 
   m2Fachada  Float?  // solo interno
   rangoTecho Float?  // solo interno
 
-  valorAnual   Float
-  valorMensual Float
+  valorAnualInspect     Float
+  valorMensualInspect   Float
+  valorAnualEssential   Float
+  valorMensualEssential Float
+  valorAnualComplete    Float
+  valorMensualComplete  Float
 }
 
 // Orden de Servicio Comercial interna para Operaciones — NUNCA lleva cifras.
