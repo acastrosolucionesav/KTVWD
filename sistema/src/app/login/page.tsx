@@ -30,9 +30,6 @@ export default function LoginPage() {
             {pending ? 'Ingresando…' : 'Ingresar'}
           </button>
         </form>
-        <p className="mt-6 text-xs text-gray-400 text-center">
-          Demo: comercial@ktvworkingdrone.com.co / director@… / gerencia@… — clave <code>ktv2026</code>
-        </p>
       </div>
     </div>
   );
