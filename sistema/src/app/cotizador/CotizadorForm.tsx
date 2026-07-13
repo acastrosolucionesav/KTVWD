@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from 'react';
 import { crearCotizacionPuntual } from '@/app/actions/cotizaciones';
+import PipedriveDealPicker from '@/components/PipedriveDealPicker';
+import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
 const label = 'block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1';
 const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C2F8] text-sm';
@@ -10,6 +12,7 @@ export default function CotizadorForm() {
   const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>('LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
+  const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
 
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
@@ -33,6 +36,12 @@ export default function CotizadorForm() {
           <label className={label}>Contacto</label>
           <input name="clienteContacto" className={input} placeholder="Hernando Cáceres" />
         </div>
+      </div>
+
+      <div>
+        <label className={label}>Vincular con Pipedrive (opcional)</label>
+        <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
+        <PipedriveDealPicker onSelect={setDealPipedrive} />
       </div>
 
       {incluyeLavado && (

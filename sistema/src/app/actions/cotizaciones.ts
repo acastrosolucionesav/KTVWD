@@ -7,6 +7,7 @@ import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
 import { calcularLavado, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
+import { registrarPropuestaEnviada } from '@/lib/pipedrive';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
 export type CrearCareState = { error?: string; ok?: boolean } | undefined;
@@ -25,6 +26,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
   if (!clienteNombre) return { error: 'El nombre del cliente es obligatorio.' };
+  const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
 
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const m2 = Number(formData.get('m2') || 0);
@@ -94,7 +96,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const requiereAprobacion = margenP < parametros.MARGEN_MINIMO;
 
   const cliente = await prisma.clienteProspecto.create({
-    data: { nombre: clienteNombre, contacto: clienteContacto },
+    data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
   });
 
   const vigenteHasta = new Date();
@@ -160,9 +162,23 @@ export async function rechazarCotizacion(cotizacionId: string) {
 
 export async function marcarEnviada(cotizacionId: string) {
   const session = await verifySession();
-  await prisma.cotizacion.update({ where: { id: cotizacionId }, data: { estado: 'ENVIADA', enviadoAt: new Date() } });
+  const c = await prisma.cotizacion.update({
+    where: { id: cotizacionId },
+    data: { estado: 'ENVIADA', enviadoAt: new Date() },
+    include: { cliente: true },
+  });
   await prisma.auditoria.create({ data: { cotizacionId, usuarioId: session.userId, accion: 'envio' } });
   revalidatePath(`/cotizaciones/${cotizacionId}`);
+
+  // Integración Pipedrive: si la cotización quedó vinculada a un trato, se
+  // registra la nota + valor + cambio de etapa. Nunca bloquea el envío real
+  // de la propuesta si Pipedrive falla o no está configurado.
+  if (c.cliente.pipedriveDealId) {
+    const urlPropuesta = `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${c.linkToken}`;
+    await registrarPropuestaEnviada(Number(c.cliente.pipedriveDealId), {
+      urlPropuesta, valor: c.totalCliente, familia: c.familia,
+    }).catch((e) => console.error('Pipedrive: error registrando propuesta enviada', e));
+  }
 }
 
 // ============================================================================
@@ -216,6 +232,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
   if (!clienteNombre) return { error: 'El nombre del cliente es obligatorio.' };
+  const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
 
   // Los 3 paquetes se cotizan siempre juntos, así que el área de fachada es
   // obligatoria aunque el plan destacado sea Inspect (Essential/Complete la necesitan).
@@ -233,7 +250,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   // (el cliente puede elegir cualquiera de los 3, no solo el recomendado).
   const requiereAprobacion = Object.values(todos).some((t) => t.margenP < parametros.MARGEN_MINIMO);
 
-  const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto } });
+  const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId } });
   const vigenteHasta = new Date();
   vigenteHasta.setDate(vigenteHasta.getDate() + 30);
 

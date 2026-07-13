@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from 'react';
 import { crearCotizacionCare } from '@/app/actions/cotizaciones';
+import PipedriveDealPicker from '@/components/PipedriveDealPicker';
+import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
 const label = 'block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1';
 const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C2F8] text-sm';
@@ -9,6 +11,7 @@ const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none f
 export default function CareForm() {
   const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
   const [plan, setPlan] = useState<'INSPECT' | 'ESSENTIAL' | 'COMPLETE'>('ESSENTIAL');
+  const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
 
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
@@ -33,6 +36,12 @@ export default function CareForm() {
           <label className={label}>Contacto</label>
           <input name="clienteContacto" className={input} placeholder="Hernando Cáceres" />
         </div>
+      </div>
+
+      <div>
+        <label className={label}>Vincular con Pipedrive (opcional)</label>
+        <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
+        <PipedriveDealPicker onSelect={setDealPipedrive} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
