@@ -14,7 +14,7 @@ export default function AceptarButton({ linkToken, aceptada }: { linkToken: stri
     <button
       disabled={pending}
       onClick={() => start(() => aceptarPropuesta(linkToken))}
-      className="bg-[#66C3F8] text-white font-bold rounded-full px-6 py-3 disabled:opacity-60"
+      className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-3 disabled:opacity-60"
     >
       {pending ? 'Confirmando…' : 'Aceptar esta propuesta →'}
     </button>

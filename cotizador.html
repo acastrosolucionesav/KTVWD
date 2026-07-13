@@ -6,7 +6,7 @@
 <title>KTV Working Drone — Cotizador Comercial</title>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#66C3F8;--blue-dk:#66C3F8;--blue-nk:#1F4E78;--blue-bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--white:#FFFFFF;--off:#F7FBFF;--ok:#38a169;--warn:#DD6B20;--err:#E53E3E;--r:20px;}
+:root{--blue:#66C2F8;--blue-dk:#66C2F8;--blue-nk:#1F4E78;--blue-bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--white:#FFFFFF;--off:#F7FBFF;--ok:#38a169;--warn:#DD6B20;--err:#E53E3E;--r:20px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
 body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);background:var(--off);line-height:1.5;}
@@ -157,11 +157,11 @@ body.proposal-open #propuestaDoc{display:block;position:fixed;inset:0;z-index:50
 .pdp-f li::before{content:'✓';color:var(--blue-dk);font-weight:800;flex-shrink:0;}
 .pd-fine{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5;}
 .pdp-dv{font-size:11.5px;color:#1F4E78;background:#EBF8FF;border:1px solid rgba(102,195,248,.25);border-radius:9px;padding:8px 10px;line-height:1.4;}
-.pdp-dv b{color:#66C3F8;}
-.pd-cert{margin-top:18px;border:1.5px solid #66C3F8;border-radius:14px;padding:18px 22px;background:linear-gradient(150deg,rgba(102,195,248,.07),rgba(102,195,248,.03));}
-.pd-cert h4{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#66C3F8;margin-bottom:10px;}
+.pdp-dv b{color:#66C2F8;}
+.pd-cert{margin-top:18px;border:1.5px solid #66C2F8;border-radius:14px;padding:18px 22px;background:linear-gradient(150deg,rgba(102,195,248,.07),rgba(102,195,248,.03));}
+.pd-cert h4{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#66C2F8;margin-bottom:10px;}
 .pd-cert .pc-row{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
-.pd-cert .pc-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#66C3F8;color:#fff;padding:3px 9px;border-radius:50px;margin-right:8px;}
+.pd-cert .pc-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#66C2F8;color:#fff;padding:3px 9px;border-radius:50px;margin-right:8px;}
 .pd-cert .pc-val{font-size:19px;font-weight:800;color:#1F4E78;white-space:nowrap;}
 .pd-cert .pc-note{font-size:12.5px;color:var(--muted);line-height:1.6;}
 .pd-cond{margin-top:24px;background:var(--off);border:1px solid rgba(102,195,248,.16);border-radius:14px;padding:18px 22px;}
@@ -762,7 +762,7 @@ function descargarPropuestaHTML(){
 '<title>Propuesta KTV Care — '+cl+'</title>'+
 '<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">'+
 '<style>'+
-':root{--blue:#66C3F8;--dk:#66C3F8;--nk:#171E27;--bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--off:#F7FBFF;}'+
+':root{--blue:#66C2F8;--dk:#66C2F8;--nk:#171E27;--bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--off:#F7FBFF;}'+
 '*{margin:0;padding:0;box-sizing:border-box}body{font-family:\'Open Sans\',Verdana,sans-serif;color:var(--body);line-height:1.6;background:#eef4f9}'+
 '.wm{position:fixed;inset:0;z-index:0;background-repeat:repeat;pointer-events:none}'+
 '.wrap{position:relative;z-index:1;max-width:960px;margin:24px auto;background:#fff;box-shadow:0 12px 44px rgba(31,78,120,.14);border-radius:16px;overflow:hidden}'+
@@ -940,7 +940,7 @@ function descargarCotizacionPuntual(){
 '<title>Cotización — '+cl+'</title>'+
 '<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">'+
 '<style>'+
-':root{--blue:#66C3F8;--dk:#66C3F8;--carbon:#171E27;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--off:#F7FBFF;}'+
+':root{--blue:#66C2F8;--dk:#66C2F8;--carbon:#171E27;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--off:#F7FBFF;}'+
 '*{margin:0;padding:0;box-sizing:border-box}body{font-family:\'Open Sans\',Verdana,sans-serif;color:var(--body);line-height:1.6;background:#eef2f6}'+
 '.wm{position:fixed;inset:0;z-index:0;background-repeat:repeat;pointer-events:none}'+
 '.j{text-align:justify}'+

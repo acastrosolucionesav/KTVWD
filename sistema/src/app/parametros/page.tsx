@@ -98,7 +98,7 @@ export default async function ParametrosPage({ searchParams }: { searchParams: P
         {GRUPOS.map((g) => (
           <fieldset key={g.titulo} className="bg-white rounded-2xl border border-gray-200 p-6">
             <legend className="text-xs font-bold uppercase tracking-wide text-[#171E27] px-2 -mx-2 bg-white">
-              <span className="border-l-4 border-[#66C3F8] pl-2">{g.titulo}</span>
+              <span className="border-l-4 border-[#66C2F8] pl-2">{g.titulo}</span>
             </legend>
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 mt-2">
               {g.items.map((item) => (
@@ -108,7 +108,7 @@ export default async function ParametrosPage({ searchParams }: { searchParams: P
                     name={item.clave}
                     defaultValue={parametros[item.clave]}
                     inputMode="decimal"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#66C3F8]"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#66C2F8]"
                   />
                   {item.nota && <span className="text-[11px] text-gray-400">{item.nota}</span>}
                 </label>
@@ -116,7 +116,7 @@ export default async function ParametrosPage({ searchParams }: { searchParams: P
             </div>
           </fieldset>
         ))}
-        <button type="submit" className="bg-[#66C3F8] text-white text-sm font-bold rounded-full px-8 py-3">
+        <button type="submit" className="bg-[#66C2F8] text-white text-sm font-bold rounded-full px-8 py-3">
           Guardar parámetros
         </button>
       </form>

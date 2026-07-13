@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 import { crearCotizacionPuntual } from '@/app/actions/cotizaciones';
 
 const label = 'block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1';
-const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C3F8] text-sm';
+const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C2F8] text-sm';
 
 export default function CotizadorForm() {
   const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
@@ -12,7 +12,7 @@ export default function CotizadorForm() {
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
 
   return (
-    <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C3F8]/20">
+    <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
       <h1 className="text-lg font-extrabold text-[#171E27]">Cotización sencilla — Familia 1 (servicio puntual)</h1>
 
       <div>
@@ -36,7 +36,7 @@ export default function CotizadorForm() {
       </div>
 
       {incluyeLavado && (
-        <div className="grid grid-cols-3 gap-4 p-4 bg-[#F7FBFF] rounded-xl border border-[#66C3F8]/20">
+        <div className="grid grid-cols-3 gap-4 p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20">
           <div className="col-span-3">
             <label className={label}>Área de fachada (m²) — solo interno, no se muestra al cliente</label>
             <input name="m2" type="number" required className={input} defaultValue={30500} />
@@ -86,7 +86,7 @@ export default function CotizadorForm() {
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
 
       <button type="submit" disabled={pending}
-        className="bg-[#66C3F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
+        className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
         {pending ? 'Calculando…' : 'Crear cotización'}
       </button>
     </form>

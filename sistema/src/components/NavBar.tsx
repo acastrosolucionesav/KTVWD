@@ -11,7 +11,7 @@ export default async function NavBar() {
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
           <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={140} height={31} className="h-6 w-auto" />
-          <span className="text-[#66C3F8] font-normal text-sm">Sistema Comercial</span>
+          <span className="text-[#66C2F8] font-normal text-sm">Sistema Comercial</span>
         </div>
         <Link href="/cotizador" className="text-sm text-gray-300 hover:text-white">Cotizador</Link>
         <Link href="/care" className="text-sm text-gray-300 hover:text-white">KTV Care</Link>
@@ -21,7 +21,7 @@ export default async function NavBar() {
         )}
       </div>
       <div className="flex items-center gap-4 text-sm text-gray-300">
-        <span>{session.nombre} · <span className="text-[#66C3F8]">{session.rol}</span></span>
+        <span>{session.nombre} · <span className="text-[#66C2F8]">{session.rol}</span></span>
         <form action={logout}><button className="hover:text-white">Salir</button></form>
       </div>
     </nav>

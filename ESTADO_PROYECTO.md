@@ -13,19 +13,20 @@
 El motor comercial digital de KTV: páginas públicas de venta + un cotizador interno que
 genera propuestas sin errores.
 
-**Paleta (azul DEFINITIVO de marca — CONFIRMADO Y CERRADO por Gerencia 2026-07-11):** UN SOLO
-azul corporativo **#66C3F8 (RGB 102,195,248)** — medido por Gerencia con cuentagotas del
-PowerPoint oficial de marca. No hay un segundo azul "oscuro"; es el único. Carbón **#171E27**
-únicamente para el fondo de zonas neutras oscuras (hero/encabezado con video) y para el TEXTO de
-títulos de sección sobre blanco. Fondos claros #EBF8FF/#F7FBFF.
+**Paleta (azul DEFINITIVO de marca — CONFIRMADO Y CERRADO por Gerencia, remedido 2026-07-13):**
+UN SOLO azul corporativo **#66C2F8 (RGB 102,194,248)** — medido por Gerencia con el regulador
+RGB numérico de PowerPoint sobre el archivo oficial de marca. No hay un segundo azul "oscuro"; es
+el único. Carbón **#171E27** únicamente para el fondo de zonas neutras oscuras (hero/encabezado
+con video) y para el TEXTO de títulos de sección sobre blanco. Fondos claros #EBF8FF/#F7FBFF.
 **Regla de aplicación:** toda caja destacada (filas de TOTAL, encabezados de tabla, tarjeta
 "Recomendado", botones CTA) lleva el azul **como relleno sólido** (fondo azul + texto blanco) —
 el carbón nunca reemplaza al azul en un elemento prominente, solo es color de texto/neutro.
-⚠️ HISTORIA DE COLOR (pasamos por 5 azules — no repetir): #2E75B6 (error inicial) → #34C7FF
+⚠️ HISTORIA DE COLOR (pasamos por 6 azules — no repetir): #2E75B6 (error inicial) → #34C7FF
 ("web code" del manual, pastel) → #02BEFD (portada PDF KTV Care) → #41B6E6 (sRGB declarado del
-manual) → **#66C3F8 DEFINITIVO (medido del PPT por Gerencia y confirmado)**. El manual es
+manual) → #66C3F8 (primera lectura con cuentagotas, un dígito corrido) → **#66C2F8 DEFINITIVO
+(remedido por Gerencia con el valor RGB exacto de PowerPoint, 2026-07-13)**. El manual es
 inconsistente entre sus propios valores; ante cualquier nuevo material con otro tono, preguntar
-a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos) está en #66C3F8.
+a Gerencia ANTES de cambiar. Todo (landing, brochure, cotizador, ambos formatos) está en #66C2F8.
 
 ## 2. Hosting y arquitectura (IMPORTANTE)
 - **Repo:** `acastrosolucionesav/KTVWD`. Debe ser **PRIVADO** (contiene costos, márgenes,
