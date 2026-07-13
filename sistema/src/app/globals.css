@@ -12,12 +12,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Sistema con diseño exclusivamente claro (tarjetas y campos blancos con
+   colores de marca) — no seguir el modo oscuro del sistema operativo,
+   pues invierte --foreground y vuelve invisible el texto sobre fondos blancos. */
 
 body {
   background: var(--background);
