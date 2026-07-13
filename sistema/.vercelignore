@@ -1,0 +1,6 @@
+# Este proyecto de Vercel (ktv_propuestas) tiene Root Directory = sistema/.
+# El .vercelignore de la raíz del repo excluye todo salvo el sitio público
+# (index.html, planes.html, videos/, img/) para el proyecto ktvbrochure — eso
+# se aplicaba también aquí y borraba sistema/package.json antes de construir.
+# Este archivo, propio de la carpeta raíz de ESTE proyecto, reemplaza a aquel
+# para este build: no hay nada que ignorar dentro de sistema/.
