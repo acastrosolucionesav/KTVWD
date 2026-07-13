@@ -1,8 +1,19 @@
 'use client';
 
 import Image from 'next/image';
-import { useActionState } from 'react';
+import { Suspense, useActionState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { login } from '@/app/actions/auth';
+
+function ResetOkBanner() {
+  const params = useSearchParams();
+  if (params.get('reset') !== 'ok') return null;
+  return (
+    <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-4 py-3 mb-4">
+      ✓ Contraseña actualizada. Ingrese con su nueva contraseña.
+    </p>
+  );
+}
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(login, undefined);
@@ -14,6 +25,9 @@ export default function LoginPage() {
           <Image src="/logo-ktv.png" alt="KTV Working Drone" width={220} height={49} className="mx-auto h-auto w-48" priority />
           <div className="text-xs uppercase tracking-widest text-[#66C2F8] font-bold mt-2">Sistema Comercial</div>
         </div>
+        <Suspense fallback={null}>
+          <ResetOkBanner />
+        </Suspense>
         <form action={action} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">Correo</label>
@@ -31,6 +45,7 @@ export default function LoginPage() {
             {pending ? 'Ingresando…' : 'Ingresar'}
           </button>
         </form>
+        <a href="/olvide-password" className="block text-center text-xs text-gray-400 mt-4 hover:underline">¿Olvidó su contraseña?</a>
       </div>
     </div>
   );

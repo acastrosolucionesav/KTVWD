@@ -73,6 +73,11 @@ model Usuario {
   activo       Boolean  @default(true)
   creadoAt     DateTime @default(now())
 
+  // "Olvidé mi contraseña": token de un solo uso enviado por correo, con
+  // vencimiento corto. Null cuando no hay solicitud de recuperación pendiente.
+  resetToken           String?   @unique
+  resetTokenExpiresAt  DateTime?
+
   cotizacionesCreadas  Cotizacion[] @relation("CreadoPor")
   cotizacionesAprobadas Cotizacion[] @relation("AprobadoPor")
   auditorias           Auditoria[]
