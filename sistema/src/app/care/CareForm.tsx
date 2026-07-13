@@ -12,6 +12,16 @@ export default function CareForm() {
   const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
   const [plan, setPlan] = useState<'INSPECT' | 'ESSENTIAL' | 'COMPLETE'>('ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
+  const [clienteNombre, setClienteNombre] = useState('');
+  const [clienteContacto, setClienteContacto] = useState('');
+
+  function seleccionarDeal(deal: PipedriveDealResumen | null) {
+    setDealPipedrive(deal);
+    if (deal) {
+      setClienteNombre(deal.orgName || deal.personName || deal.title);
+      setClienteContacto(deal.personName ?? '');
+    }
+  }
 
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
@@ -27,21 +37,24 @@ export default function CareForm() {
         <p className="text-[11px] text-gray-400 mt-1">La propuesta siempre muestra los 3 paquetes juntos — este es solo el que se destaca con la insignia &quot;Recomendado&quot;.</p>
       </div>
 
+      <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
+        <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>
+        <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
+        <PipedriveDealPicker onSelect={seleccionarDeal} />
+        <p className="text-[11px] text-amber-700/70 mt-1">Si existe el trato, al elegirlo se llenan solos el Cliente y el Contacto de abajo.</p>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={label}>Cliente / Edificio</label>
-          <input name="clienteNombre" required className={input} placeholder="CC Plaza Claro — Multiplika" />
+          <input name="clienteNombre" required className={input} placeholder="CC Plaza Claro — Multiplika"
+            value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} />
         </div>
         <div>
           <label className={label}>Contacto</label>
-          <input name="clienteContacto" className={input} placeholder="Hernando Cáceres" />
+          <input name="clienteContacto" className={input} placeholder="Hernando Cáceres"
+            value={clienteContacto} onChange={(e) => setClienteContacto(e.target.value)} />
         </div>
-      </div>
-
-      <div>
-        <label className={label}>Vincular con Pipedrive (opcional)</label>
-        <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
-        <PipedriveDealPicker onSelect={setDealPipedrive} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
