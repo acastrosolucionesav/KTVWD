@@ -105,7 +105,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
           ) : careTodos ? (
             <div className="space-y-4">
               <p className="text-xs text-gray-400">El cliente puede elegir cualquiera de los 3 — el margen se evalúa para cada uno.</p>
-              {(['INSPECT', 'ESSENTIAL', 'COMPLETE'] as const).map((plan) => {
+              {(['INSPECT', 'ESSENTIAL'] as const).map((plan) => {
                 const t = careTodos[plan];
                 return (
                   <div key={plan}>
@@ -117,7 +117,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                       <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(t.feeNoruega)}</dd>
                       <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(t.comision)}</dd>
                       <dt className="text-gray-400">Costo total / año</dt><dd>{cop(t.costoTotal)}</dd>
-                      <dt className="text-gray-400">Margen (año 1)</dt>
+                      <dt className="text-gray-400">Margen</dt>
                       <dd className={t.margenP < 0.35 ? 'text-red-400 font-bold' : t.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
                         {(t.margenP * 100).toFixed(1)}%
                       </dd>
@@ -125,6 +125,34 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                   </div>
                 );
               })}
+
+              {/* Complete: DV y II nunca son el mismo costo — año 1 (II) tiene un costo mucho
+                  mayor por el fee Noruega. Nunca promediar los 3 años en un margen único. */}
+              {(() => {
+                const t = careTodos.COMPLETE;
+                return (
+                  <div>
+                    <h3 className="text-[11px] font-bold uppercase text-[#66C2F8] mb-1">
+                      {NOMBRES_PLAN.COMPLETE}{c.care!.planRecomendado === 'COMPLETE' ? ' (recomendado)' : ''}
+                    </h3>
+                    <p className="text-[11px] text-gray-500 mb-2">Días de operación/año (lavadas + inspección): {t.diasOperacion} · Costo lavadas (2/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)}</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {([1, 2, 3] as const).map((anio) => {
+                        const a = t.porAnio![anio];
+                        return (
+                          <div key={anio} className="bg-white/5 rounded-lg p-2.5">
+                            <p className="text-[11px] font-bold text-gray-300">Año {anio} — {a.entregable === 'II' ? 'Informe Internacional' : 'Diagnóstico Visual'}</p>
+                            <p className="text-[11px] text-gray-400 mt-1">Costo total: {cop(a.costoTotal)}</p>
+                            <p className={`text-sm font-bold mt-1 ${a.margenP < 0.35 ? 'text-red-400' : a.margenP < 0.40 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                              {(a.margenP * 100).toFixed(1)}%
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : null}
         </div>

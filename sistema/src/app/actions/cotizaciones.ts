@@ -258,10 +258,15 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
   const todos = calcularCareTodos(parametros, { m2, techo });
-  // Mismo control que Familia 1: si CUALQUIERA de los 3 paquetes queda bajo el
-  // margen mínimo, la cotización nace bloqueada hasta aprobación de Gerencia
-  // (el cliente puede elegir cualquiera de los 3, no solo el recomendado).
-  const requiereAprobacion = Object.values(todos).some((t) => t.margenP < parametros.MARGEN_MINIMO);
+  // Semáforo de margen (spec_calcularCare.md 2026-07-14): bajo 35% requiere aprobación
+  // de Gerencia (igual que Familia 1); bajo 25% es un piso absoluto — ni Gerencia puede
+  // enviarla, hay que ajustar parámetros o alcance primero. Para Complete, el margen de
+  // CADA año de contrato cuenta (el peor de los 3, nunca un promedio que esconda el año 1).
+  const margenesMinimos = Object.values(todos).map((t) => t.margenP);
+  if (margenesMinimos.some((m) => m < 0.25)) {
+    return { error: 'El margen de esta cotización cae por debajo del mínimo absoluto (25%) en al menos un paquete o año de contrato. No se puede generar — ajuste los parámetros o el alcance antes de continuar.' };
+  }
+  const requiereAprobacion = margenesMinimos.some((m) => m < parametros.MARGEN_MINIMO);
 
   const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId } });
   const vigenteHasta = new Date();
