@@ -201,7 +201,11 @@ export function calcularCare(p: Parametros, args: {
   } else if (args.plan === 'ESSENTIAL') {
     valorAnual = args.m2 * p.TARIFA_LISTA * (1 - p.CARE_ESSENTIAL_DESC) + dv;
   } else {
-    valorAnual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) + dv;
+    // Complete cobra por el Informe Internacional (lo que realmente entrega en año 1,
+    // aunque sea una sola vez en los 3 años), no por el DV — mucho más barato — como
+    // se hacía antes. Corrección Gerencia 2026-07-14: la cuota estaba fijada con el
+    // valor equivocado, por eso el margen de año 1 caía por debajo del piso del 35%.
+    valorAnual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) + (insp.precioInternacional ?? dv);
   }
 
   const feeNoruega = valorAnual * p.FEE_NORUEGA;
