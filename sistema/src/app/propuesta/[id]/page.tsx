@@ -77,16 +77,26 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
   const p = dto.puntual;
 
   return (
-    <div className="min-h-screen bg-[#eef2f6] py-10 px-4">
-      <div className={`${dto.care ? 'max-w-4xl' : 'max-w-2xl'} mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-[#66C2F8]/20`}>
-        <div className="bg-[#171E27] text-white px-8 py-8">
-          <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={160} height={35} className="h-7 w-auto mb-4" />
-          <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1">{dto.idTrazabilidad}</span>
-          <h1 className="text-2xl font-extrabold mt-4">Propuesta Económica</h1>
-          {p && <p className="text-[#66C2F8] text-sm font-semibold mt-1">{NOMBRES_SERVICIO[p.servicio]}</p>}
+    <div className="min-h-screen bg-white">
+      <section className="relative min-h-[52vh] md:min-h-[58vh] flex items-end overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
+            <source src="https://landing.ktvworkingdrone.com.co/videos/hero.mp4" type="video/mp4" />
+          </video>
         </div>
+        <div
+          className="absolute inset-0 z-[1]"
+          style={{ background: 'linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%)' }}
+        />
+        <div className="relative z-[2] max-w-6xl mx-auto w-full px-6 md:px-12 pt-28 pb-10">
+          <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-5" />
+          <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1 text-white">{dto.idTrazabilidad}</span>
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
+          {p && <p className="text-[#66C2F8] text-base font-semibold mt-2">{NOMBRES_SERVICIO[p.servicio]}</p>}
+        </div>
+      </section>
 
-        <div className="p-8 space-y-6">
+      <div className={`${dto.care ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-6 md:px-12 py-10 space-y-6`}>
           <div>
             <p className="text-xs text-gray-400">Bogotá, {new Date(dto.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             <p className="text-sm text-gray-600 mt-2">Señores</p>
@@ -328,6 +338,6 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           </div>
         </div>
       </div>
-    </div>
   );
 }
+
