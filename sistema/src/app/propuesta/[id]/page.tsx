@@ -200,9 +200,13 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-gray-400 mt-3">
-                Contrato {dto.care.contratoAnios} año(s) · Pago {dto.care.formaPago === 'CONTADO' ? 'de contado' : 'diferido en 12 cuotas (no es descuento)'}.
-              </p>
+              <div className="bg-[#F7FBFF] rounded-lg p-4 mt-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1">Condiciones de pago</p>
+                <p className="text-sm text-gray-700">
+                  Contrato de {dto.care.contratoAnios} año(s) · Facturación mensual, mes vencido (se factura el servicio del mes ya prestado)
+                  {dto.care.formaPago === 'CONTADO' ? '.' : ' · valor diferido en 12 cuotas al año (no aplica como descuento).'}
+                </p>
+              </div>
             </div>
           )}
 
