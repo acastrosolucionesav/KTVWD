@@ -30,7 +30,7 @@ const NOMBRES_SERVICIO: Record<string, string> = {
 
 const DESC_LAVADO = 'Servicio Integral de Lavado KTV WD — intervención especializada en altura con drones. Incluye lavado externo de fachada, cristales y ventanales con agua a alta presión, y los productos aplicados durante el proceso.';
 const DESC_DV = 'Inspección de fachada y cubierta con dron (elaborado con apoyo de IA) — registro fotográfico y de video en alta resolución, identificación de hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento.';
-const DESC_INTERNACIONAL = 'Soporte técnico bajo estándar internacional KTV — informe certificado para due diligence, auditorías o interventoría técnica.';
+const DESC_INTERNACIONAL = 'Soporte técnico bajo estándar internacional KTV — informe bajo metodología alineada con estándares internacionales reconocidos, elaborado por ingenieros de Inotek (Noruega), para due diligence, auditorías o interventoría técnica.';
 
 // Copy de checklist por paquete Care — mismo contenido aprobado del catálogo
 // público (landing/planes.html), adaptado a la propuesta con precio real.
