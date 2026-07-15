@@ -37,7 +37,7 @@ const DESC_INTERNACIONAL = 'Soporte técnico bajo estándar internacional KTV �
 const CARACTERISTICAS_CARE: Record<string, string[]> = {
   INSPECT: ['Inspección anual con informe de estado', 'Gestión preventiva del activo', 'Tarifa preferencial en servicios KTV'],
   ESSENTIAL: ['Inspección anual con Diagnóstico Visual KTV', '1 lavada de fachada al año', 'Prioridad de agenda preferente', 'Precio preferente vs. servicio puntual'],
-  COMPLETE: ['Año 1 con Informe Internacional Inotek (Noruega)', 'Años 2 y 3 con Diagnóstico Visual KTV', '2 lavadas de fachada al año', 'Prioridad máxima + atención de urgencias', 'Máximo beneficio de precio por volumen'],
+  COMPLETE: ['Año 1 con Informe Internacional Inotek (Noruega)', 'Año 3 con Diagnóstico Visual KTV', '2 lavadas de fachada al año, los 3 años', 'Prioridad máxima + atención de urgencias', 'Máximo beneficio de precio por volumen'],
 };
 
 // Destaque visual por plan — mismo tratamiento que el catálogo público
@@ -221,7 +221,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                       </div>
                       <div className="bg-[#EBF8FF] border border-[#66C2F8]/40 rounded-lg px-2.5 py-2 text-[11px] text-gray-700">
                         {paq.plan === 'COMPLETE' ? (
-                          <>Inspección anual — <b className="text-[#171E27]">año 1 con respaldo internacional Inotek</b> (Noruega), <b className="text-[#171E27]">años 2 y 3 con Diagnóstico Visual KTV</b> (con IA) · {paq.nLavadas} lavadas de fachada al año</>
+                          <><b className="text-[#171E27]">Año 1 con respaldo internacional Inotek</b> (Noruega), <b className="text-[#171E27]">año 3 con Diagnóstico Visual KTV</b> (con IA) · {paq.nLavadas} lavadas de fachada al año, los 3 años</>
                         ) : (
                           <>Incluye <b className="text-[#171E27]">Diagnóstico Visual KTV</b> (con IA) · valor {cop(dto.care!.informeIncluidoValor)}
                           {paq.nLavadas > 0 ? ` + ${paq.nLavadas} lavada${paq.nLavadas > 1 ? 's' : ''} de fachada` : ''}</>

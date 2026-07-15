@@ -172,11 +172,13 @@ export function calcularInspeccion(p: Parametros, techo: number) {
 // - Inspección: DV e II NUNCA son el mismo costo — el DV no paga fee a Noruega, el II sí.
 //   costo_DV = COSTO_OPERATIVO_DV_TRAMO[tramo] (costo operativo puro, sin fee).
 //   costo_II = fee Noruega (mismo cálculo que Familia 1) + costoOperacionInsp existente.
-// - Complete combina los dos entregables en secuencia — NUNCA el mismo año: año 1 = II
-//   (costo mucho mayor por el fee), años 2 y 3 = DV. El precio de venta (valorAnual) es una
-//   cuota estable — no cambia por año — pero el margen SÍ depende del año, así que se
-//   devuelve un desglose por año (`porAnio`) en vez de un margen único que promediaría (y
-//   escondería) un año 1 más ajustado.
+// - Complete entrega 2 inspecciones en los 3 años del contrato (nunca 3): año 1 = II
+//   (costo mucho mayor por el fee), año 2 sin inspección (solo las 2 lavadas de fachada
+//   se mantienen), año 3 = DV — decisión Gerencia 2026-07-15, para dejar un punto de
+//   contacto con informe justo antes de la renovación. El precio de venta (valorAnual)
+//   es una cuota estable — no cambia por año — pero el margen SÍ depende del año, así
+//   que se devuelve un desglose por año (`porAnio`) en vez de un margen único que
+//   promediaría (y escondería) un año 1 más ajustado.
 // - Fee Noruega 3,5% sobre el valor anual + comisión comercial (5% venta en frío por
 //   defecto — año 1; las renovaciones al 1% mejoran el margen en años siguientes).
 export function calcularCare(p: Parametros, args: {
@@ -214,18 +216,19 @@ export function calcularCare(p: Parametros, args: {
   const diasOperacionLavadas = diasUnaLavada * nLavadas;
 
   if (args.plan === 'COMPLETE') {
-    // Año 1: II (nunca DV el mismo año) — costo mucho mayor por el fee Noruega.
-    const costoTotalAnio1 = (costoII ?? 0) + costoLavadas + feeNoruega + comision;
-    const margenDAnio1 = valorAnual - costoTotalAnio1;
-    // Años 2 y 3: DV.
-    const costoTotalAnio23 = costoDV + costoLavadas + feeNoruega + comision;
-    const margenDAnio23 = valorAnual - costoTotalAnio23;
     const margenP = (costo: number) => (valorAnual > 0 ? (valorAnual - costo) / valorAnual : 0);
 
+    // Año 1: II (costo mucho mayor por el fee Noruega).
+    const costoTotalAnio1 = (costoII ?? 0) + costoLavadas + feeNoruega + comision;
+    // Año 2: sin inspección — solo se mantienen las 2 lavadas de fachada.
+    const costoTotalAnio2 = costoLavadas + feeNoruega + comision;
+    // Año 3: DV — punto de contacto con informe justo antes de la renovación.
+    const costoTotalAnio3 = costoDV + costoLavadas + feeNoruega + comision;
+
     const porAnio = {
-      1: { entregable: 'II' as const, costoTotal: costoTotalAnio1, margenD: margenDAnio1, margenP: margenP(costoTotalAnio1) },
-      2: { entregable: 'DV' as const, costoTotal: costoTotalAnio23, margenD: margenDAnio23, margenP: margenP(costoTotalAnio23) },
-      3: { entregable: 'DV' as const, costoTotal: costoTotalAnio23, margenD: margenDAnio23, margenP: margenP(costoTotalAnio23) },
+      1: { entregable: 'II' as const, costoTotal: costoTotalAnio1, margenD: valorAnual - costoTotalAnio1, margenP: margenP(costoTotalAnio1) },
+      2: { entregable: null, costoTotal: costoTotalAnio2, margenD: valorAnual - costoTotalAnio2, margenP: margenP(costoTotalAnio2) },
+      3: { entregable: 'DV' as const, costoTotal: costoTotalAnio3, margenD: valorAnual - costoTotalAnio3, margenP: margenP(costoTotalAnio3) },
     };
     // margenP a nivel de paquete = el peor de los 3 años — nunca promediar (esconde el año 1).
     const margenPMinimo = Math.min(porAnio[1].margenP, porAnio[2].margenP, porAnio[3].margenP);

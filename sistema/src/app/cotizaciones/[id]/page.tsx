@@ -141,7 +141,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                         const a = t.porAnio![anio];
                         return (
                           <div key={anio} className="bg-white/5 rounded-lg p-2.5">
-                            <p className="text-[11px] font-bold text-gray-300">Año {anio} — {a.entregable === 'II' ? 'Informe Internacional' : 'Diagnóstico Visual'}</p>
+                            <p className="text-[11px] font-bold text-gray-300">Año {anio} — {a.entregable === 'II' ? 'Informe Internacional' : a.entregable === 'DV' ? 'Diagnóstico Visual' : 'Sin inspección'}</p>
                             <p className="text-[11px] text-gray-400 mt-1">Costo total: {cop(a.costoTotal)}</p>
                             <p className={`text-sm font-bold mt-1 ${a.margenP < 0.35 ? 'text-red-400' : a.margenP < 0.40 ? 'text-amber-400' : 'text-emerald-400'}`}>
                               {(a.margenP * 100).toFixed(1)}%
