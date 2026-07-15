@@ -91,7 +91,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
       <section className="relative min-h-[52vh] md:min-h-[58vh] flex items-end overflow-hidden">
         <div className="absolute inset-0 z-0">
           <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
-            <source src="https://landing.ktvworkingdrone.com.co/videos/hero.mp4" type="video/mp4" />
+            <source src={`https://landing.ktvworkingdrone.com.co/videos/${dto.care ? 'accion-1' : 'hero'}.mp4`} type="video/mp4" />
           </video>
         </div>
         <div
@@ -240,7 +240,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               <div className="bg-[#F7FBFF] rounded-lg p-4 mt-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1">Condiciones de pago</p>
                 <p className="text-sm text-gray-700">
-                  Contrato de {dto.care.contratoAnios} año(s) · Facturación mensual, mes vencido (se factura el servicio del mes ya prestado)
+                  Contrato de {dto.care.contratoAnios} año(s) · Facturación mensual, mes vencido, desde el inicio del programa. La ejecución del servicio anual (lavado e inspección) se agenda de común acuerdo con el cliente
                   {dto.care.formaPago === 'CONTADO' ? '.' : ' · valor diferido en 12 cuotas al año (no aplica como descuento).'}
                 </p>
               </div>
