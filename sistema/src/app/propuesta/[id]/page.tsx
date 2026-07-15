@@ -195,6 +195,11 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   </div>
                 </div>
               )}
+              <div className="flex flex-col gap-1 items-end text-sm pr-1 pt-2 border-t">
+                <div className="flex justify-between w-56"><span className="text-gray-500">Subtotal (sin IVA)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente)}</span></div>
+                <div className="flex justify-between w-56"><span className="text-gray-500">IVA (19%)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente * 0.19)}</span></div>
+                <div className="flex justify-between w-56"><span className="text-gray-600 font-bold">Total</span><span className="font-extrabold text-[#171E27]">{cop(dto.totalCliente * 1.19)}</span></div>
+              </div>
               {p.informeInternacional && (
                 <div className="border border-dashed border-gray-300 rounded-xl overflow-hidden">
                   <div className="bg-gray-100 text-[#171E27] px-4 py-2 text-xs font-bold uppercase">Informe Internacional KTV — adicional opcional</div>
@@ -207,11 +212,6 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   </p>
                 </div>
               )}
-              <div className="flex flex-col gap-1 items-end text-sm pr-1 pt-2 border-t">
-                <div className="flex justify-between w-56"><span className="text-gray-500">Subtotal (sin IVA)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente)}</span></div>
-                <div className="flex justify-between w-56"><span className="text-gray-500">IVA (19%)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente * 0.19)}</span></div>
-                <div className="flex justify-between w-56"><span className="text-gray-600 font-bold">Total</span><span className="font-extrabold text-[#171E27]">{cop(dto.totalCliente * 1.19)}</span></div>
-              </div>
 
               <div className="bg-[#F7FBFF] rounded-lg p-4 text-xs text-gray-600 space-y-1">
                 <p className="font-bold uppercase tracking-wide text-gray-500 mb-1">Notas</p>
