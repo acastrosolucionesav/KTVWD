@@ -97,12 +97,13 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 py-10 md:py-14 grid md:grid-cols-[1.05fr_.95fr] gap-10 items-center">
             <div>
               <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={200} height={42} className="h-10 md:h-11 w-auto mb-6" />
-              <span className="text-xs font-bold tracking-wide bg-[#171E27] text-white rounded-full px-3 py-1.5">{dto.idTrazabilidad}</span>
+              <span className="text-xs font-bold tracking-wide bg-white text-[#171E27] rounded-full px-3 py-1.5">{dto.idTrazabilidad}</span>
               <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
               <p className="text-white text-base font-semibold mt-1">Programa KTV Care</p>
               <p className="text-white/90 text-sm md:text-base font-light mt-3 max-w-md">
-                Precio preferencial, prioridad de agenda e informe de estado incluido — mantenimiento
-                planificado de su fachada con tecnología de drones.
+                Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda
+                e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin
+                riesgo de trabajo en alturas.
               </p>
             </div>
             <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/20 aspect-[9/12.5] bg-black">
