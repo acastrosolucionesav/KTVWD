@@ -133,7 +133,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
         </section>
       )}
 
-      <div className={`${dto.care ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-6 md:px-12 py-10 space-y-6`}>
+      <div className={`${dto.care ? 'max-w-5xl' : 'max-w-4xl'} mx-auto px-6 md:px-12 py-10 space-y-6`}>
           <div>
             <p className="text-xs text-gray-400">Bogotá, {new Date(dto.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             <p className="text-sm text-gray-600 mt-2">Señores</p>
@@ -175,7 +175,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               {p.incluyeLavado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">Servicio de lavado de fachada</div>
-                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                  <div className="px-4 py-3 flex justify-between items-center gap-4">
                     <span className="text-sm text-gray-600">{DESC_LAVADO}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.precioLavadoTotal)}</span>
                   </div>
@@ -189,7 +189,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               {p.informeBaseNombre && p.informeBaseCobrado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{p.informeBaseNombre}</div>
-                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                  <div className="px-4 py-3 flex justify-between items-center gap-4">
                     <span className="text-sm text-gray-600">{DESC_DV}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeBaseValor)}</span>
                   </div>
@@ -198,7 +198,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               {p.informeInternacional && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">Informe Internacional KTV (adicional opcional)</div>
-                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                  <div className="px-4 py-3 flex justify-between items-center gap-4">
                     <span className="text-sm text-gray-600">{DESC_INTERNACIONAL}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeInternacional.precioTotal)}</span>
                   </div>
