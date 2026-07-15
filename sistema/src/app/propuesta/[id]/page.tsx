@@ -89,20 +89,21 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
   return (
     <div className="min-h-screen bg-white">
       {dto.care ? (
-        // Hero de Care — panel sólido carbón de marca + video al lado (nunca
-        // recortado, object-contain) para diferenciarse del video de fondo
-        // completo de la cotización puntual (Familia 1).
-        <section className="relative overflow-hidden bg-[#171E27]">
-          <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 grid md:grid-cols-[.85fr_1.15fr] gap-10 items-center">
+        // Hero de Care — panel sólido azul de marca + video al lado (mismo
+        // recuadro que el catálogo público, aspect-ratio + object-cover, sin
+        // barras negras) para diferenciarse del video de fondo completo de
+        // la cotización puntual (Familia 1).
+        <section className="relative overflow-hidden bg-[#66C2F8]">
+          <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 grid md:grid-cols-[1.05fr_.95fr] gap-10 items-center">
             <div>
               <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-6" />
-              <span className="text-xs font-bold tracking-wide bg-[#66C2F8] text-white rounded-full px-3 py-1.5">{dto.idTrazabilidad}</span>
+              <span className="text-xs font-bold tracking-wide bg-[#171E27] text-white rounded-full px-3 py-1.5">{dto.idTrazabilidad}</span>
               <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
-              <p className="text-[#66C2F8] text-base font-semibold mt-2">Programa KTV Care</p>
+              <p className="text-white text-base font-semibold mt-2">Programa KTV Care</p>
             </div>
-            <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black h-[320px] md:h-[420px] flex items-center">
-              <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-contain">
-                <source src="https://landing.ktvworkingdrone.com.co/videos/hero-side.mp4" type="video/mp4" />
+            <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/20 aspect-[9/12.5] bg-black">
+              <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
+                <source src="https://landing.ktvworkingdrone.com.co/videos/accion-1.mp4" type="video/mp4" />
               </video>
             </div>
           </div>
@@ -261,7 +262,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 <p className="text-sm text-gray-700 text-justify">
                   Facturación mensual, mes vencido, desde el inicio del programa — aplica por igual sin importar el plan elegido o la duración del contrato. La ejecución del servicio anual (lavado e inspección) se agenda de común acuerdo con el cliente
                   {dto.care.formaPago === 'CONTADO' ? '.' : ' · valor diferido en 12 cuotas al año (no aplica como descuento).'}
-                  {' '}Contrato vigente por {dto.care.contratoAnios} año(s).
+                  {' '}Disponible en contratos de 1 o 3 años (el de 3 años congela el valor el primer año y lo ajusta por IPC en los siguientes).
                 </p>
               </div>
             </div>
