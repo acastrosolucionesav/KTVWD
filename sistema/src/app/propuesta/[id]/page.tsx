@@ -88,25 +88,52 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="relative min-h-[52vh] md:min-h-[58vh] flex items-end overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
-            <source src={`https://landing.ktvworkingdrone.com.co/videos/${dto.care ? 'accion-1' : 'hero'}.mp4`} type="video/mp4" />
-          </video>
-        </div>
-        <div
-          className="absolute inset-0 z-[1]"
-          style={{ background: 'linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%)' }}
-        />
-        <div className="relative z-[2] max-w-6xl mx-auto w-full px-6 md:px-12 pt-28 pb-10">
-          <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-5" />
-          <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1 text-white">{dto.idTrazabilidad}</span>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
-          <p className="text-[#66C2F8] text-base font-semibold mt-2">
-            {dto.care ? 'Programa KTV Care' : p ? NOMBRES_SERVICIO[p.servicio] : ''}
-          </p>
-        </div>
-      </section>
+      {dto.care ? (
+        // Hero de Care — panel sólido carbón de marca + video al lado (nunca
+        // recortado, object-contain) para diferenciarse del video de fondo
+        // completo de la cotización puntual (Familia 1).
+        <section className="relative overflow-hidden bg-[#171E27]">
+          <div
+            className="absolute -top-40 -right-32 w-[420px] h-[420px] rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(102,194,248,.28), transparent 68%)' }}
+          />
+          <div
+            className="absolute -bottom-40 -left-24 w-[340px] h-[340px] rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(102,194,248,.14), transparent 70%)' }}
+          />
+          <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 grid md:grid-cols-[1.1fr_.9fr] gap-10 items-center">
+            <div>
+              <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-6" />
+              <span className="text-xs font-bold tracking-wide bg-[#66C2F8] text-white rounded-full px-3 py-1.5">{dto.idTrazabilidad}</span>
+              <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
+              <p className="text-[#66C2F8] text-base font-semibold mt-2">Programa KTV Care</p>
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black h-[320px] md:h-[420px] flex items-center">
+              <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-contain">
+                <source src="https://landing.ktvworkingdrone.com.co/videos/accion-1.mp4" type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="relative min-h-[52vh] md:min-h-[58vh] flex items-end overflow-hidden">
+          <div className="absolute inset-0 z-0">
+            <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
+              <source src="https://landing.ktvworkingdrone.com.co/videos/hero.mp4" type="video/mp4" />
+            </video>
+          </div>
+          <div
+            className="absolute inset-0 z-[1]"
+            style={{ background: 'linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%)' }}
+          />
+          <div className="relative z-[2] max-w-6xl mx-auto w-full px-6 md:px-12 pt-28 pb-10">
+            <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-5" />
+            <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1 text-white">{dto.idTrazabilidad}</span>
+            <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
+            {p && <p className="text-[#66C2F8] text-base font-semibold mt-2">{NOMBRES_SERVICIO[p.servicio]}</p>}
+          </div>
+        </section>
+      )}
 
       <div className={`${dto.care ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-6 md:px-12 py-10 space-y-6`}>
           <div>
