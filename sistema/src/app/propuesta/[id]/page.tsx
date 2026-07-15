@@ -154,7 +154,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           </div>
 
           {p && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 text-justify">
               Agradecemos su invitación a presentar nuestra propuesta económica por servicios
               especializados en gran altura con la utilización de drones de última tecnología. El
               presente documento se ha confeccionado atendiendo de forma exclusiva los requerimientos y
@@ -164,7 +164,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
           )}
 
           {dto.care && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 text-justify">
               Agradecemos su interés en el Programa KTV Care de mantenimiento preventivo de fachadas.
               A continuación presentamos las opciones disponibles a la medida de su inmueble —
               inspección periódica, lavado programado y precio preferencial frente a un servicio
@@ -184,7 +184,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 </div>
               )}
               {p.informeBaseNombre && !p.informeBaseCobrado && (
-                <div className="bg-[#EBF8FF] border border-[#66C2F8]/50 border-l-4 border-l-[#66C2F8] rounded-xl p-4 text-sm text-gray-700">
+                <div className="bg-[#EBF8FF] border border-[#66C2F8]/50 border-l-4 border-l-[#66C2F8] rounded-xl p-4 text-sm text-gray-700 text-justify">
                   <b className="text-[#171E27]">{p.informeBaseNombre} — incluido sin costo con su lavado.</b> Registro fotográfico y de video en alta resolución, hallazgos y recomendaciones de mantenimiento. Valor de referencia {cop(p.informeBaseValor)} — <b>sin costo adicional</b>.
                 </div>
               )}
@@ -266,9 +266,10 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               </div>
               <div className="bg-[#F7FBFF] rounded-lg p-4 mt-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1">Condiciones de pago</p>
-                <p className="text-sm text-gray-700">
-                  Contrato de {dto.care.contratoAnios} año(s) · Facturación mensual, mes vencido, desde el inicio del programa. La ejecución del servicio anual (lavado e inspección) se agenda de común acuerdo con el cliente
+                <p className="text-sm text-gray-700 text-justify">
+                  Facturación mensual, mes vencido, desde el inicio del programa — aplica por igual sin importar el plan elegido o la duración del contrato. La ejecución del servicio anual (lavado e inspección) se agenda de común acuerdo con el cliente
                   {dto.care.formaPago === 'CONTADO' ? '.' : ' · valor diferido en 12 cuotas al año (no aplica como descuento).'}
+                  {' '}Contrato vigente por {dto.care.contratoAnios} año(s).
                 </p>
               </div>
             </div>
@@ -345,7 +346,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   <li className="flex gap-1.5"><span className="text-[#66C2F8] font-bold">•</span> 1 equipo técnico de acompañamiento en tierra con sistema de pértiga operativa.</li>
                 </ul>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3 text-xs text-red-700">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3 text-xs text-red-700 text-justify">
                 <b>Exclusión por estado de fachada y ventanales.</b> KTV emplea tecnología de alta
                 precisión, sin embargo no se hace responsable por filtraciones, humedades o daños
                 interiores derivados de ventanas mal cerradas, empaques deteriorados, siliconas
