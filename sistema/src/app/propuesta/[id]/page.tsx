@@ -188,7 +188,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               )}
               {p.informeBaseNombre && p.informeBaseCobrado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{p.informeBaseNombre}</div>
+                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{NOMBRES_SERVICIO[p.servicio]}</div>
                   <div className="px-4 py-3 flex justify-between items-center gap-4">
                     <span className="text-sm text-gray-600 text-justify">{DESC_DV}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeBaseValor)}</span>
@@ -215,7 +215,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
               <div className="bg-[#F7FBFF] rounded-lg p-4 text-xs text-gray-600 space-y-1">
                 <p className="font-bold uppercase tracking-wide text-gray-500 mb-1">Notas</p>
-                <p>· Nuestra propuesta incluye los productos a aplicar durante el proceso de lavado.</p>
+                {p.incluyeLavado && <p>· Nuestra propuesta incluye los productos a aplicar durante el proceso de lavado.</p>}
                 <p>· El valor de la oferta es antes del IVA (19%).</p>
                 <p>· El inicio de la operación estará sujeto a la agenda disponible de la Aeronáutica Civil.</p>
               </div>
