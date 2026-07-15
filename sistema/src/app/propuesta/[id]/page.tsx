@@ -174,34 +174,37 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             <>
               {p.incluyeLavado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">Servicio de lavado de fachada</div>
+                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{NOMBRES_SERVICIO[p.servicio]}</div>
                   <div className="px-4 py-3 flex justify-between items-center gap-4">
-                    <span className="text-sm text-gray-600">{DESC_LAVADO}</span>
+                    <span className="text-sm text-gray-600 text-justify">{DESC_LAVADO}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.precioLavadoTotal)}</span>
                   </div>
-                </div>
-              )}
-              {p.informeBaseNombre && !p.informeBaseCobrado && (
-                <div className="bg-[#EBF8FF] border border-[#66C2F8]/50 border-l-4 border-l-[#66C2F8] rounded-xl p-4 text-sm text-gray-700 text-justify">
-                  <b className="text-[#171E27]">{p.informeBaseNombre} — incluido sin costo con su lavado.</b> Registro fotográfico y de video en alta resolución, hallazgos y recomendaciones de mantenimiento. Valor de referencia {cop(p.informeBaseValor)} — <b>sin costo adicional</b>.
+                  {p.informeBaseNombre && !p.informeBaseCobrado && (
+                    <div className="px-4 pb-4 pt-1 text-sm text-gray-700 text-justify border-t border-gray-100">
+                      <b className="text-[#171E27]">Incluye {p.informeBaseNombre} sin costo adicional.</b> Registro fotográfico y de video en alta resolución, hallazgos y recomendaciones de mantenimiento. Valor de referencia {cop(p.informeBaseValor)} — ya está contemplado en el precio de arriba, no se factura por separado.
+                    </div>
+                  )}
                 </div>
               )}
               {p.informeBaseNombre && p.informeBaseCobrado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{p.informeBaseNombre}</div>
                   <div className="px-4 py-3 flex justify-between items-center gap-4">
-                    <span className="text-sm text-gray-600">{DESC_DV}</span>
+                    <span className="text-sm text-gray-600 text-justify">{DESC_DV}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeBaseValor)}</span>
                   </div>
                 </div>
               )}
               {p.informeInternacional && (
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">Informe Internacional KTV (adicional opcional)</div>
+                <div className="border border-dashed border-gray-300 rounded-xl overflow-hidden">
+                  <div className="bg-gray-100 text-[#171E27] px-4 py-2 text-xs font-bold uppercase">Informe Internacional KTV — adicional opcional</div>
                   <div className="px-4 py-3 flex justify-between items-center gap-4">
-                    <span className="text-sm text-gray-600">{DESC_INTERNACIONAL}</span>
+                    <span className="text-sm text-gray-600 text-justify">{DESC_INTERNACIONAL}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.informeInternacional.precioTotal)}</span>
                   </div>
+                  <p className="px-4 pb-3 text-xs text-gray-400">
+                    Valor independiente, no incluido en el Subtotal ni en el Total de esta propuesta — se cotiza y factura aparte solo si lo solicita.
+                  </p>
                 </div>
               )}
               <div className="flex flex-col gap-1 items-end text-sm pr-1 pt-2 border-t">
