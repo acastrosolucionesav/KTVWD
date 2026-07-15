@@ -40,6 +40,16 @@ const CARACTERISTICAS_CARE: Record<string, string[]> = {
   COMPLETE: ['Año 1 con Informe Internacional Inotek (Noruega)', 'Años 2 y 3 con Diagnóstico Visual KTV', '2 lavadas de fachada al año', 'Prioridad máxima + atención de urgencias', 'Máximo beneficio de precio por volumen'],
 };
 
+// Destaque visual por plan — mismo tratamiento que el catálogo público
+// (landing/planes.html): Essential "Más popular", Complete "Máximo valor"
+// con header sólido. Es fijo por plan (no depende de cuál sea el recomendado
+// para este cliente en particular, que se marca aparte con una estrella).
+const DESTAQUE_CARE: Record<string, { tag: string; badge?: string; feat?: boolean; pop?: boolean }> = {
+  INSPECT: { tag: 'Diagnóstico y gestión' },
+  ESSENTIAL: { tag: 'Corporativos y bodegas', badge: 'Más popular', pop: true },
+  COMPLETE: { tag: 'Alta exigencia', badge: 'Máximo valor', feat: true },
+};
+
 export default async function PropuestaPublicaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const dto = await getCotizacionClienteDTO(id);
@@ -78,53 +88,25 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
   return (
     <div className="min-h-screen bg-white">
-      {dto.care ? (
-        // Hero de Care — deliberadamente distinto al de Familia 1 (fondo sólido
-        // + video lateral en vez de video de fondo completo) para que un
-        // programa recurrente nunca se confunda visualmente con una
-        // cotización puntual de un solo servicio.
-        <section className="relative overflow-hidden bg-[#171E27]">
-          <div
-            className="absolute -top-40 -right-32 w-[420px] h-[420px] rounded-full pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(102,194,248,.28), transparent 68%)' }}
-          />
-          <div
-            className="absolute -bottom-40 -left-24 w-[340px] h-[340px] rounded-full pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(102,194,248,.14), transparent 70%)' }}
-          />
-          <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 grid md:grid-cols-[1.05fr_.95fr] gap-10 items-center">
-            <div>
-              <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-6" />
-              <span className="text-xs font-bold tracking-wide bg-[#66C2F8] text-white rounded-full px-3 py-1.5">{dto.idTrazabilidad}</span>
-              <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
-              <p className="text-[#66C2F8] text-base font-semibold mt-2">Programa KTV Care</p>
-            </div>
-            <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/10 aspect-[9/11] bg-black">
-              <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
-                <source src="https://landing.ktvworkingdrone.com.co/videos/accion-1.mp4" type="video/mp4" />
-              </video>
-            </div>
-          </div>
-        </section>
-      ) : (
-        <section className="relative min-h-[52vh] md:min-h-[58vh] flex items-end overflow-hidden">
-          <div className="absolute inset-0 z-0">
-            <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
-              <source src="https://landing.ktvworkingdrone.com.co/videos/hero.mp4" type="video/mp4" />
-            </video>
-          </div>
-          <div
-            className="absolute inset-0 z-[1]"
-            style={{ background: 'linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%)' }}
-          />
-          <div className="relative z-[2] max-w-6xl mx-auto w-full px-6 md:px-12 pt-28 pb-10">
-            <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-5" />
-            <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1 text-white">{dto.idTrazabilidad}</span>
-            <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
-            {p && <p className="text-[#66C2F8] text-base font-semibold mt-2">{NOMBRES_SERVICIO[p.servicio]}</p>}
-          </div>
-        </section>
-      )}
+      <section className="relative min-h-[52vh] md:min-h-[58vh] flex items-end overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <video autoPlay muted loop playsInline preload="auto" className="w-full h-full object-cover">
+            <source src="https://landing.ktvworkingdrone.com.co/videos/hero.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div
+          className="absolute inset-0 z-[1]"
+          style={{ background: 'linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%)' }}
+        />
+        <div className="relative z-[2] max-w-6xl mx-auto w-full px-6 md:px-12 pt-28 pb-10">
+          <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-5" />
+          <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1 text-white">{dto.idTrazabilidad}</span>
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
+          <p className="text-[#66C2F8] text-base font-semibold mt-2">
+            {dto.care ? 'Programa KTV Care' : p ? NOMBRES_SERVICIO[p.servicio] : ''}
+          </p>
+        </div>
+      </section>
 
       <div className={`${dto.care ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-6 md:px-12 py-10 space-y-6`}>
           <div>
@@ -137,6 +119,11 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 <span className="font-bold text-[#66C2F8]">Ref:</span> Propuesta económica — intervención de fachadas con tecnología de drones.
               </p>
             )}
+            {dto.care && (
+              <p className="text-sm text-gray-600 mt-3">
+                <span className="font-bold text-[#66C2F8]">Ref:</span> Propuesta económica — Programa KTV Care de mantenimiento de fachadas con tecnología de drones.
+              </p>
+            )}
           </div>
 
           {p && (
@@ -146,6 +133,15 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
               presente documento se ha confeccionado atendiendo de forma exclusiva los requerimientos y
               necesidades expresadas por ustedes para realizar la limpieza y preservación de su
               infraestructura, combinando alta ingeniería aeronáutica con mano de obra técnica calificada.
+            </p>
+          )}
+
+          {dto.care && (
+            <p className="text-sm text-gray-600">
+              Agradecemos su interés en el Programa KTV Care de mantenimiento preventivo de fachadas.
+              A continuación presentamos las opciones disponibles a la medida de su inmueble —
+              inspección periódica, lavado programado y precio preferencial frente a un servicio
+              puntual — combinando alta ingeniería aeronáutica con mano de obra técnica calificada.
             </p>
           )}
 
@@ -202,11 +198,21 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-3">Su programa a la medida — elija su plan KTV Care</h3>
               <div className="grid sm:grid-cols-3 gap-4">
-                {dto.care.paquetes.map((paq) => (
-                  <div key={paq.plan} className={`rounded-xl border-2 overflow-hidden flex flex-col ${paq.recomendado ? 'border-[#66C2F8]' : 'border-gray-200'}`}>
-                    <div className={`px-4 py-3 text-xs font-bold uppercase ${paq.recomendado ? 'bg-[#66C2F8] text-white' : 'bg-gray-50 text-[#171E27]'}`}>
-                      {paq.recomendado && <span className="block text-[10px] tracking-widest mb-1">RECOMENDADO</span>}
-                      {paq.nombre}
+                {dto.care.paquetes.map((paq) => {
+                  const d = DESTAQUE_CARE[paq.plan];
+                  return (
+                  <div key={paq.plan} className={`rounded-xl border-2 overflow-hidden flex flex-col bg-white ${d.feat || d.pop ? 'border-[#66C2F8]' : 'border-gray-200'} ${d.feat ? 'shadow-lg shadow-[#66C2F8]/20 md:-translate-y-1.5' : ''}`}>
+                    <div className={`relative px-4 py-3 ${d.feat ? 'bg-[#66C2F8] text-white' : 'bg-gray-50 text-[#171E27]'} ${d.pop ? 'border-t-4 border-t-[#66C2F8]' : ''}`}>
+                      {d.badge && (
+                        <span className={`absolute top-3 right-3 text-[9px] font-extrabold uppercase tracking-wide rounded-full px-2.5 py-1 ${d.feat ? 'bg-white text-[#66C2F8]' : 'bg-[#66C2F8] text-white'}`}>
+                          {d.badge}
+                        </span>
+                      )}
+                      <p className={`text-[10px] font-bold uppercase tracking-wide ${d.feat ? 'text-white/85' : 'text-[#66C2F8]'}`}>{d.tag}</p>
+                      <p className="text-base font-extrabold mt-1">{paq.nombre}</p>
+                      {paq.recomendado && (
+                        <p className={`text-[10px] font-bold uppercase tracking-wide mt-1.5 ${d.feat ? 'text-white' : 'text-[#66C2F8]'}`}>★ Recomendado para su edificio</p>
+                      )}
                     </div>
                     <div className="p-4 flex flex-col gap-3 flex-1">
                       <div>
@@ -228,7 +234,8 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                       </ul>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="bg-[#F7FBFF] rounded-lg p-4 mt-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1">Condiciones de pago</p>
@@ -292,7 +299,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             </div>
           )}
 
-          {p?.incluyeLavado && (
+          {(p?.incluyeLavado || dto.care) && (
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Requerimientos en sitio (a cargo del cliente)</h3>
               <ul className="text-sm text-gray-600 space-y-1.5">
