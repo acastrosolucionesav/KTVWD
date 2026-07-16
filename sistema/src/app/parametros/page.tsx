@@ -60,7 +60,7 @@ const GRUPOS: { titulo: string; items: { clave: keyof Parametros; label: string;
     items: [
       { clave: 'TRM', label: 'TRM (COP/USD)' },
       { clave: 'EUR_COP', label: 'Euro (COP/EUR)' },
-      { clave: 'FEE_NORUEGA', label: 'Fee Noruega sobre facturación (fracción, 0.035 = 3,5%)', nota: 'Confidencial — Regla A' },
+      { clave: 'FEE_NORUEGA', label: 'Fee Noruega sobre facturación (fracción, 0.07 = 7%)', nota: 'Confidencial — Regla A. Art. 8 contrato de franquicia' },
       { clave: 'MARGEN_MINIMO', label: 'Margen mínimo sin aprobación (fracción, 0.35 = 35%)' },
       { clave: 'IVA', label: 'IVA (fracción)' },
     ],

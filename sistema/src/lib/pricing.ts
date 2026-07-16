@@ -54,7 +54,7 @@ export const PARAMETROS_INICIALES: Parametros = {
   TARIFA_LISTA: 6000,
   TRM: 3727.2,
   EUR_COP: 4400,
-  FEE_NORUEGA: 0.035,
+  FEE_NORUEGA: 0.07, // Artículo 8 del contrato de franquicia — 7% de TODA la facturación, corregido 2026-07-16 (antes 3,5% por error)
   PCT_ADMIN: 0.10,
   PCT_IMPREV: 0.05,
   PROD_VIDRIO: 1350,
@@ -179,7 +179,7 @@ export function calcularInspeccion(p: Parametros, techo: number) {
 //   es una cuota estable — no cambia por año — pero el margen SÍ depende del año, así
 //   que se devuelve un desglose por año (`porAnio`) en vez de un margen único que
 //   promediaría (y escondería) un año 1 más ajustado.
-// - Fee Noruega 3,5% sobre el valor anual + comisión comercial (5% venta en frío por
+// - Fee Noruega 7% sobre el valor anual + comisión comercial (5% venta en frío por
 //   defecto — año 1; las renovaciones al 1% mejoran el margen en años siguientes).
 export function calcularCare(p: Parametros, args: {
   plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number; comisionPct?: number;
