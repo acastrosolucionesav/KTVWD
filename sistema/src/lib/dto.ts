@@ -124,7 +124,10 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
       contratoAnios: care.contratoAnios,
       formaPago: care.formaPago,
       informeIncluidoValor: insp.dvPrecio,
-      informeInternacional: null,
+      // Cuadro de referencia único debajo de los 3 paquetes (corrección 2026-07-16):
+      // mismo precio de venta que usa Complete año 1 y Familia 1/Inspect — nunca
+      // fee ni costo interno (Regla A). Se muestra siempre, en los 3 planes.
+      informeInternacional: insp.precioInternacional ? { precioTotal: insp.precioInternacional } : null,
       paquetes: [
         { plan: 'INSPECT', nombre: 'KTV Care Inspect', nLavadas: 0, valorAnual: care.valorAnualInspect, valorMensual: care.valorMensualInspect, recomendado: care.planRecomendado === 'INSPECT' },
         { plan: 'ESSENTIAL', nombre: 'KTV Care Essential', nLavadas: 1, valorAnual: care.valorAnualEssential, valorMensual: care.valorMensualEssential, recomendado: care.planRecomendado === 'ESSENTIAL' },

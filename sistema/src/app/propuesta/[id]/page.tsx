@@ -265,6 +265,19 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   );
                 })}
               </div>
+              {dto.care.informeInternacional && (
+                <div className="border border-dashed border-gray-300 rounded-xl overflow-hidden mt-3">
+                  <div className="bg-gray-100 text-[#171E27] px-4 py-2 text-xs font-bold uppercase">Informe Internacional KTV — valor de referencia</div>
+                  <div className="px-4 py-3 flex justify-between items-center gap-4">
+                    <span className="text-sm text-gray-600 text-justify">{DESC_INTERNACIONAL}</span>
+                    <span className="font-bold text-[#171E27] shrink-0">{cop(dto.care.informeInternacional.precioTotal)}</span>
+                  </div>
+                  <p className="px-4 pb-3 text-xs text-gray-400">
+                    Este valor aplica por igual a los 3 planes. En <b>KTV Care Complete</b> ya viene incluido en el año 1 (referencia de lo que recibe sin costo adicional); en <b>Inspect</b> y <b>Essential</b> es un servicio independiente, opcional y no incluido en el valor mostrado arriba — se cotiza y factura aparte solo si lo solicita.
+                  </p>
+                </div>
+              )}
+
               <div className="bg-[#F7FBFF] rounded-lg p-4 mt-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1">Condiciones de pago</p>
                 <p className="text-sm text-gray-700 text-justify">
