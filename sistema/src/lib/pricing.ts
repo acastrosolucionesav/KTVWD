@@ -113,7 +113,14 @@ export function calcularLavado(p: Parametros, args: {
   // Corrección Gerencia 2026-07-16: el recargo por edificio/dificultad SIEMPRE se
   // traslada al precio — antes solo subía el costo interno y KTV absorbía la
   // diferencia en silencio. Un recargo es, por definición, algo que paga el cliente.
-  const precioLavado = precioBase * (1 + recargo);
+  const precioConRecargo = precioBase * (1 + recargo);
+  // Piso de margen: los días se redondean a bloques de 0.5 pero el precio escala
+  // continuo por m² — justo después de cada salto de medio día, el costo sube más
+  // rápido que el precio. Este piso garantiza que ningún lavado salga jamás por
+  // debajo del margen mínimo por un efecto de redondeo (no cambia el precio normal
+  // el resto del tiempo, solo actúa cuando el redondeo lo exige).
+  const precioPisoMargen = costoOperacion / (1 - p.MARGEN_MINIMO - p.FEE_NORUEGA - args.comisionPct);
+  const precioLavado = Math.max(precioConRecargo, precioPisoMargen);
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = costoOperacion + feeNoruega + comision;
