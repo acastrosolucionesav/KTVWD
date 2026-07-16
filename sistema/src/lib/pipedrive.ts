@@ -50,6 +50,15 @@ async function obtenerEtapaPropuestaEnviada(): Promise<number | null> {
   return etapa.id;
 }
 
+// Materiales comerciales que se pueden registrar en un trato — compartido
+// entre la acción manual (/materiales, botón "Registrar envío") y el webhook
+// de la automatización de Pipedrive (el comercial marca la actividad nativa
+// "Enviar Brochure..." como hecha, sin salir de Pipedrive).
+export const MATERIALES = {
+  LANDING: { titulo: 'Brochure de prospección (landing)', url: 'https://landing.ktvworkingdrone.com.co' },
+  PLANES: { titulo: 'Catálogo de planes KTV Care', url: 'https://landing.ktvworkingdrone.com.co/planes.html' },
+} as const;
+
 // Registra en el trato que el comercial envió un material comercial
 // (brochure de prospección en frío o catálogo de planes de calentamiento).
 // Deja una nota en el historial del trato — no mueve etapa ni toca el valor.
