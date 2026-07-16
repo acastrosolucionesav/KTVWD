@@ -82,7 +82,7 @@ export const PARAMETROS_INICIALES: Parametros = {
   ROOF_FEE_2_EUR: 1198,
   ROOF_FEE_3_EUR: 1598,
   MARGEN_MINIMO: 0.35, // piso real confirmado por Gerencia 2026-07-12 — 25% nunca se trabaja salvo excepción forzada
-  MINIMO_PROYECTO_LAVADO: 1500000, // aprobado por Gerencia 2026-07-12 — con este piso el lavado más chico posible da ~35% de margen
+  MINIMO_PROYECTO_LAVADO: 1600000, // recalculado 2026-07-16 tras corrección del fee Noruega a 7% — con este piso el lavado más chico (sin recargo) vuelve a dar ~35% de margen
   INT_PISO_MERCADO: 9000000,       // aprobado por Gerencia 2026-07-12 — piso del estudio de mercado; solo afecta el tramo pequeño (los otros ya lo superan)
   COSTO_OPERATIVO_DV_TRAMO_1: 631000,  // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_2: 1262000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
