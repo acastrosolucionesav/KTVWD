@@ -178,8 +178,11 @@ export function calcularInspeccion(p: Parametros, techo: number) {
 }
 
 // Care — costo y margen REALES (spec_calcularCare.md 2026-07-14):
-// - Lavadas: mismas fórmulas de días×costo/día del lavado puntual, productividad MIXTA
-//   (la más conservadora) — si el edificio es vidrio puro, el margen real será mejor que este.
+// - Lavadas: mismas fórmulas de días×costo/día del lavado puntual — superficie real
+//   (productividad) y recargo de edificio/dificultad, igual que Familia 1. Corrección
+//   2026-07-16: antes SIEMPRE asumía MIXTA/BAJO/BAJO sin importar el edificio real, el
+//   mismo hueco de margen que ya se corrigió en calcularLavado — el recargo también se
+//   traslada al precio de la lavada dentro de la cuota, no solo al costo.
 // - Inspección: DV e II NUNCA son el mismo costo — el DV no paga fee a Noruega, el II sí.
 //   costo_DV = COSTO_OPERATIVO_DV_TRAMO[tramo] (costo operativo puro, sin fee).
 //   costo_II = fee Noruega (mismo cálculo que Familia 1) + costoOperacionInsp existente.
@@ -194,7 +197,11 @@ export function calcularInspeccion(p: Parametros, techo: number) {
 //   defecto — año 1; las renovaciones al 1% mejoran el margen en años siguientes).
 export function calcularCare(p: Parametros, args: {
   plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number; comisionPct?: number;
+  superficie?: Superficie; tipoEdificio?: NivelRecargo; dificultad?: NivelRecargo;
 }) {
+  const superficie = args.superficie ?? 'MIXTA';
+  const recargo = RECARGO_PCT[args.tipoEdificio ?? 'BAJO'] + RECARGO_PCT[args.dificultad ?? 'BAJO'];
+
   const insp = calcularInspeccion(p, args.techo);
   const dv = insp.dvPrecio;
 
@@ -204,21 +211,21 @@ export function calcularCare(p: Parametros, args: {
   const costoII = insp.feeNoruegaCop !== null ? insp.feeNoruegaCop + insp.costoOperacionInsp : null;
 
   const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
-  const diasUnaLavada = Math.ceil((args.m2 / p.PROD_MIXTA) * 2) / 2;
-  const costoUnaLavada = diasUnaLavada * costoOpDia;
+  const diasUnaLavada = Math.ceil((args.m2 / productividad(p, superficie)) * 2) / 2;
+  const costoUnaLavada = diasUnaLavada * costoOpDia * (1 + recargo);
 
   const nLavadas = args.plan === 'INSPECT' ? 0 : args.plan === 'ESSENTIAL' ? 1 : 2;
   let valorAnual: number;
   if (args.plan === 'INSPECT') {
     valorAnual = dv;
   } else if (args.plan === 'ESSENTIAL') {
-    valorAnual = args.m2 * p.TARIFA_LISTA * (1 - p.CARE_ESSENTIAL_DESC) + dv;
+    valorAnual = args.m2 * p.TARIFA_LISTA * (1 - p.CARE_ESSENTIAL_DESC) * (1 + recargo) + dv;
   } else {
     // Complete cobra por el Informe Internacional (lo que realmente entrega en año 1,
     // aunque sea una sola vez en los 3 años), no por el DV — mucho más barato — como
     // se hacía antes. Corrección Gerencia 2026-07-14: la cuota estaba fijada con el
     // valor equivocado, por eso el margen de año 1 caía por debajo del piso del 35%.
-    valorAnual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) + (insp.precioInternacional ?? dv);
+    valorAnual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) * (1 + recargo) + (insp.precioInternacional ?? dv);
   }
 
   const feeNoruega = valorAnual * p.FEE_NORUEGA;
@@ -266,7 +273,10 @@ export function calcularCare(p: Parametros, args: {
 // Regla Gerencia 2026-07-13: la propuesta de Care siempre muestra los 3
 // paquetes juntos (comparación), nunca uno solo — este helper calcula los 3
 // de una vez con los mismos m2/techo capturados en el formulario.
-export function calcularCareTodos(p: Parametros, args: { m2: number; techo: number; comisionPct?: number }) {
+export function calcularCareTodos(p: Parametros, args: {
+  m2: number; techo: number; comisionPct?: number;
+  superficie?: Superficie; tipoEdificio?: NivelRecargo; dificultad?: NivelRecargo;
+}) {
   return {
     INSPECT: calcularCare(p, { plan: 'INSPECT', ...args }),
     ESSENTIAL: calcularCare(p, { plan: 'ESSENTIAL', ...args }),

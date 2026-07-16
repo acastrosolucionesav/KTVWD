@@ -8,12 +8,28 @@ import type { PipedriveDealResumen } from '@/lib/pipedrive';
 const label = 'block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1';
 const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C2F8] text-sm';
 
-export default function CareForm() {
+export type CotizacionCareExistente = {
+  id: string;
+  clienteNombre: string;
+  clienteContacto: string;
+  pipedriveDealId: string;
+  plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+  m2: number;
+  techo: number;
+  superficie: string;
+  tipoEdificio: string;
+  dificultad: string;
+  contratoAnios: number;
+  formaPago: string;
+  observaciones: string;
+};
+
+export default function CareForm({ existente }: { existente?: CotizacionCareExistente }) {
   const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
-  const [plan, setPlan] = useState<'INSPECT' | 'ESSENTIAL' | 'COMPLETE'>('ESSENTIAL');
+  const [plan, setPlan] = useState<'INSPECT' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
-  const [clienteNombre, setClienteNombre] = useState('');
-  const [clienteContacto, setClienteContacto] = useState('');
+  const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? '');
+  const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? '');
 
   function seleccionarDeal(deal: PipedriveDealResumen | null) {
     setDealPipedrive(deal);
@@ -25,7 +41,10 @@ export default function CareForm() {
 
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
-      <h1 className="text-lg font-extrabold text-[#171E27]">Programa KTV Care — Familia 2 (recurrente)</h1>
+      <h1 className="text-lg font-extrabold text-[#171E27]">
+        {existente ? 'Editar cotización Care — Familia 2 (recurrente)' : 'Programa KTV Care — Familia 2 (recurrente)'}
+      </h1>
+      {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}
 
       <div>
         <label className={label}>Plan recomendado (se destaca en la propuesta)</label>
@@ -37,12 +56,16 @@ export default function CareForm() {
         <p className="text-[11px] text-gray-400 mt-1">La propuesta siempre muestra los 3 paquetes juntos — este es solo el que se destaca con la insignia &quot;Recomendado&quot;.</p>
       </div>
 
-      <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
-        <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>
-        <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
-        <PipedriveDealPicker onSelect={seleccionarDeal} />
-        <p className="text-[11px] text-amber-700/70 mt-1">Si existe el trato, al elegirlo se llenan solos el Cliente y el Contacto de abajo.</p>
-      </div>
+      {existente ? (
+        <input type="hidden" name="pipedriveDealId" value={existente.pipedriveDealId} />
+      ) : (
+        <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
+          <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>
+          <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
+          <PipedriveDealPicker onSelect={seleccionarDeal} />
+          <p className="text-[11px] text-amber-700/70 mt-1">Si existe el trato, al elegirlo se llenan solos el Cliente y el Contacto de abajo.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -60,25 +83,52 @@ export default function CareForm() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={label}>Área de fachada (m²) — solo interno</label>
-          <input name="m2" type="number" required min="1" className={input} defaultValue={30500} />
+          <input name="m2" type="number" required min="1" className={input} defaultValue={existente?.m2 ?? 30500} />
         </div>
         <div>
           <label className={label}>Área de techo (m²) — para el Diagnóstico Visual incluido</label>
-          <input name="techo" type="number" className={input} defaultValue={15000} />
+          <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20">
+        <div>
+          <label className={label}>Superficie</label>
+          <select name="superficie" className={input} defaultValue={existente?.superficie ?? 'MIXTA'}>
+            <option value="VIDRIO">Vidrio</option>
+            <option value="MIXTA">Mixta</option>
+            <option value="DIFICIL">Difícil</option>
+          </select>
+        </div>
+        <div>
+          <label className={label}>Tipo edificio</label>
+          <select name="tipoEdificio" className={input} defaultValue={existente?.tipoEdificio ?? 'BAJO'}>
+            <option value="BAJO">Bajo (0%)</option>
+            <option value="MEDIO">Medio (+5%)</option>
+            <option value="ALTO">Alto (+10%)</option>
+          </select>
+        </div>
+        <div>
+          <label className={label}>Dificultad</label>
+          <select name="dificultad" className={input} defaultValue={existente?.dificultad ?? 'BAJO'}>
+            <option value="BAJO">Baja (0%)</option>
+            <option value="MEDIO">Media (+5%)</option>
+            <option value="ALTO">Alta (+10%)</option>
+          </select>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={label}>Duración del contrato</label>
-          <select name="contratoAnios" className={input} defaultValue="1">
+          <select name="contratoAnios" className={input} defaultValue={String(existente?.contratoAnios ?? 1)}>
             <option value="1">1 año</option>
             <option value="3">3 años (congela precio año 1 + IPC)</option>
           </select>
         </div>
         <div>
           <label className={label}>Forma de pago</label>
-          <select name="formaPago" className={input} defaultValue="CONTADO">
+          <select name="formaPago" className={input} defaultValue={existente?.formaPago ?? 'CONTADO'}>
             <option value="CONTADO">Contado</option>
             <option value="DIFERIDO_12">Diferido 12 cuotas (no es descuento)</option>
           </select>
@@ -87,14 +137,15 @@ export default function CareForm() {
 
       <div>
         <label className={label}>Observaciones (se muestran al cliente)</label>
-        <textarea name="observaciones" rows={3} className={input} placeholder="Aclaraciones de alcance, condiciones especiales…" />
+        <textarea name="observaciones" rows={3} className={input} placeholder="Aclaraciones de alcance, condiciones especiales…"
+          defaultValue={existente?.observaciones ?? ''} />
       </div>
 
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
 
       <button type="submit" disabled={pending}
         className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-        {pending ? 'Calculando…' : 'Crear cotización Care'}
+        {pending ? 'Guardando…' : existente ? 'Guardar cambios' : 'Crear cotización Care'}
       </button>
     </form>
   );

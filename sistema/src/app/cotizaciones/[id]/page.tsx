@@ -45,6 +45,9 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
     ? calcularCareTodos(JSON.parse(c.snapshotParametros) as Parametros, {
         m2: c.care!.m2Fachada ?? 0,
         techo: c.care!.rangoTecho ?? 0,
+        superficie: c.care!.superficie ?? 'MIXTA',
+        tipoEdificio: c.care!.tipoEdificio ?? 'BAJO',
+        dificultad: c.care!.dificultad ?? 'BAJO',
       })
     : null;
 
@@ -178,8 +181,8 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         {(c.estado === 'APROBADA' || c.estado === 'BORRADOR') && (
           <form action={marcarEnviada.bind(null, c.id)}><button className="bg-[#66C2F8] text-white text-sm font-bold rounded-full px-5 py-2">Marcar como enviada</button></form>
         )}
-        {esPuntual && c.estado === 'BORRADOR' && (
-          <a href={`/cotizador/editar/${c.id}`} className="bg-white border border-[#66C2F8] text-[#171E27] text-sm font-bold rounded-full px-5 py-2">Editar</a>
+        {c.estado === 'BORRADOR' && (esPuntual || esCare) && (
+          <a href={esPuntual ? `/cotizador/editar/${c.id}` : `/care/editar/${c.id}`} className="bg-white border border-[#66C2F8] text-[#171E27] text-sm font-bold rounded-full px-5 py-2">Editar</a>
         )}
         <a href={`/propuesta/${c.linkToken}`} target="_blank" className="text-sm text-[#171E27] underline self-center">Ver propuesta pública (lo que abre el cliente) →</a>
       </div>

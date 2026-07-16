@@ -283,13 +283,25 @@ export async function eliminarCotizacion(cotizacionId: string) {
 }
 
 // ============================================================================
-// Crear cotización Care (Familia 2 — programa recurrente). Tabla SEPARADA de
-// CotizacionPuntual, tal como exige KWD-SIS-PROMPT-001 v2: nunca se mezclan
-// los datos de las 2 familias.
+// Crear (o editar, si formData trae cotizacionId) cotización Care (Familia 2 —
+// programa recurrente). Tabla SEPARADA de CotizacionPuntual, tal como exige
+// KWD-SIS-PROMPT-001 v2: nunca se mezclan los datos de las 2 familias.
+//
+// Edición: solo mientras la cotización esté en BORRADOR — mismo criterio que
+// crearCotizacionPuntual.
 // ============================================================================
 export async function crearCotizacionCare(_state: CrearCareState, formData: FormData): Promise<CrearCareState> {
   const session = await verifySession();
   const { parametros, snapshotJson } = await getParametrosVigentes();
+
+  const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
+  let existente: { clienteId: string } | null = null;
+  if (cotizacionExistenteId) {
+    const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionExistenteId } });
+    if (!c) return { error: 'La cotización ya no existe.' };
+    if (c.estado !== 'BORRADOR') return { error: 'Solo se pueden editar cotizaciones en estado Borrador.' };
+    existente = c;
+  }
 
   const planRecomendado = String(formData.get('plan')) as 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
@@ -307,7 +319,13 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const formaPago = String(formData.get('formaPago') || 'CONTADO') as 'CONTADO' | 'DIFERIDO_12';
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
-  const todos = calcularCareTodos(parametros, { m2, techo });
+  // Mismas variables de recargo que Familia 1 — corrección 2026-07-16, antes
+  // calcularCare siempre asumía MIXTA/BAJO/BAJO sin importar el edificio real.
+  const superficie = String(formData.get('superficie') || 'MIXTA') as Superficie;
+  const tipoEdificio = String(formData.get('tipoEdificio') || 'BAJO') as NivelRecargo;
+  const dificultad = String(formData.get('dificultad') || 'BAJO') as NivelRecargo;
+
+  const todos = calcularCareTodos(parametros, { m2, techo, superficie, tipoEdificio, dificultad });
   // Semáforo de margen (spec_calcularCare.md 2026-07-14): bajo 35% requiere aprobación
   // de Gerencia (igual que Familia 1); bajo 25% es un piso absoluto — ni Gerencia puede
   // enviarla, hay que ajustar parámetros o alcance primero. Para Complete, el margen de
@@ -317,6 +335,36 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
     return { error: 'El margen de esta cotización cae por debajo del mínimo absoluto (25%) en al menos un paquete o año de contrato. No se puede generar — ajuste los parámetros o el alcance antes de continuar.' };
   }
   const requiereAprobacion = margenesMinimos.some((m) => m < parametros.MARGEN_MINIMO);
+
+  const careData = {
+    planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,
+    superficie, tipoEdificio, dificultad,
+    valorAnualInspect: todos.INSPECT.valorAnual, valorMensualInspect: todos.INSPECT.valorMensual,
+    valorAnualEssential: todos.ESSENTIAL.valorAnual, valorMensualEssential: todos.ESSENTIAL.valorMensual,
+    valorAnualComplete: todos.COMPLETE.valorAnual, valorMensualComplete: todos.COMPLETE.valorMensual,
+  };
+
+  if (existente) {
+    await prisma.clienteProspecto.update({
+      where: { id: existente.clienteId },
+      data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
+    });
+    await prisma.cotizacion.update({
+      where: { id: cotizacionExistenteId! },
+      data: {
+        estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
+        requiereAprobacion,
+        snapshotParametros: snapshotJson,
+        totalCliente: todos[planRecomendado].valorAnual,
+        observaciones,
+        care: { update: careData },
+      },
+    });
+    await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
+    revalidatePath('/cotizaciones');
+    revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
+    redirect(`/cotizaciones/${cotizacionExistenteId}`);
+  }
 
   const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId } });
   const vigenteHasta = new Date();
@@ -334,14 +382,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       snapshotParametros: snapshotJson,
       totalCliente: todos[planRecomendado].valorAnual,
       observaciones,
-      care: {
-        create: {
-          planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,
-          valorAnualInspect: todos.INSPECT.valorAnual, valorMensualInspect: todos.INSPECT.valorMensual,
-          valorAnualEssential: todos.ESSENTIAL.valorAnual, valorMensualEssential: todos.ESSENTIAL.valorMensual,
-          valorAnualComplete: todos.COMPLETE.valorAnual, valorMensualComplete: todos.COMPLETE.valorMensual,
-        },
-      },
+      care: { create: careData },
       auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
     },
   });

@@ -192,6 +192,13 @@ model CotizacionCare {
 
   m2Fachada  Float?  // solo interno
   rangoTecho Float?  // solo interno
+  // Corrección 2026-07-16: calcularCare nunca recibía estas variables — el costo
+  // (y ahora el precio) de las lavadas de Care siempre asumía MIXTA/BAJO/BAJO,
+  // sin importar el edificio real. Mismo hueco de margen que ya se corrigió en
+  // el lavado de Familia 1 (ver calcularLavado).
+  superficie   Superficie?   // solo interno
+  tipoEdificio NivelRecargo? // solo interno
+  dificultad   NivelRecargo? // solo interno
 
   valorAnualInspect     Float
   valorMensualInspect   Float
