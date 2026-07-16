@@ -13,14 +13,29 @@ export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
 export type CrearCareState = { error?: string; ok?: boolean } | undefined;
 
 // ============================================================================
-// Crear cotización puntual (Familia 1). Aquí se calcula TODO (incluido fee y
-// margen — Regla A no se aplica acá, se aplica en dto.ts al armar el
-// documento de cliente). El comercial que llama esta acción SÍ puede crear
-// la cotización aunque su rol nunca vea el desglose después.
+// Crear (o editar, si formData trae cotizacionId) cotización puntual (Familia 1).
+// Aquí se calcula TODO (incluido fee y margen — Regla A no se aplica acá, se
+// aplica en dto.ts al armar el documento de cliente). El comercial que llama
+// esta acción SÍ puede crear la cotización aunque su rol nunca vea el
+// desglose después.
+//
+// Edición: solo mientras la cotización esté en BORRADOR (nunca algo ya
+// aprobado, rechazado o enviado a un cliente real) — evita que un comercial
+// tenga que borrar y volver a crear por un dato mal digitado (m², días de
+// Aerocivil, etc.).
 // ============================================================================
 export async function crearCotizacionPuntual(_state: CrearPuntualState, formData: FormData): Promise<CrearPuntualState> {
   const session = await verifySession();
   const { parametros, snapshotJson } = await getParametrosVigentes();
+
+  const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
+  let existente: { clienteId: string } | null = null;
+  if (cotizacionExistenteId) {
+    const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionExistenteId } });
+    if (!c) return { error: 'La cotización ya no existe.' };
+    if (c.estado !== 'BORRADOR') return { error: 'Solo se pueden editar cotizaciones en estado Borrador.' };
+    existente = c;
+  }
 
   const servicio = String(formData.get('servicio')) as 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
@@ -103,6 +118,51 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const margenP = totalCliente > 0 ? margenD / totalCliente : 0;
   const requiereAprobacion = margenP < parametros.MARGEN_MINIMO;
 
+  const puntualData = {
+    servicio,
+    tipoInformeBase,
+    mostrarInformeInternacional,
+    m2Fachada: incluyeLavado ? m2 : null,
+    superficie: incluyeLavado ? superficie : null,
+    tipoEdificio: incluyeLavado ? tipoEdificio : null,
+    dificultad: incluyeLavado ? dificultad : null,
+    rangoTecho: techo || null,
+    diasOperacion: (lavado?.dias ?? 0) + (servicio !== 'SOLO_LAVADO' ? insp.diasOperacionInsp : 0),
+    costoOperacion: costoOperacionTotal,
+    feeNoruega: feeNoruegaTotal,
+    margenPct: margenP,
+    precioLavado,
+    precioInformeBase,
+    precioInformeAdicional,
+    anticipoPct,
+    saldoPct,
+    condicionPagoNota,
+    permisoAerocivil,
+    ejecucionSitio,
+  };
+
+  if (existente) {
+    await prisma.clienteProspecto.update({
+      where: { id: existente.clienteId },
+      data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
+    });
+    await prisma.cotizacion.update({
+      where: { id: cotizacionExistenteId! },
+      data: {
+        estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
+        requiereAprobacion,
+        snapshotParametros: snapshotJson,
+        totalCliente,
+        observaciones,
+        puntual: { update: puntualData },
+      },
+    });
+    await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
+    revalidatePath('/cotizaciones');
+    revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
+    redirect(`/cotizaciones/${cotizacionExistenteId}`);
+  }
+
   const cliente = await prisma.clienteProspecto.create({
     data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
   });
@@ -122,30 +182,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       snapshotParametros: snapshotJson,
       totalCliente,
       observaciones,
-      puntual: {
-        create: {
-          servicio,
-          tipoInformeBase,
-          mostrarInformeInternacional,
-          m2Fachada: incluyeLavado ? m2 : null,
-          superficie: incluyeLavado ? superficie : null,
-          tipoEdificio: incluyeLavado ? tipoEdificio : null,
-          dificultad: incluyeLavado ? dificultad : null,
-          rangoTecho: techo || null,
-          diasOperacion: (lavado?.dias ?? 0) + (servicio !== 'SOLO_LAVADO' ? insp.diasOperacionInsp : 0),
-          costoOperacion: costoOperacionTotal,
-          feeNoruega: feeNoruegaTotal,
-          margenPct: margenP,
-          precioLavado,
-          precioInformeBase,
-          precioInformeAdicional,
-          anticipoPct,
-          saldoPct,
-          condicionPagoNota,
-          permisoAerocivil,
-          ejecucionSitio,
-        },
-      },
+      puntual: { create: puntualData },
       auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
     },
   });

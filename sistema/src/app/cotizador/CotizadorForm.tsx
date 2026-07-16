@@ -8,13 +8,33 @@ import type { PipedriveDealResumen } from '@/lib/pipedrive';
 const label = 'block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1';
 const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C2F8] text-sm';
 
-export default function CotizadorForm() {
+export type CotizacionPuntualExistente = {
+  id: string;
+  clienteNombre: string;
+  clienteContacto: string;
+  pipedriveDealId: string;
+  servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
+  m2: number;
+  superficie: string;
+  tipoEdificio: string;
+  dificultad: string;
+  techo: number;
+  mostrarInformeInternacional: boolean;
+  observaciones: string;
+  anticipoPct: number | null;
+  saldoPct: number | null;
+  condicionPagoNota: string;
+  permisoAerocivil: string;
+  ejecucionSitio: string;
+};
+
+export default function CotizadorForm({ existente }: { existente?: CotizacionPuntualExistente }) {
   const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
-  const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>('LAVADO_MAS_INSPECCION');
+  const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
-  const [clienteNombre, setClienteNombre] = useState('');
-  const [clienteContacto, setClienteContacto] = useState('');
+  const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? '');
+  const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? '');
 
   function seleccionarDeal(deal: PipedriveDealResumen | null) {
     setDealPipedrive(deal);
@@ -26,7 +46,10 @@ export default function CotizadorForm() {
 
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
-      <h1 className="text-lg font-extrabold text-[#171E27]">Cotización sencilla — Familia 1 (servicio puntual)</h1>
+      <h1 className="text-lg font-extrabold text-[#171E27]">
+        {existente ? 'Editar cotización — Familia 1 (servicio puntual)' : 'Cotización sencilla — Familia 1 (servicio puntual)'}
+      </h1>
+      {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}
 
       <div>
         <label className={label}>Producto a cotizar (escoja UNO)</label>
@@ -37,12 +60,16 @@ export default function CotizadorForm() {
         </select>
       </div>
 
-      <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
-        <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>
-        <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
-        <PipedriveDealPicker onSelect={seleccionarDeal} />
-        <p className="text-[11px] text-amber-700/70 mt-1">Si existe el trato, al elegirlo se llenan solos el Cliente y el Contacto de abajo.</p>
-      </div>
+      {existente ? (
+        <input type="hidden" name="pipedriveDealId" value={existente.pipedriveDealId} />
+      ) : (
+        <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
+          <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>
+          <input type="hidden" name="pipedriveDealId" value={dealPipedrive?.id ?? ''} />
+          <PipedriveDealPicker onSelect={seleccionarDeal} />
+          <p className="text-[11px] text-amber-700/70 mt-1">Si existe el trato, al elegirlo se llenan solos el Cliente y el Contacto de abajo.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -61,11 +88,11 @@ export default function CotizadorForm() {
         <div className="grid grid-cols-3 gap-4 p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20">
           <div className="col-span-3">
             <label className={label}>Área de fachada (m²) — solo interno, no se muestra al cliente</label>
-            <input name="m2" type="number" required className={input} defaultValue={30500} />
+            <input name="m2" type="number" required className={input} defaultValue={existente?.m2 ?? 30500} />
           </div>
           <div>
             <label className={label}>Superficie</label>
-            <select name="superficie" className={input} defaultValue="MIXTA">
+            <select name="superficie" className={input} defaultValue={existente?.superficie ?? 'MIXTA'}>
               <option value="VIDRIO">Vidrio</option>
               <option value="MIXTA">Mixta</option>
               <option value="DIFICIL">Difícil</option>
@@ -73,7 +100,7 @@ export default function CotizadorForm() {
           </div>
           <div>
             <label className={label}>Tipo edificio</label>
-            <select name="tipoEdificio" className={input} defaultValue="BAJO">
+            <select name="tipoEdificio" className={input} defaultValue={existente?.tipoEdificio ?? 'BAJO'}>
               <option value="BAJO">Bajo (0%)</option>
               <option value="MEDIO">Medio (+5%)</option>
               <option value="ALTO">Alto (+10%)</option>
@@ -81,7 +108,7 @@ export default function CotizadorForm() {
           </div>
           <div>
             <label className={label}>Dificultad</label>
-            <select name="dificultad" className={input} defaultValue="BAJO">
+            <select name="dificultad" className={input} defaultValue={existente?.dificultad ?? 'BAJO'}>
               <option value="BAJO">Baja (0%)</option>
               <option value="MEDIO">Media (+5%)</option>
               <option value="ALTO">Alta (+10%)</option>
@@ -92,17 +119,18 @@ export default function CotizadorForm() {
 
       <div>
         <label className={label}>Área de techo (m²) — para el Diagnóstico Visual / Informe Internacional</label>
-        <input name="techo" type="number" className={input} defaultValue={15000} />
+        <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
       </div>
 
       <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" name="mostrarInformeInternacional" className="rounded" />
+        <input type="checkbox" name="mostrarInformeInternacional" className="rounded" defaultChecked={existente?.mostrarInformeInternacional ?? false} />
         Ofrecer el Informe Internacional KTV como adicional en esta cotización (Regla B)
       </label>
 
       <div>
         <label className={label}>Observaciones (se muestran al cliente)</label>
-        <textarea name="observaciones" rows={3} className={input} placeholder="Aclaraciones de alcance, condiciones especiales…" />
+        <textarea name="observaciones" rows={3} className={input} placeholder="Aclaraciones de alcance, condiciones especiales…"
+          defaultValue={existente?.observaciones ?? ''} />
       </div>
 
       <div className="p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20 space-y-4">
@@ -110,25 +138,27 @@ export default function CotizadorForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={label}>Anticipo (%)</label>
-            <input name="anticipoPct" type="number" min="0" max="100" className={input} defaultValue={60} />
+            <input name="anticipoPct" type="number" min="0" max="100" className={input} defaultValue={existente?.anticipoPct ?? 60} />
           </div>
           <div>
             <label className={label}>Saldo (%)</label>
-            <input name="saldoPct" type="number" min="0" max="100" className={input} defaultValue={40} />
+            <input name="saldoPct" type="number" min="0" max="100" className={input} defaultValue={existente?.saldoPct ?? 40} />
           </div>
         </div>
         <div>
           <label className={label}>Condición de pago (nota)</label>
           <textarea name="condicionPagoNota" rows={2} className={input}
-            defaultValue="60% con la Orden de Compra; 40% antes de finalizar el servicio. Opción de pago diferido hasta en 12 cuotas mensuales sujeto a aprobación (no modifica el valor del contrato)." />
+            defaultValue={existente?.condicionPagoNota ?? '60% con la Orden de Compra; 40% antes de finalizar el servicio. Opción de pago diferido hasta en 12 cuotas mensuales sujeto a aprobación (no modifica el valor del contrato).'} />
         </div>
         <div>
           <label className={label}>Permiso Aeronáutica Civil</label>
-          <input name="permisoAerocivil" className={input} defaultValue="30 a 40 días hábiles. Tramitación y radicación a cargo de KTV." />
+          <input name="permisoAerocivil" className={input}
+            defaultValue={existente?.permisoAerocivil ?? '30 a 40 días hábiles. Tramitación y radicación a cargo de KTV.'} />
         </div>
         <div>
           <label className={label}>Ejecución en sitio</label>
-          <input name="ejecucionSitio" className={input} defaultValue="15 a 20 días hábiles. Una vez aprobados permisos y recibido el anticipo." />
+          <input name="ejecucionSitio" className={input}
+            defaultValue={existente?.ejecucionSitio ?? '15 a 20 días hábiles. Una vez aprobados permisos y recibido el anticipo.'} />
         </div>
       </div>
 
@@ -136,7 +166,7 @@ export default function CotizadorForm() {
 
       <button type="submit" disabled={pending}
         className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-        {pending ? 'Calculando…' : 'Crear cotización'}
+        {pending ? 'Guardando…' : existente ? 'Guardar cambios' : 'Crear cotización'}
       </button>
     </form>
   );
