@@ -232,6 +232,19 @@ export async function toggleLinkPropuesta(cotizacionId: string) {
   revalidatePath(`/propuesta/${c.linkToken}`);
 }
 
+// Borrado — solo GERENCIA, solo mientras esté en BORRADOR (nunca algo que ya
+// se le mostró o envió a un cliente real, para no perder trazabilidad).
+export async function eliminarCotizacion(cotizacionId: string) {
+  await requireRol('GERENCIA');
+  const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionId } });
+  if (!c) return { error: 'La cotización ya no existe.' };
+  if (c.estado !== 'BORRADOR') {
+    return { error: 'Solo se pueden borrar cotizaciones en estado Borrador — esta ya fue aprobada, rechazada o enviada.' };
+  }
+  await prisma.cotizacion.delete({ where: { id: cotizacionId } });
+  revalidatePath('/cotizaciones');
+}
+
 // ============================================================================
 // Crear cotización Care (Familia 2 — programa recurrente). Tabla SEPARADA de
 // CotizacionPuntual, tal como exige KWD-SIS-PROMPT-001 v2: nunca se mezclan

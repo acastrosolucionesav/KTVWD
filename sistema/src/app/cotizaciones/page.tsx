@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
+import EliminarBoton from './EliminarBoton';
 
 const ESTADO_COLOR: Record<string, string> = {
   BORRADOR: 'bg-gray-100 text-gray-700',
@@ -23,7 +24,7 @@ const NOMBRES_PLAN: Record<string, string> = {
 };
 
 export default async function CotizacionesPage() {
-  await verifySession();
+  const session = await verifySession();
   const cotizaciones = await prisma.cotizacion.findMany({
     include: { cliente: true, puntual: true, care: true },
     orderBy: { creadoAt: 'desc' },
@@ -47,6 +48,7 @@ export default async function CotizacionesPage() {
                 <span className="text-xs text-amber-700">margen bajo — requiere Gerencia</span>
               )}
               <span className={`text-xs font-bold px-3 py-1 rounded-full ${ESTADO_COLOR[c.estado]}`}>{c.estado.replace('_', ' ')}</span>
+              {session.rol === 'GERENCIA' && c.estado === 'BORRADOR' && <EliminarBoton cotizacionId={c.id} />}
             </div>
           </Link>
         ))}
