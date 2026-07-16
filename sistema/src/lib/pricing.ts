@@ -109,7 +109,11 @@ export function calcularLavado(p: Parametros, args: {
   // Cargo mínimo por proyecto: el costo de salir a operar no baja de medio día aunque el
   // edificio sea diminuto — sin este piso, fachadas chicas daban margen negativo (hasta -377%).
   // (?? 0: snapshots congelados de cotizaciones anteriores a este parámetro no lo traen)
-  const precioLavado = Math.max(args.m2 * p.TARIFA_LISTA, p.MINIMO_PROYECTO_LAVADO ?? 0);
+  const precioBase = Math.max(args.m2 * p.TARIFA_LISTA, p.MINIMO_PROYECTO_LAVADO ?? 0);
+  // Corrección Gerencia 2026-07-16: el recargo por edificio/dificultad SIEMPRE se
+  // traslada al precio — antes solo subía el costo interno y KTV absorbía la
+  // diferencia en silencio. Un recargo es, por definición, algo que paga el cliente.
+  const precioLavado = precioBase * (1 + recargo);
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = costoOperacion + feeNoruega + comision;
