@@ -18,7 +18,10 @@ export default async function NavBar() {
         <Link href="/materiales" className="text-sm text-gray-300 hover:text-white">Enviar material</Link>
         <Link href="/cotizaciones" className="text-sm text-gray-300 hover:text-white">Cotizaciones</Link>
         {session.rol === 'GERENCIA' && (
-          <Link href="/parametros" className="text-sm text-gray-300 hover:text-white">Parámetros</Link>
+          <>
+            <Link href="/parametros" className="text-sm text-gray-300 hover:text-white">Parámetros</Link>
+            <Link href="/usuarios" className="text-sm text-gray-300 hover:text-white">Usuarios</Link>
+          </>
         )}
       </div>
       <div className="flex items-center gap-4 text-sm text-gray-300">

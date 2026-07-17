@@ -33,3 +33,30 @@ export async function enviarCorreoRecuperacion(destinatario: string, urlRestable
     `,
   });
 }
+
+export async function enviarCorreoBienvenida(destinatario: string, nombre: string, urlActivar: string) {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.error('SENDGRID_API_KEY no configurada — no se pudo enviar el correo de bienvenida.');
+    return;
+  }
+  await sgMail.send({
+    from: FROM,
+    to: destinatario,
+    subject: 'Bienvenido al Sistema Comercial KTV',
+    html: `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <div style="background:#171E27;color:#fff;padding:20px;border-radius:12px 12px 0 0">
+          <span style="color:#66C2F8;font-weight:bold;font-size:12px;letter-spacing:1px">KTV WORKING DRONE</span>
+          <h1 style="font-size:18px;margin:8px 0 0">Bienvenido, ${nombre}</h1>
+        </div>
+        <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:24px">
+          <p style="color:#374151;font-size:14px">Se creó su cuenta en el Sistema Comercial KTV con el correo <b>${destinatario}</b>. Cree su contraseña para activarla y empezar a usarla.</p>
+          <p style="text-align:center;margin:28px 0">
+            <a href="${urlActivar}" style="background:#66C2F8;color:#fff;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:14px">Crear mi contraseña</a>
+          </p>
+          <p style="color:#9ca3af;font-size:12px">Este enlace vence en 7 días y solo puede usarse una vez.</p>
+        </div>
+      </div>
+    `,
+  });
+}
