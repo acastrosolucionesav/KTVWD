@@ -195,6 +195,14 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   </div>
                 </div>
               )}
+              {dto.itemsTerceros.map((it, idx) => (
+                <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 flex justify-between items-center gap-4">
+                    <span className="text-sm text-gray-600 text-justify">{it.descripcionCliente}</span>
+                    <span className="font-bold text-[#171E27] shrink-0">{cop(it.precioVenta)}</span>
+                  </div>
+                </div>
+              ))}
               <div className="flex flex-col gap-1 items-end text-sm pr-1 pt-2 border-t">
                 <div className="flex justify-between w-56"><span className="text-gray-500">Subtotal (sin IVA)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente)}</span></div>
                 <div className="flex justify-between w-56"><span className="text-gray-500">IVA (19%)</span><span className="font-semibold text-[#171E27]">{cop(dto.totalCliente * 0.19)}</span></div>
@@ -275,6 +283,23 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   <p className="px-4 pb-3 text-xs text-gray-400">
                     Este valor aplica por igual a los 3 planes. En <b>KTV Care Complete</b> ya viene incluido en el año 1 (referencia de lo que recibe sin costo adicional); en <b>Inspect</b> y <b>Essential</b> es un servicio independiente, opcional y no incluido en el valor mostrado arriba — se cotiza y factura aparte solo si lo solicita.
                   </p>
+                </div>
+              )}
+
+              {dto.itemsTerceros.length > 0 && (
+                <div className="mt-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Servicios adicionales para su edificio</h3>
+                  <div className="space-y-2">
+                    {dto.itemsTerceros.map((it, idx) => (
+                      <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="px-4 py-3 flex justify-between items-center gap-4">
+                          <span className="text-sm text-gray-600 text-justify">{it.descripcionCliente}</span>
+                          <span className="font-bold text-[#171E27] shrink-0">{cop(it.precioVenta)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Valor único, independiente del programa KTV Care — no está incluido en el valor anual/mensual de los planes de arriba.</p>
                 </div>
               )}
 

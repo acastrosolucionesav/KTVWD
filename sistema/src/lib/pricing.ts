@@ -283,3 +283,22 @@ export function calcularCareTodos(p: Parametros, args: {
     COMPLETE: calcularCare(p, { plan: 'COMPLETE', ...args }),
   };
 }
+
+// ============================================================================
+// Ítems de Terceros (spec_items_terceros_20260716_2.md): productos o servicios
+// que KTV subcontrata y revende con margen, facturados bajo el nombre de KTV.
+// Margen NETO fijo, no editable — se resuelve DESPUÉS de restar el 7% de
+// Noruega (Art. 2 del contrato: el royalty aplica también a estos ítems), no
+// antes. "Producto" = compra y entrega sin coordinar personal en sitio (15%
+// neto). "Servicio" = coordina personal de un tercero en sitio del cliente,
+// asume riesgo de marca (25% neto).
+// ============================================================================
+export type TipoItemTercero = 'PRODUCTO' | 'SERVICIO';
+
+export const MARGEN_NETO_TERCERO: Record<TipoItemTercero, number> = { PRODUCTO: 0.15, SERVICIO: 0.25 };
+
+export function calcularItemTercero(p: Parametros, args: { tipo: TipoItemTercero; costoReal: number }) {
+  const margenNetoDeseado = MARGEN_NETO_TERCERO[args.tipo];
+  const precioVenta = args.costoReal / (1 - p.FEE_NORUEGA - margenNetoDeseado);
+  return { margenNetoDeseado, precioVenta };
+}

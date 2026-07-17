@@ -26,6 +26,10 @@ export type CotizacionClienteDTO = {
   estado: string;
   totalCliente: number; // único número contractual — sin IVA (Regla general de visualización)
   creadoPorNombre: string; // comercial que crea la cotización — firma la propuesta
+  // Ítems de terceros (spec_items_terceros_20260716_2.md) — genérico, aplica a
+  // cualquier familia. Regla A: SOLO descripción y precio de venta, nunca
+  // costoReal/margenNetoDeseado/notaInterna — esos no están en esta forma.
+  itemsTerceros: { descripcionCliente: string; precioVenta: number }[];
   // Familia 1
   puntual?: {
     servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
@@ -71,9 +75,12 @@ const NOMBRES_INFORME = {
 export async function getCotizacionClienteDTO(linkToken: string): Promise<CotizacionClienteDTO | null> {
   const c = await prisma.cotizacion.findUnique({
     where: { linkToken },
-    include: { cliente: true, puntual: true, care: true, creadoPor: true },
+    include: { cliente: true, puntual: true, care: true, creadoPor: true, itemsTerceros: true },
   });
   if (!c) return null;
+
+  const itemsTerceros = c.itemsTerceros.map((it) => ({ descripcionCliente: it.descripcionCliente, precioVenta: it.precioVenta }));
+  const sumaItemsTerceros = c.itemsTerceros.reduce((s, it) => s + it.precioVenta, 0);
 
   const base: CotizacionClienteDTO = {
     idTrazabilidad: c.idTrazabilidad,
@@ -87,8 +94,13 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
     observaciones: c.observaciones,
     aceptadaPorCliente: c.aceptadaPorCliente,
     estado: c.estado,
-    totalCliente: c.totalCliente,
+    // Familia 1: el total es único, así que los ítems de terceros se suman de
+    // una vez. Care: el total es el valor ANUAL del plan recomendado (un
+    // programa recurrente) — los ítems de terceros son un cargo aparte, no se
+    // mezclan ahí (se muestran por separado, ver propuesta/[id]/page.tsx).
+    totalCliente: c.familia === 'PUNTUAL' ? c.totalCliente + sumaItemsTerceros : c.totalCliente,
     creadoPorNombre: c.creadoPor.nombre,
+    itemsTerceros,
   };
 
   if (c.familia === 'PUNTUAL' && c.puntual) {

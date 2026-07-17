@@ -3,6 +3,10 @@ import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
 import { calcularCareTodos, type Parametros } from '@/lib/pricing';
 import { aprobarCotizacion, rechazarCotizacion, marcarEnviada, toggleLinkPropuesta } from '@/app/actions/cotizaciones';
+import AgregarItemTerceroForm from './AgregarItemTerceroForm';
+import EliminarItemTerceroBoton from './EliminarItemTerceroBoton';
+
+const NOMBRES_TIPO_TERCERO: Record<string, string> = { PRODUCTO: 'Producto', SERVICIO: 'Servicio' };
 
 const NOMBRES_SERVICIO: Record<string, string> = {
   INSPECCION_SOLA: 'Solo inspección',
@@ -32,6 +36,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
       aperturas: { orderBy: { timestamp: 'desc' } },
       versionAnterior: { select: { id: true, idTrazabilidad: true } },
       versionNueva: { select: { id: true, idTrazabilidad: true } },
+      itemsTerceros: { orderBy: { creadoAt: 'asc' } },
     },
   });
   if (!c) notFound();
@@ -98,11 +103,18 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
             ))}
           </div>
         ) : (
-          <p className="text-3xl font-extrabold text-[#171E27]">{cop(c.totalCliente)}</p>
+          <p className="text-3xl font-extrabold text-[#171E27]">
+            {cop(esPuntual ? c.totalCliente + c.itemsTerceros.reduce((s, it) => s + it.precioVenta, 0) : c.totalCliente)}
+          </p>
         )}
         <p className="text-xs text-gray-400 mt-2">Sin IVA · sin metros cuadrados (Regla general de visualización)</p>
         {esPuntual && c.puntual!.mostrarInformeInternacional && c.puntual!.precioInformeAdicional && (
           <p className="text-sm text-gray-600 mt-2">+ Informe Internacional KTV (adicional, activado): {cop(c.puntual!.precioInformeAdicional)}</p>
+        )}
+        {c.itemsTerceros.length > 0 && (
+          <p className="text-xs text-gray-400 mt-1">
+            {esPuntual ? 'Incluye' : 'No incluye'} {c.itemsTerceros.length} ítem{c.itemsTerceros.length > 1 ? 's' : ''} de tercero — ver detalle abajo.
+          </p>
         )}
       </div>
 
@@ -184,6 +196,42 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
           </p>
         </div>
       )}
+
+      {/* ---- Ítems de terceros (spec_items_terceros_20260716_2.md) ---- */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-3">Ítems de terceros (productos/servicios subcontratados)</h2>
+        {c.itemsTerceros.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {c.itemsTerceros.map((it) => (
+              <div key={it.id} className="border border-gray-200 rounded-lg px-4 py-3">
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#171E27]">{it.descripcionCliente}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{NOMBRES_TIPO_TERCERO[it.tipo]}</p>
+                    {esGerencia && it.notaInterna && (
+                      <p className="text-[11px] text-amber-700 mt-1">🔒 {it.notaInterna}</p>
+                    )}
+                    {esGerencia && (
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Costo real: {cop(it.costoReal)} · Margen neto: {(it.margenNetoDeseado * 100).toFixed(0)}%
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-2 shrink-0">
+                    <span className="font-bold text-[#171E27]">{cop(it.precioVenta)}</span>
+                    {c.estado === 'BORRADOR' && <EliminarItemTerceroBoton itemId={it.id} />}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {c.estado === 'BORRADOR' ? (
+          <AgregarItemTerceroForm cotizacionId={c.id} />
+        ) : (
+          <p className="text-xs text-gray-400">Solo se pueden agregar/quitar ítems de terceros mientras la cotización esté en Borrador.</p>
+        )}
+      </div>
 
       {/* ---- Acciones ---- */}
       <div className="flex gap-3 flex-wrap">

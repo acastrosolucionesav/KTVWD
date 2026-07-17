@@ -64,6 +64,11 @@ enum FormaPago {
   DIFERIDO_12
 }
 
+enum TipoItemTercero {
+  PRODUCTO
+  SERVICIO
+}
+
 model Usuario {
   id           String   @id @default(cuid())
   nombre       String
@@ -143,11 +148,12 @@ model Cotizacion {
   versionAnterior   Cotizacion? @relation("VersionDeCorreccion", fields: [versionAnteriorId], references: [id])
   versionNueva      Cotizacion? @relation("VersionDeCorreccion")
 
-  puntual      CotizacionPuntual?
-  care         CotizacionCare?
-  auditorias   Auditoria[]
-  aperturas    Apertura[]
-  ordenServicio OrdenServicio?
+  puntual        CotizacionPuntual?
+  care           CotizacionCare?
+  auditorias     Auditoria[]
+  aperturas      Apertura[]
+  ordenServicio  OrdenServicio?
+  itemsTerceros  ItemTercero[]
 }
 
 // ============ FAMILIA 1 — Servicios puntuales (no recurrentes) ============
@@ -215,6 +221,24 @@ model CotizacionCare {
   valorMensualEssential Float
   valorAnualComplete    Float
   valorMensualComplete  Float
+}
+
+// Ítem de Tercero (spec_items_terceros_20260716_2.md): producto o servicio
+// subcontratado y revendido con margen fijo, facturado bajo el nombre de KTV.
+// Genérico y aplicable a cualquier familia — no es catálogo fijo por caso.
+model ItemTercero {
+  id                 String          @id @default(cuid())
+  cotizacionId       String
+  cotizacion         Cotizacion      @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  descripcionCliente String          // visible al cliente — nunca debe mencionar "tercero"/"subcontratado"
+  notaInterna        String?         // CONFIDENCIAL — Regla A, para control contable de Gerencia
+  tipo               TipoItemTercero
+  costoReal          Float           // CONFIDENCIAL — Regla A, lo que KTV le paga al tercero
+  margenNetoDeseado  Float           // CONFIDENCIAL — Regla A, 0.15 (producto) o 0.25 (servicio)
+  precioVenta        Float           // lo único de este ítem que ve el cliente
+
+  creadoAt DateTime @default(now())
 }
 
 // Orden de Servicio Comercial interna para Operaciones — NUNCA lleva cifras.
