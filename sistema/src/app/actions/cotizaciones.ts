@@ -7,7 +7,7 @@ import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
 import { calcularLavado, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
-import { registrarPropuestaEnviada } from '@/lib/pipedrive';
+import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
 export type CrearCareState = { error?: string; ok?: boolean } | undefined;
@@ -186,6 +186,18 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
     },
   });
+
+  // Viaje de vuelta a Pipedrive: nota en el trato + link de la propuesta en
+  // el campo "Cotizador". Nunca bloquea la creación si Pipedrive falla.
+  if (pipedriveDealId) {
+    await registrarCotizacionCreada(Number(pipedriveDealId), {
+      idTrazabilidad: cotizacion.idTrazabilidad,
+      clienteNombre,
+      urlPropuesta: `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${cotizacion.linkToken}`,
+      familia: 'PUNTUAL',
+      requiereAprobacion,
+    }).catch((e) => console.error('Pipedrive: error registrando cotización creada', e));
+  }
 
   revalidatePath('/cotizaciones');
   redirect(`/cotizaciones/${cotizacion.id}`);
@@ -386,6 +398,17 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
     },
   });
+
+  // Viaje de vuelta a Pipedrive — mismo mecanismo que Familia 1.
+  if (pipedriveDealId) {
+    await registrarCotizacionCreada(Number(pipedriveDealId), {
+      idTrazabilidad: cotizacion.idTrazabilidad,
+      clienteNombre,
+      urlPropuesta: `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${cotizacion.linkToken}`,
+      familia: 'CARE',
+      requiereAprobacion,
+    }).catch((e) => console.error('Pipedrive: error registrando cotización Care creada', e));
+  }
 
   revalidatePath('/cotizaciones');
   redirect(`/cotizaciones/${cotizacion.id}`);

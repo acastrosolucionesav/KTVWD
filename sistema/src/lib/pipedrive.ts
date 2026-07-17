@@ -74,6 +74,58 @@ export async function registrarEnvioMaterial(dealId: number, args: { titulo: str
   return { ok: true as const };
 }
 
+// Campo personalizado "Cotizador" del trato (lo crea Gerencia una sola vez en
+// Pipedrive: Configuración → Campos de datos → Trato). Se busca por nombre y
+// se cachea la key solo cuando se encuentra — si aún no existe, se reintenta
+// en el siguiente uso sin romper nada.
+let campoCotizadorKeyCache: string | null = null;
+async function obtenerCampoCotizador(): Promise<string | null> {
+  if (campoCotizadorKeyCache) return campoCotizadorKeyCache;
+  const res = await fetch(`${BASE}/dealFields?api_token=${TOKEN}`, { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const json = await res.json();
+  const campo = (json?.data ?? []).find((f: any) => String(f.name ?? '').trim().toLowerCase() === 'cotizador');
+  if (campo?.key) campoCotizadorKeyCache = campo.key;
+  return campoCotizadorKeyCache;
+}
+
+// Al CREAR una cotización vinculada a un trato: nota en el historial + el
+// enlace público de la propuesta en el campo "Cotizador" del panel de
+// Detalles — el comercial ve el link ahí mismo, sin salir de Pipedrive.
+// Nunca lanza ni bloquea la creación si Pipedrive falla o no está configurado.
+export async function registrarCotizacionCreada(dealId: number, args: {
+  idTrazabilidad: string;
+  clienteNombre: string;
+  urlPropuesta: string;
+  familia: 'PUNTUAL' | 'CARE';
+  requiereAprobacion: boolean;
+}) {
+  if (!habilitado()) return;
+
+  const nota = [
+    `COTIZACIÓN ${args.idTrazabilidad} — ${args.familia === 'CARE' ? 'programa KTV Care' : 'servicio puntual'} — Cliente: ${args.clienteNombre}`,
+    args.requiereAprobacion
+      ? 'Pendiente de aprobación de Gerencia antes de poder enviarse al cliente.'
+      : 'Generada en el Sistema Comercial KTV (estado Borrador).',
+    `Enlace de la propuesta: ${args.urlPropuesta}`,
+  ].join('\n');
+
+  await fetch(`${BASE}/notes?api_token=${TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: nota, deal_id: dealId }),
+  }).catch((e) => console.error('Pipedrive: error creando nota de cotización', e));
+
+  const campoKey = await obtenerCampoCotizador().catch(() => null);
+  if (campoKey) {
+    await fetch(`${BASE}/deals/${dealId}?api_token=${TOKEN}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [campoKey]: args.urlPropuesta }),
+    }).catch((e) => console.error('Pipedrive: error llenando el campo Cotizador', e));
+  }
+}
+
 // Al marcar una propuesta (Familia 1 o Care) como enviada: nota con el
 // enlace + valor, actualizar el valor del trato, y moverlo a la etapa
 // "Propuesta Enviada". No lanza si Pipedrive no está configurado o falla —
