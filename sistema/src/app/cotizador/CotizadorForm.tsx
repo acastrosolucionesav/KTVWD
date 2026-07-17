@@ -28,7 +28,7 @@ export type CotizacionPuntualExistente = {
   ejecucionSitio: string;
 };
 
-export default function CotizadorForm({ existente }: { existente?: CotizacionPuntualExistente }) {
+export default function CotizadorForm({ existente, esCorreccion }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean }) {
   const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
@@ -47,8 +47,13 @@ export default function CotizadorForm({ existente }: { existente?: CotizacionPun
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
       <h1 className="text-lg font-extrabold text-[#171E27]">
-        {existente ? 'Editar cotización — Familia 1 (servicio puntual)' : 'Cotización sencilla — Familia 1 (servicio puntual)'}
+        {esCorreccion ? 'Corregir cotización enviada — Familia 1 (servicio puntual)' : existente ? 'Editar cotización — Familia 1 (servicio puntual)' : 'Cotización sencilla — Familia 1 (servicio puntual)'}
       </h1>
+      {esCorreccion && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Esta cotización ya se envió/aprobó — no se edita directamente. Al guardar se creará una <b>versión nueva</b> con estos datos corregidos, y el link de la propuesta original se desactivará automáticamente.
+        </p>
+      )}
       {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}
 
       <div>
@@ -166,7 +171,7 @@ export default function CotizadorForm({ existente }: { existente?: CotizacionPun
 
       <button type="submit" disabled={pending}
         className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-        {pending ? 'Guardando…' : existente ? 'Guardar cambios' : 'Crear cotización'}
+        {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización'}
       </button>
     </form>
   );

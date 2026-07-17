@@ -6,13 +6,18 @@ import CotizadorForm from '../../CotizadorForm';
 export default async function EditarCotizacionPage({ params }: { params: Promise<{ id: string }> }) {
   await verifySession();
   const { id } = await params;
-  const c = await prisma.cotizacion.findUnique({ where: { id }, include: { cliente: true, puntual: true } });
+  const c = await prisma.cotizacion.findUnique({
+    where: { id },
+    include: { cliente: true, puntual: true, versionNueva: { select: { id: true } } },
+  });
   if (!c || c.familia !== 'PUNTUAL' || !c.puntual) notFound();
-  if (c.estado !== 'BORRADOR') redirect(`/cotizaciones/${id}`);
+  // Ya se corrigió una vez — siempre se edita/corrige la versión más reciente.
+  if (c.estado !== 'BORRADOR' && c.versionNueva) redirect(`/cotizaciones/${c.versionNueva.id}`);
 
   const p = c.puntual;
   return (
     <CotizadorForm
+      esCorreccion={c.estado !== 'BORRADOR'}
       existente={{
         id: c.id,
         clienteNombre: c.cliente.nombre,

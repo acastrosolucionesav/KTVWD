@@ -24,7 +24,7 @@ export type CotizacionCareExistente = {
   observaciones: string;
 };
 
-export default function CareForm({ existente }: { existente?: CotizacionCareExistente }) {
+export default function CareForm({ existente, esCorreccion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean }) {
   const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
   const [plan, setPlan] = useState<'INSPECT' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
@@ -42,8 +42,13 @@ export default function CareForm({ existente }: { existente?: CotizacionCareExis
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
       <h1 className="text-lg font-extrabold text-[#171E27]">
-        {existente ? 'Editar cotización Care — Familia 2 (recurrente)' : 'Programa KTV Care — Familia 2 (recurrente)'}
+        {esCorreccion ? 'Corregir cotización Care enviada — Familia 2 (recurrente)' : existente ? 'Editar cotización Care — Familia 2 (recurrente)' : 'Programa KTV Care — Familia 2 (recurrente)'}
       </h1>
+      {esCorreccion && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Esta cotización ya se envió/aprobó — no se edita directamente. Al guardar se creará una <b>versión nueva</b> con estos datos corregidos, y el link de la propuesta original se desactivará automáticamente.
+        </p>
+      )}
       {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}
 
       <div>
@@ -145,7 +150,7 @@ export default function CareForm({ existente }: { existente?: CotizacionCareExis
 
       <button type="submit" disabled={pending}
         className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-        {pending ? 'Guardando…' : existente ? 'Guardar cambios' : 'Crear cotización Care'}
+        {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización Care'}
       </button>
     </form>
   );

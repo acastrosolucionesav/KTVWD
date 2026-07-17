@@ -8,6 +8,7 @@ import { getParametrosVigentes } from '@/lib/parametros';
 import { calcularLavado, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
+import { enviarCorreoAprobacionPendiente } from '@/lib/email';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
 export type CrearCareState = { error?: string; ok?: boolean } | undefined;
@@ -29,12 +30,23 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
-  let existente: { clienteId: string } | null = null;
+  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
+  let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
   if (cotizacionExistenteId) {
-    const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionExistenteId } });
+    const c = await prisma.cotizacion.findUnique({
+      where: { id: cotizacionExistenteId },
+      include: { versionNueva: { select: { idTrazabilidad: true } } },
+    });
     if (!c) return { error: 'La cotización ya no existe.' };
-    if (c.estado !== 'BORRADOR') return { error: 'Solo se pueden editar cotizaciones en estado Borrador.' };
-    existente = c;
+    if (c.estado === 'BORRADOR') {
+      existente = c;
+    } else if (c.versionNueva) {
+      return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
+    } else {
+      // No editable en el mismo registro (ya enviada/aprobada/rechazada): se
+      // corrige creando una versión nueva, ver bloque de corrección más abajo.
+      anterior = c;
+    }
   }
 
   const servicio = String(formData.get('servicio')) as 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
@@ -158,14 +170,31 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
+    if (requiereAprobacion) {
+      await enviarCorreoAprobacionPendiente({
+        idTrazabilidad: existente.idTrazabilidad,
+        clienteNombre,
+        margenPct: margenP,
+        urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacionExistenteId}`,
+      }).catch((e) => console.error('Error enviando alerta de aprobación', e));
+    }
     revalidatePath('/cotizaciones');
     revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
     redirect(`/cotizaciones/${cotizacionExistenteId}`);
   }
 
-  const cliente = await prisma.clienteProspecto.create({
-    data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
-  });
+  // Corrección de una cotización ya enviada/aprobada/rechazada: se reutiliza
+  // el mismo cliente, pero se crea una cotización NUEVA (versión) — nunca se
+  // edita el registro original, que queda con linkActivo:false para que el
+  // cliente no siga viendo el número viejo/equivocado.
+  const clienteId = anterior
+    ? (await prisma.clienteProspecto.update({
+        where: { id: anterior.clienteId },
+        data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
+      })).id
+    : (await prisma.clienteProspecto.create({
+        data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
+      })).id;
 
   const vigenteHasta = new Date();
   vigenteHasta.setDate(vigenteHasta.getDate() + 30);
@@ -174,7 +203,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
     data: {
       idTrazabilidad: generarIdTrazabilidad(),
       familia: 'PUNTUAL',
-      clienteId: cliente.id,
+      clienteId,
       creadoPorId: session.userId,
       estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
       requiereAprobacion,
@@ -182,10 +211,28 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       snapshotParametros: snapshotJson,
       totalCliente,
       observaciones,
+      versionAnteriorId: anterior?.id,
       puntual: { create: puntualData },
-      auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
+      auditorias: { create: { usuarioId: session.userId, accion: anterior ? 'creo_correccion' : 'creo' } },
     },
   });
+
+  if (anterior) {
+    await prisma.cotizacion.update({ where: { id: anterior.id }, data: { linkActivo: false } });
+    await prisma.auditoria.create({
+      data: { cotizacionId: anterior.id, usuarioId: session.userId, accion: 'corrigio', detalle: cotizacion.idTrazabilidad },
+    });
+    revalidatePath(`/cotizaciones/${anterior.id}`);
+  }
+
+  if (requiereAprobacion) {
+    await enviarCorreoAprobacionPendiente({
+      idTrazabilidad: cotizacion.idTrazabilidad,
+      clienteNombre,
+      margenPct: margenP,
+      urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacion.id}`,
+    }).catch((e) => console.error('Error enviando alerta de aprobación', e));
+  }
 
   // Viaje de vuelta a Pipedrive: nota en el trato + link de la propuesta en
   // el campo "Cotizador". Nunca bloquea la creación si Pipedrive falla.
@@ -216,7 +263,11 @@ export async function aprobarCotizacion(cotizacionId: string) {
 
 export async function rechazarCotizacion(cotizacionId: string) {
   const session = await requireRol('GERENCIA');
-  await prisma.cotizacion.update({ where: { id: cotizacionId }, data: { estado: 'RECHAZADA' } });
+  // Por seguridad se desactiva también el link público (nunca debió estar
+  // activo — "Marcar como enviada" no aplica a PENDIENTE_APROBACION/RECHAZADA
+  // — pero así queda cerrado incluso si el estado cambiara por otra vía).
+  // Se reactiva con el mismo botón "Reactivar link" del detalle si se reconsidera.
+  await prisma.cotizacion.update({ where: { id: cotizacionId }, data: { estado: 'RECHAZADA', linkActivo: false } });
   await prisma.auditoria.create({ data: { cotizacionId, usuarioId: session.userId, accion: 'rechazo' } });
   revalidatePath(`/cotizaciones/${cotizacionId}`);
   revalidatePath('/cotizaciones');
@@ -307,12 +358,21 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
-  let existente: { clienteId: string } | null = null;
+  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
+  let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
   if (cotizacionExistenteId) {
-    const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionExistenteId } });
+    const c = await prisma.cotizacion.findUnique({
+      where: { id: cotizacionExistenteId },
+      include: { versionNueva: { select: { idTrazabilidad: true } } },
+    });
     if (!c) return { error: 'La cotización ya no existe.' };
-    if (c.estado !== 'BORRADOR') return { error: 'Solo se pueden editar cotizaciones en estado Borrador.' };
-    existente = c;
+    if (c.estado === 'BORRADOR') {
+      existente = c;
+    } else if (c.versionNueva) {
+      return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
+    } else {
+      anterior = c;
+    }
   }
 
   const planRecomendado = String(formData.get('plan')) as 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
@@ -373,12 +433,27 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
+    if (requiereAprobacion) {
+      await enviarCorreoAprobacionPendiente({
+        idTrazabilidad: existente.idTrazabilidad,
+        clienteNombre,
+        margenPct: Math.min(...margenesMinimos),
+        urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacionExistenteId}`,
+      }).catch((e) => console.error('Error enviando alerta de aprobación', e));
+    }
     revalidatePath('/cotizaciones');
     revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
     redirect(`/cotizaciones/${cotizacionExistenteId}`);
   }
 
-  const cliente = await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId } });
+  // Corrección — mismo mecanismo que Familia 1: se reutiliza el cliente, se
+  // crea una versión nueva, y el registro original queda con linkActivo:false.
+  const clienteId = anterior
+    ? (await prisma.clienteProspecto.update({
+        where: { id: anterior.clienteId },
+        data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId },
+      })).id
+    : (await prisma.clienteProspecto.create({ data: { nombre: clienteNombre, contacto: clienteContacto, pipedriveDealId } })).id;
   const vigenteHasta = new Date();
   vigenteHasta.setDate(vigenteHasta.getDate() + 30);
 
@@ -386,7 +461,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
     data: {
       idTrazabilidad: generarIdTrazabilidad(),
       familia: 'CARE',
-      clienteId: cliente.id,
+      clienteId,
       creadoPorId: session.userId,
       estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
       requiereAprobacion,
@@ -394,10 +469,28 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       snapshotParametros: snapshotJson,
       totalCliente: todos[planRecomendado].valorAnual,
       observaciones,
+      versionAnteriorId: anterior?.id,
       care: { create: careData },
-      auditorias: { create: { usuarioId: session.userId, accion: 'creo' } },
+      auditorias: { create: { usuarioId: session.userId, accion: anterior ? 'creo_correccion' : 'creo' } },
     },
   });
+
+  if (anterior) {
+    await prisma.cotizacion.update({ where: { id: anterior.id }, data: { linkActivo: false } });
+    await prisma.auditoria.create({
+      data: { cotizacionId: anterior.id, usuarioId: session.userId, accion: 'corrigio', detalle: cotizacion.idTrazabilidad },
+    });
+    revalidatePath(`/cotizaciones/${anterior.id}`);
+  }
+
+  if (requiereAprobacion) {
+    await enviarCorreoAprobacionPendiente({
+      idTrazabilidad: cotizacion.idTrazabilidad,
+      clienteNombre,
+      margenPct: Math.min(...margenesMinimos),
+      urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacion.id}`,
+    }).catch((e) => console.error('Error enviando alerta de aprobación', e));
+  }
 
   // Viaje de vuelta a Pipedrive — mismo mecanismo que Familia 1.
   if (pipedriveDealId) {

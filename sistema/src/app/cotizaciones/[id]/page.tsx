@@ -30,6 +30,8 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
       cliente: true, puntual: true, care: true,
       auditorias: { include: { usuario: true }, orderBy: { timestamp: 'desc' } },
       aperturas: { orderBy: { timestamp: 'desc' } },
+      versionAnterior: { select: { id: true, idTrazabilidad: true } },
+      versionNueva: { select: { id: true, idTrazabilidad: true } },
     },
   });
   if (!c) notFound();
@@ -62,6 +64,19 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         </div>
         <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#66C2F8]/20 text-[#171E27]">{c.estado.replace('_', ' ')}</span>
       </div>
+
+      {c.versionAnterior && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+          Esta es una versión corregida de <b>{c.versionAnterior.idTrazabilidad}</b>.{' '}
+          <a href={`/cotizaciones/${c.versionAnterior.id}`} className="underline font-semibold">Ver la versión original →</a>
+        </div>
+      )}
+      {c.versionNueva && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+          Esta cotización fue reemplazada por una versión corregida: <b>{c.versionNueva.idTrazabilidad}</b>. Su link público quedó desactivado.{' '}
+          <a href={`/cotizaciones/${c.versionNueva.id}`} className="underline font-semibold">Ir a la versión vigente →</a>
+        </div>
+      )}
 
       {/* ---- Lo que ve el cliente ---- */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -178,11 +193,13 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
             <form action={rechazarCotizacion.bind(null, c.id)}><button className="bg-red-600 text-white text-sm font-bold rounded-full px-5 py-2">Rechazar</button></form>
           </>
         )}
-        {(c.estado === 'APROBADA' || c.estado === 'BORRADOR') && (
+        {(c.estado === 'APROBADA' || c.estado === 'BORRADOR') && !c.versionNueva && (
           <form action={marcarEnviada.bind(null, c.id)}><button className="bg-[#66C2F8] text-white text-sm font-bold rounded-full px-5 py-2">Marcar como enviada</button></form>
         )}
-        {c.estado === 'BORRADOR' && (esPuntual || esCare) && (
-          <a href={esPuntual ? `/cotizador/editar/${c.id}` : `/care/editar/${c.id}`} className="bg-white border border-[#66C2F8] text-[#171E27] text-sm font-bold rounded-full px-5 py-2">Editar</a>
+        {!c.versionNueva && (esPuntual || esCare) && (
+          <a href={esPuntual ? `/cotizador/editar/${c.id}` : `/care/editar/${c.id}`} className="bg-white border border-[#66C2F8] text-[#171E27] text-sm font-bold rounded-full px-5 py-2">
+            {c.estado === 'BORRADOR' ? 'Editar' : 'Corregir (crea versión nueva)'}
+          </a>
         )}
         <a href={`/propuesta/${c.linkToken}`} target="_blank" className="text-sm text-[#171E27] underline self-center">Ver propuesta pública (lo que abre el cliente) →</a>
       </div>

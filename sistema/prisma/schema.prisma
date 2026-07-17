@@ -134,6 +134,15 @@ model Cotizacion {
 
   creadoAt DateTime @default(now())
 
+  // Corrección de una cotización ya enviada/aprobada/rechazada (nunca se edita
+  // en el mismo registro fuera de Borrador — se desactiva el link viejo y se
+  // crea esta como versión nueva, ligada a la anterior). Único por anterior:
+  // cada versión solo se corrige una vez — para volver a corregir, se corrige
+  // la versión más reciente, no la original.
+  versionAnteriorId String?     @unique
+  versionAnterior   Cotizacion? @relation("VersionDeCorreccion", fields: [versionAnteriorId], references: [id])
+  versionNueva      Cotizacion? @relation("VersionDeCorreccion")
+
   puntual      CotizacionPuntual?
   care         CotizacionCare?
   auditorias   Auditoria[]
