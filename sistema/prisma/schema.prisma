@@ -180,6 +180,12 @@ model CotizacionPuntual {
   feeNoruega      Float?   // CONFIDENCIAL — Regla A, nunca sale de acá
   margenPct       Float?   // CONFIDENCIAL — Regla A
 
+  // Descuento manual sobre el lavado (Gerencia 2026-07-17) — SIEMPRE dispara
+  // aprobación de Gerencia y nunca puede bajar el margen general de 35%
+  // (piso más estricto que el 25% de excepciones automáticas por dificultad).
+  descuentoPct           Float?  // 0-99, % aplicado sobre el precio de lista del lavado
+  precioLavadoSinDescuento Float? // CONFIDENCIAL — Regla A, referencia interna del precio antes del descuento
+
   precioLavado           Float? // sin IVA
   precioInformeBase      Float? // sin IVA (DV o Internacional, según tipoInformeBase)
   precioInformeAdicional Float? // sin IVA (Internacional cuando es adicional, no base)

@@ -127,6 +127,12 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
               <dt className="text-gray-400">Días de operación</dt><dd>{c.puntual!.diasOperacion ?? '—'}</dd>
               <dt className="text-gray-400">Costo operación</dt><dd>{cop(c.puntual!.costoOperacion)}</dd>
               <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(c.puntual!.feeNoruega)}</dd>
+              {c.puntual!.descuentoPct != null && (
+                <>
+                  <dt className="text-amber-400">Precio de lista (sin descuento)</dt><dd>{cop(c.puntual!.precioLavadoSinDescuento)}</dd>
+                  <dt className="text-amber-400">Descuento manual aplicado</dt><dd className="text-amber-400 font-bold">{c.puntual!.descuentoPct.toFixed(1)}%</dd>
+                </>
+              )}
               <dt className="text-gray-400">Margen</dt>
               <dd className={c.puntual!.margenPct! < 0.35 ? 'text-red-400 font-bold' : c.puntual!.margenPct! < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
                 {(c.puntual!.margenPct! * 100).toFixed(1)}%

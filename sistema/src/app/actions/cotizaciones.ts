@@ -78,8 +78,15 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const permisoAerocivil = String(formData.get('permisoAerocivil') || '').trim() || null;
   const ejecucionSitio = String(formData.get('ejecucionSitio') || '').trim() || null;
 
+  // Descuento manual sobre el lavado (Gerencia 2026-07-17): cualquier valor
+  // distinto de 0 dispara aprobación de Gerencia sin excepción, y nunca puede
+  // bajar el margen general de la cotización de 35% — piso más estricto que
+  // el de excepciones automáticas por dificultad/recargo.
+  const descuentoPct = Number(formData.get('descuentoPct') || 0);
+  if (descuentoPct < 0 || descuentoPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
+
   const lavado = incluyeLavado
-    ? calcularLavado(parametros, { m2, superficie, tipoEdificio, dificultad, movilizacion: 0, comisionPct: 0.05 })
+    ? calcularLavado(parametros, { m2, superficie, tipoEdificio, dificultad, movilizacion: 0, comisionPct: 0.05, descuentoPct })
     : null;
   const insp = calcularInspeccion(parametros, techo);
 
@@ -128,7 +135,11 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const costoTotalTrato = costoOperacionTotal + feeNoruegaTotal + comisionTotal;
   const margenD = totalCliente - costoTotalTrato;
   const margenP = totalCliente > 0 ? margenD / totalCliente : 0;
-  const requiereAprobacion = margenP < parametros.MARGEN_MINIMO;
+
+  if (descuentoPct > 0 && margenP < 0.35) {
+    return { error: `Con este descuento el margen queda en ${(margenP * 100).toFixed(1)}% — por debajo del mínimo permitido (35%) para descuentos manuales. Reduzca el descuento.` };
+  }
+  const requiereAprobacion = descuentoPct > 0 ? true : margenP < parametros.MARGEN_MINIMO;
 
   const puntualData = {
     servicio,
@@ -143,6 +154,8 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
     costoOperacion: costoOperacionTotal,
     feeNoruega: feeNoruegaTotal,
     margenPct: margenP,
+    descuentoPct: incluyeLavado && descuentoPct > 0 ? descuentoPct : null,
+    precioLavadoSinDescuento: lavado?.precioListaSinDescuento ?? null,
     precioLavado,
     precioInformeBase,
     precioInformeAdicional,

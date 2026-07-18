@@ -100,7 +100,7 @@ function productividad(p: Parametros, s: Superficie) {
 
 export function calcularLavado(p: Parametros, args: {
   m2: number; superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
-  movilizacion: number; comisionPct: number;
+  movilizacion: number; comisionPct: number; descuentoPct?: number;
 }) {
   const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
   const dias = Math.ceil((args.m2 / productividad(p, args.superficie)) * 2) / 2;
@@ -120,13 +120,19 @@ export function calcularLavado(p: Parametros, args: {
   // debajo del margen mínimo por un efecto de redondeo (no cambia el precio normal
   // el resto del tiempo, solo actúa cuando el redondeo lo exige).
   const precioPisoMargen = costoOperacion / (1 - p.MARGEN_MINIMO - p.FEE_NORUEGA - args.comisionPct);
-  const precioLavado = Math.max(precioConRecargo, precioPisoMargen);
+  const precioListaSinDescuento = Math.max(precioConRecargo, precioPisoMargen);
+  // Descuento manual (Gerencia 2026-07-17): se aplica DESPUÉS del piso de margen
+  // automático — es una decisión comercial deliberada, no un efecto de redondeo a
+  // corregir. El fee/comisión se recalculan sobre el precio YA descontado (son
+  // regalías sobre facturación real, nunca sobre el precio de lista). El piso de
+  // 35% para descuentos se valida en la acción del servidor, no aquí.
+  const precioLavado = precioListaSinDescuento * (1 - (args.descuentoPct ?? 0) / 100);
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = costoOperacion + feeNoruega + comision;
   const margenD = precioLavado - costoTotal;
   const margenP = precioLavado > 0 ? margenD / precioLavado : 0;
-  return { dias, costoOpDia, costoOperacion, precioLavado, feeNoruega, comision, costoTotal, margenD, margenP };
+  return { dias, costoOpDia, costoOperacion, precioLavado, precioListaSinDescuento, feeNoruega, comision, costoTotal, margenD, margenP };
 }
 
 function tierTecho(p: Parametros, techo: number): 0 | 1 | 2 | null {

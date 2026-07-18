@@ -28,6 +28,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         superficie: p.superficie ?? 'MIXTA',
         tipoEdificio: p.tipoEdificio ?? 'BAJO',
         dificultad: p.dificultad ?? 'BAJO',
+        descuentoPct: p.descuentoPct,
         techo: p.rangoTecho ?? 0,
         mostrarInformeInternacional: p.mostrarInformeInternacional,
         observaciones: c.observaciones ?? '',

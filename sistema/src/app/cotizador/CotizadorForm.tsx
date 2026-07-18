@@ -18,6 +18,7 @@ export type CotizacionPuntualExistente = {
   superficie: string;
   tipoEdificio: string;
   dificultad: string;
+  descuentoPct: number | null;
   techo: number;
   mostrarInformeInternacional: boolean;
   observaciones: string;
@@ -118,6 +119,14 @@ export default function CotizadorForm({ existente, esCorreccion }: { existente?:
               <option value="MEDIO">Media (+5%)</option>
               <option value="ALTO">Alta (+10%)</option>
             </select>
+          </div>
+          <div className="col-span-3">
+            <label className={label}>Descuento manual sobre el lavado (%) — opcional</label>
+            <input name="descuentoPct" type="number" min="0" max="99" step="0.1" className={input}
+              placeholder="0" defaultValue={existente?.descuentoPct ?? ''} />
+            <p className="text-[11px] text-amber-700 mt-1">
+              Cualquier valor distinto de 0 requiere aprobación de Gerencia antes de poder enviarse, y no puede bajar el margen general de 35%.
+            </p>
           </div>
         </div>
       )}
