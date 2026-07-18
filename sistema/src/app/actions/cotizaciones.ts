@@ -291,7 +291,7 @@ export async function marcarEnviada(cotizacionId: string) {
   const c = await prisma.cotizacion.update({
     where: { id: cotizacionId },
     data: { estado: 'ENVIADA', enviadoAt: new Date() },
-    include: { cliente: true },
+    include: { cliente: true, itemsTerceros: true },
   });
   await prisma.auditoria.create({ data: { cotizacionId, usuarioId: session.userId, accion: 'envio' } });
   revalidatePath(`/cotizaciones/${cotizacionId}`);
@@ -300,9 +300,14 @@ export async function marcarEnviada(cotizacionId: string) {
   // registra la nota + valor + cambio de etapa. Nunca bloquea el envío real
   // de la propuesta si Pipedrive falla o no está configurado.
   if (c.cliente.pipedriveDealId) {
+    // Familia 1: el total único ya incluye los ítems de terceros (mismo
+    // criterio que el DTO de cliente y el panel interno) — Care no, ahí se
+    // muestran aparte del valor anual recurrente del plan.
+    const sumaItemsTerceros = c.itemsTerceros.reduce((s, it) => s + it.precioVenta, 0);
+    const valor = c.familia === 'PUNTUAL' ? c.totalCliente + sumaItemsTerceros : c.totalCliente;
     const urlPropuesta = `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${c.linkToken}`;
     await registrarPropuestaEnviada(Number(c.cliente.pipedriveDealId), {
-      urlPropuesta, valor: c.totalCliente, familia: c.familia,
+      urlPropuesta, valor, familia: c.familia,
     }).catch((e) => console.error('Pipedrive: error registrando propuesta enviada', e));
   }
 }
