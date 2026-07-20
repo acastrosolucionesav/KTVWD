@@ -46,6 +46,17 @@ export type Parametros = {
   COSTO_OPERATIVO_DV_TRAMO_1: number; // techo pequeño — 1 día
   COSTO_OPERATIVO_DV_TRAMO_2: number; // techo mediano — 2 días
   COSTO_OPERATIVO_DV_TRAMO_3: number; // techo grande — 3 días
+  // --- Días reales de ejecución del lavado (spec_lavado_items_dias_20260717.md) ---
+  // ⚠️ TODO ESTIMADO PROVISIONAL — pendiente calibrar con datos reales de campo en
+  // cuanto se ejecute el primer proyecto de lavado. La ficha técnica del fabricante
+  // (1.500 m²/hora fachada, 600 m²/hora cristales) es velocidad de laboratorio, no
+  // rendimiento sostenido — de ahí el factor de eficiencia operativa conservador.
+  PROD_FACHADA_M2_HORA: number;
+  PROD_CRISTALES_M2_HORA: number;
+  HORAS_JORNADA: number;
+  FACTOR_EFICIENCIA_OPERATIVA: number;
+  FACTOR_DIFICULTAD_TIEMPO_MEDIO: number;
+  FACTOR_DIFICULTAD_TIEMPO_ALTO: number;
 };
 
 // Valores iniciales — idénticos a los de cotizador.html / KWD-FIN-MPV-001 v1.5.
@@ -87,6 +98,12 @@ export const PARAMETROS_INICIALES: Parametros = {
   COSTO_OPERATIVO_DV_TRAMO_1: 631000,  // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_2: 1262000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_3: 1893000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
+  PROD_FACHADA_M2_HORA: 1500,   // ficha técnica del fabricante — velocidad de laboratorio
+  PROD_CRISTALES_M2_HORA: 600,  // ficha técnica del fabricante — velocidad de laboratorio
+  HORAS_JORNADA: 6,             // confirmado por Gerencia 2026-07-17
+  FACTOR_EFICIENCIA_OPERATIVA: 0.45, // ⚠️ ESTIMADO PROVISIONAL — sin proyectos ejecutados aún, calibrar con datos reales
+  FACTOR_DIFICULTAD_TIEMPO_MEDIO: 0.90, // ⚠️ ESTIMADO PROVISIONAL
+  FACTOR_DIFICULTAD_TIEMPO_ALTO: 0.80,  // ⚠️ ESTIMADO PROVISIONAL
 };
 
 export type Superficie = 'VIDRIO' | 'MIXTA' | 'DIFICIL';
@@ -96,6 +113,28 @@ const RECARGO_PCT: Record<NivelRecargo, number> = { BAJO: 0, MEDIO: 0.05, ALTO: 
 
 function productividad(p: Parametros, s: Superficie) {
   return s === 'VIDRIO' ? p.PROD_VIDRIO : s === 'MIXTA' ? p.PROD_MIXTA : p.PROD_DIFICIL;
+}
+
+// Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md) — mismo
+// precio por m², solo cambia qué área se suma y el texto en la propuesta.
+export type ConceptoLavado = 'SOLO_VENTANAS' | 'SOLO_FACHADA' | 'FACHADA_Y_VENTANAS';
+
+const FACTOR_DIFICULTAD_TIEMPO: Record<NivelRecargo, keyof Pick<Parametros, 'FACTOR_DIFICULTAD_TIEMPO_MEDIO' | 'FACTOR_DIFICULTAD_TIEMPO_ALTO'> | null> = {
+  BAJO: null, MEDIO: 'FACTOR_DIFICULTAD_TIEMPO_MEDIO', ALTO: 'FACTOR_DIFICULTAD_TIEMPO_ALTO',
+};
+
+// Días REALES de ejecución en sitio para prometer al cliente (distinto de
+// `dias` dentro de calcularLavado, que son días de cuadrilla para COSTEO
+// interno). Usa la velocidad del fabricante × jornada × eficiencia operativa,
+// con reducción de productividad por dificultad del edificio (el tiempo
+// también se alarga en edificios difíciles, no solo el precio).
+export function calcularDiasEjecucion(p: Parametros, args: { m2Vidrio: number; m2Opaca: number; dificultad: NivelRecargo }) {
+  const factorDificultad = FACTOR_DIFICULTAD_TIEMPO[args.dificultad] ? p[FACTOR_DIFICULTAD_TIEMPO[args.dificultad]!] : 1;
+  const prodFachadaDia = p.PROD_FACHADA_M2_HORA * p.HORAS_JORNADA * p.FACTOR_EFICIENCIA_OPERATIVA * factorDificultad;
+  const prodCristalesDia = p.PROD_CRISTALES_M2_HORA * p.HORAS_JORNADA * p.FACTOR_EFICIENCIA_OPERATIVA * factorDificultad;
+  const diasFachada = prodFachadaDia > 0 ? args.m2Opaca / prodFachadaDia : 0;
+  const diasCristales = prodCristalesDia > 0 ? args.m2Vidrio / prodCristalesDia : 0;
+  return Math.ceil((diasFachada + diasCristales) * 2) / 2;
 }
 
 export function calcularLavado(p: Parametros, args: {

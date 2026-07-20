@@ -24,7 +24,9 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         clienteContacto: c.cliente.contacto ?? '',
         pipedriveDealId: c.cliente.pipedriveDealId ?? '',
         servicio: p.servicio,
-        m2: p.m2Fachada ?? 0,
+        concepto: p.concepto,
+        m2Vidrio: p.m2Vidrio ?? 0,
+        m2Opaca: p.m2Opaca ?? 0,
         superficie: p.superficie ?? 'MIXTA',
         tipoEdificio: p.tipoEdificio ?? 'BAJO',
         dificultad: p.dificultad ?? 'BAJO',
@@ -36,6 +38,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         saldoPct: p.saldoPct,
         condicionPagoNota: p.condicionPagoNota ?? '',
         permisoAerocivil: p.permisoAerocivil ?? '',
+        diasEjecucion: p.diasEjecucion,
         ejecucionSitio: p.ejecucionSitio ?? '',
       }}
     />

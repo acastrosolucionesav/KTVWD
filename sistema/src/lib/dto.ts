@@ -34,6 +34,9 @@ export type CotizacionClienteDTO = {
   puntual?: {
     servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
     incluyeLavado: boolean;
+    // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md) —
+    // determina el texto que ve el cliente (fachada / vidrios / ambos), nunca el precio.
+    concepto: 'SOLO_VENTANAS' | 'SOLO_FACHADA' | 'FACHADA_Y_VENTANAS' | null;
     precioLavadoTotal: number | null; // sin IVA — total, nunca precio/m²
     informeBaseNombre: string | null; // "Diagnóstico Visual KTV" | null (gratis, va en incluyeLavado)
     informeBaseValor: number | null;  // valor de referencia del DV cuando va incluido gratis
@@ -110,6 +113,7 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
     base.puntual = {
       servicio: p.servicio,
       incluyeLavado,
+      concepto: p.concepto,
       precioLavadoTotal: incluyeLavado ? p.precioLavado ?? null : null,
       informeBaseNombre: p.tipoInformeBase ? NOMBRES_INFORME[p.tipoInformeBase] : null,
       informeBaseValor: p.precioInformeBase ?? null,

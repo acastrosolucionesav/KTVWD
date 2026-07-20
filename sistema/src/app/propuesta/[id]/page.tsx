@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
-import { getCotizacionClienteDTO } from '@/lib/dto';
+import { getCotizacionClienteDTO, type CotizacionClienteDTO } from '@/lib/dto';
 import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import AceptarButton from './AceptarButton';
@@ -27,6 +27,20 @@ const NOMBRES_SERVICIO: Record<string, string> = {
   LAVADO_MAS_INSPECCION: 'Lavado de fachada + Inspección KTV Colombia',
   SOLO_LAVADO: 'Lavado de fachada',
 };
+
+// Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md) — mismo
+// precio, solo cambia el texto que ve el cliente según qué área se cotizó.
+const NOMBRES_CONCEPTO_LAVADO: Record<string, string> = {
+  SOLO_VENTANAS: 'Lavado de Ventanas',
+  SOLO_FACHADA: 'Lavado de Fachada',
+  FACHADA_Y_VENTANAS: 'Lavado de Fachada + Ventanas',
+};
+
+function tituloServicio(p: NonNullable<CotizacionClienteDTO['puntual']>) {
+  if (!p.incluyeLavado) return NOMBRES_SERVICIO[p.servicio];
+  const base = p.concepto ? NOMBRES_CONCEPTO_LAVADO[p.concepto] : NOMBRES_SERVICIO.SOLO_LAVADO;
+  return p.servicio === 'LAVADO_MAS_INSPECCION' ? `${base} + Inspección KTV Colombia` : base;
+}
 
 const DESC_LAVADO = 'Servicio Integral de Lavado KTV WD — intervención especializada en altura con drones. Incluye lavado externo de fachada, cristales y ventanales con agua a alta presión, y los productos aplicados durante el proceso.';
 const DESC_DV = 'Inspección de fachada y cubierta con dron (elaborado con apoyo de IA) — registro fotográfico y de video en alta resolución, identificación de hallazgos (fisuras, humedad, sellos) y recomendaciones de mantenimiento.';
@@ -128,7 +142,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             <Image src="/logo-ktv-white.png" alt="KTV Working Drone" width={180} height={38} className="h-8 w-auto mb-5" />
             <span className="text-xs font-bold tracking-wide bg-white/10 border border-[#66C2F8]/40 rounded px-2 py-1 text-white">{dto.idTrazabilidad}</span>
             <h1 className="text-3xl md:text-5xl font-extrabold text-white mt-4">Propuesta Económica</h1>
-            {p && <p className="text-[#66C2F8] text-base font-semibold mt-2">{NOMBRES_SERVICIO[p.servicio]}</p>}
+            {p && <p className="text-[#66C2F8] text-base font-semibold mt-2">{tituloServicio(p)}</p>}
           </div>
         </section>
       )}
@@ -174,7 +188,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             <>
               {p.incluyeLavado && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{NOMBRES_SERVICIO[p.servicio]}</div>
+                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{tituloServicio(p)}</div>
                   <div className="px-4 py-3 flex justify-between items-center gap-4">
                     <span className="text-sm text-gray-600 text-justify">{DESC_LAVADO}</span>
                     <span className="font-bold text-[#171E27] shrink-0">{cop(p.precioLavadoTotal)}</span>

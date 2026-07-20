@@ -49,6 +49,17 @@ const GRUPOS: { titulo: string; items: { clave: keyof Parametros; label: string;
     ],
   },
   {
+    titulo: 'Días de ejecución del lavado (⚠️ estimado provisional, sin proyectos ejecutados aún)',
+    items: [
+      { clave: 'PROD_FACHADA_M2_HORA', label: 'Velocidad fabricante — fachada (m²/hora)', nota: 'Ficha técnica, velocidad de laboratorio' },
+      { clave: 'PROD_CRISTALES_M2_HORA', label: 'Velocidad fabricante — cristales (m²/hora)', nota: 'Ficha técnica, velocidad de laboratorio' },
+      { clave: 'HORAS_JORNADA', label: 'Horas por jornada' },
+      { clave: 'FACTOR_EFICIENCIA_OPERATIVA', label: 'Factor de eficiencia operativa (fracción, 0.45 = 45%)', nota: '⚠️ Calibrar con el primer proyecto real ejecutado' },
+      { clave: 'FACTOR_DIFICULTAD_TIEMPO_MEDIO', label: 'Factor tiempo dificultad Media (fracción, 0.90 = 90% de productividad)' },
+      { clave: 'FACTOR_DIFICULTAD_TIEMPO_ALTO', label: 'Factor tiempo dificultad Alta (fracción, 0.80 = 80% de productividad)' },
+    ],
+  },
+  {
     titulo: 'KTV Care',
     items: [
       { clave: 'CARE_ESSENTIAL_DESC', label: 'Descuento Essential (fracción, 0.05 = $5.700/m²)' },

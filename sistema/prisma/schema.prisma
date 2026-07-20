@@ -53,6 +53,12 @@ enum NivelRecargo {
   ALTO
 }
 
+enum ConceptoLavado {
+  SOLO_VENTANAS
+  SOLO_FACHADA
+  FACHADA_Y_VENTANAS
+}
+
 enum PlanCare {
   INSPECT
   ESSENTIAL
@@ -167,7 +173,13 @@ model CotizacionPuntual {
   mostrarInformeInternacional Boolean          @default(false) // REGLA B: por cotización
 
   // --- Solo interno: nunca se imprime en el documento del cliente ---
-  m2Fachada       Float?
+  m2Fachada       Float?  // total (m2Vidrio + m2Opaca) — se mantiene para compatibilidad
+  // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md): mismo
+  // precio por m², pero se cotiza fachada, vidrios o ambos por separado — el
+  // concepto determina qué área se suma y qué texto sale en la propuesta.
+  concepto        ConceptoLavado?
+  m2Vidrio        Float?
+  m2Opaca         Float?
   superficie      Superficie?
   tipoEdificio    NivelRecargo?
   dificultad      NivelRecargo?
@@ -195,7 +207,15 @@ model CotizacionPuntual {
   saldoPct          Int?
   condicionPagoNota String?
   permisoAerocivil  String?
-  ejecucionSitio    String?
+  // Días de ejecución (spec_lavado_items_dias_20260717.md): diasEjecucionSistema
+  // es el cálculo automático (productividad real), congelado al crear/corregir.
+  // diasEjecucion es el valor final (editable) — aumentar es libre, reducir por
+  // debajo del sistema dispara aprobación de Gerencia (mismo mecanismo que el
+  // descuento manual). ejecucionSitio sigue siendo el texto que ve el cliente,
+  // ahora construido a partir de diasEjecucion en vez de un rango fijo.
+  diasEjecucionSistema Float?
+  diasEjecucion        Float?
+  ejecucionSitio       String?
 }
 
 // ============ FAMILIA 2 — KTV Care (programas recurrentes) ============

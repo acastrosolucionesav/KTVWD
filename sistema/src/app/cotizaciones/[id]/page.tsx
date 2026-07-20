@@ -14,6 +14,12 @@ const NOMBRES_SERVICIO: Record<string, string> = {
   SOLO_LAVADO: 'Solo lavado',
 };
 
+const NOMBRES_CONCEPTO: Record<string, string> = {
+  SOLO_VENTANAS: 'Solo ventanas',
+  SOLO_FACHADA: 'Solo fachada',
+  FACHADA_Y_VENTANAS: 'Fachada + ventanas',
+};
+
 const NOMBRES_PLAN: Record<string, string> = {
   INSPECT: 'KTV Care Inspect',
   ESSENTIAL: 'KTV Care Essential',
@@ -124,9 +130,19 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
           <h2 className="text-xs font-bold uppercase tracking-wide text-[#66C2F8] mb-3">Panel interno — desglose de costos (solo Gerencia)</h2>
           {esPuntual ? (
             <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-gray-400">Días de operación</dt><dd>{c.puntual!.diasOperacion ?? '—'}</dd>
+              <dt className="text-gray-400">Días de operación (costeo)</dt><dd>{c.puntual!.diasOperacion ?? '—'}</dd>
               <dt className="text-gray-400">Costo operación</dt><dd>{cop(c.puntual!.costoOperacion)}</dd>
               <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(c.puntual!.feeNoruega)}</dd>
+              {c.puntual!.concepto && (
+                <>
+                  <dt className="text-gray-400">Concepto de lavado</dt><dd>{NOMBRES_CONCEPTO[c.puntual!.concepto]}</dd>
+                  <dt className="text-gray-400">m² opaca / vidrio</dt><dd>{c.puntual!.m2Opaca ?? 0} / {c.puntual!.m2Vidrio ?? 0}</dd>
+                  <dt className="text-gray-400">Días de ejecución (sistema / final)</dt>
+                  <dd className={c.puntual!.diasEjecucion != null && c.puntual!.diasEjecucionSistema != null && c.puntual!.diasEjecucion < c.puntual!.diasEjecucionSistema ? 'text-amber-400 font-bold' : ''}>
+                    {c.puntual!.diasEjecucionSistema ?? '—'} / {c.puntual!.diasEjecucion ?? '—'}
+                  </dd>
+                </>
+              )}
               {c.puntual!.descuentoPct != null && (
                 <>
                   <dt className="text-amber-400">Precio de lista (sin descuento)</dt><dd>{cop(c.puntual!.precioLavadoSinDescuento)}</dd>

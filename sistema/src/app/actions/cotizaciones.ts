@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavado, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie } from '@/lib/pricing';
+import { calcularLavado, calcularInspeccion, calcularCareTodos, calcularDiasEjecucion, type NivelRecargo, type Superficie, type ConceptoLavado } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
 import { enviarCorreoAprobacionPendiente } from '@/lib/email';
@@ -56,8 +56,16 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
 
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
-  const m2 = Number(formData.get('m2') || 0);
-  if (incluyeLavado && m2 <= 0) return { error: 'Ingrese el área de fachada (m²) para el lavado.' };
+  // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md): mismo
+  // precio por m², pero fachada y vidrios se capturan por separado — el
+  // concepto decide qué área(s) se suman al precio y qué texto sale al cliente.
+  const concepto = incluyeLavado ? (String(formData.get('concepto') || 'FACHADA_Y_VENTANAS') as ConceptoLavado) : null;
+  const m2VidrioInput = Number(formData.get('m2Vidrio') || 0);
+  const m2OpacaInput = Number(formData.get('m2Opaca') || 0);
+  const m2Vidrio = concepto === 'SOLO_FACHADA' ? 0 : m2VidrioInput;
+  const m2Opaca = concepto === 'SOLO_VENTANAS' ? 0 : m2OpacaInput;
+  const m2 = m2Vidrio + m2Opaca;
+  if (incluyeLavado && m2 <= 0) return { error: 'Ingrese el área a lavar (fachada y/o vidrios) según el concepto elegido.' };
 
   const techo = Number(formData.get('techo') || 0);
   if (servicio === 'INSPECCION_SOLA' && techo <= 0) {
@@ -76,7 +84,17 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const saldoPct = formData.get('saldoPct') ? Number(formData.get('saldoPct')) : null;
   const condicionPagoNota = String(formData.get('condicionPagoNota') || '').trim() || null;
   const permisoAerocivil = String(formData.get('permisoAerocivil') || '').trim() || null;
-  const ejecucionSitio = String(formData.get('ejecucionSitio') || '').trim() || null;
+
+  // Días de ejecución reales (spec_lavado_items_dias_20260717.md): el sistema
+  // calcula con productividad real; aumentar es libre, reducir por debajo del
+  // cálculo dispara aprobación de Gerencia (mismo mecanismo que el descuento).
+  const diasEjecucionSistema = incluyeLavado ? calcularDiasEjecucion(parametros, { m2Vidrio, m2Opaca, dificultad }) : null;
+  const diasEjecucionInput = formData.get('diasEjecucion') ? Number(formData.get('diasEjecucion')) : null;
+  const diasEjecucion = incluyeLavado ? (diasEjecucionInput ?? diasEjecucionSistema!) : null;
+  const requiereAprobacionPorDias = diasEjecucionSistema !== null && diasEjecucion !== null && diasEjecucion < diasEjecucionSistema;
+  const ejecucionSitio = incluyeLavado
+    ? `${diasEjecucion} día${diasEjecucion === 1 ? '' : 's'} hábil${diasEjecucion === 1 ? '' : 'es'}. Una vez aprobados permisos y recibido el anticipo.`
+    : String(formData.get('ejecucionSitio') || '').trim() || null;
 
   // Descuento manual sobre el lavado (Gerencia 2026-07-17): cualquier valor
   // distinto de 0 dispara aprobación de Gerencia sin excepción, y nunca puede
@@ -139,13 +157,16 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   if (descuentoPct > 0 && margenP < 0.35) {
     return { error: `Con este descuento el margen queda en ${(margenP * 100).toFixed(1)}% — por debajo del mínimo permitido (35%) para descuentos manuales. Reduzca el descuento.` };
   }
-  const requiereAprobacion = descuentoPct > 0 ? true : margenP < parametros.MARGEN_MINIMO;
+  const requiereAprobacion = descuentoPct > 0 || requiereAprobacionPorDias ? true : margenP < parametros.MARGEN_MINIMO;
 
   const puntualData = {
     servicio,
     tipoInformeBase,
     mostrarInformeInternacional,
     m2Fachada: incluyeLavado ? m2 : null,
+    concepto,
+    m2Vidrio: incluyeLavado ? m2Vidrio : null,
+    m2Opaca: incluyeLavado ? m2Opaca : null,
     superficie: incluyeLavado ? superficie : null,
     tipoEdificio: incluyeLavado ? tipoEdificio : null,
     dificultad: incluyeLavado ? dificultad : null,
@@ -163,6 +184,8 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
     saldoPct,
     condicionPagoNota,
     permisoAerocivil,
+    diasEjecucionSistema,
+    diasEjecucion,
     ejecucionSitio,
   };
 
