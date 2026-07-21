@@ -34,7 +34,9 @@ export type CotizacionPuntualExistente = {
   ejecucionSitio: string;
 };
 
-export default function CotizadorForm({ existente, esCorreccion }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean }) {
+export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: string };
+
+export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill }) {
   const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
@@ -42,8 +44,8 @@ export default function CotizadorForm({ existente, esCorreccion }: { existente?:
     (existente?.concepto as ConceptoLavadoUI) ?? 'FACHADA_Y_VENTANAS'
   );
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
-  const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? '');
-  const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? '');
+  const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');
+  const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? dealPrefill?.clienteContacto ?? '');
 
   function seleccionarDeal(deal: PipedriveDealResumen | null) {
     setDealPipedrive(deal);
@@ -76,6 +78,13 @@ export default function CotizadorForm({ existente, esCorreccion }: { existente?:
 
       {existente ? (
         <input type="hidden" name="pipedriveDealId" value={existente.pipedriveDealId} />
+      ) : dealPrefill ? (
+        <div className="p-4 bg-[#EBF8FF] rounded-xl border border-[#66C2F8]/40">
+          <label className="block text-xs font-bold uppercase tracking-wide text-[#66C2F8] mb-1">🔗 Trato de Pipedrive vinculado</label>
+          <input type="hidden" name="pipedriveDealId" value={dealPrefill.id} />
+          <p className="text-sm text-[#171E27] font-semibold">{clienteNombre}</p>
+          <p className="text-[11px] text-gray-500 mt-1">Abriste el cotizador desde el trato en Pipedrive — Cliente y Contacto ya vienen cargados. Al enviar la propuesta, el trato se actualiza solo.</p>
+        </div>
       ) : (
         <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
           <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>

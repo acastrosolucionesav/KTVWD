@@ -38,6 +38,26 @@ export async function buscarTratos(termino: string): Promise<PipedriveDealResume
   }));
 }
 
+// Trae UN trato por su id — para el flujo "abrir el cotizador desde Pipedrive":
+// el comercial hace clic en el link del campo Cotizador del trato (que trae
+// ?deal_id=N) y el cotizador carga solo, sin que tenga que buscar el trato.
+export async function obtenerTrato(dealId: number): Promise<PipedriveDealResumen | null> {
+  if (!habilitado() || !dealId) return null;
+  const res = await fetch(`${BASE}/deals/${dealId}?api_token=${TOKEN}`, { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const json = await res.json();
+  const d = json?.data;
+  if (!d) return null;
+  return {
+    id: d.id,
+    title: d.title,
+    value: d.value ?? 0,
+    currency: d.currency ?? 'COP',
+    personName: d.person_id?.name ?? null,
+    orgName: d.org_id?.name ?? null,
+  };
+}
+
 let etapaEnviadaIdCache: number | null = null;
 async function obtenerEtapaPropuestaEnviada(): Promise<number | null> {
   if (etapaEnviadaIdCache !== null) return etapaEnviadaIdCache;

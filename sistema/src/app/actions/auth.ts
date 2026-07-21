@@ -20,7 +20,12 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
   if (!ok) return { error: 'Credenciales inválidas.' };
 
   await createSession(usuario.id, usuario.rol, usuario.nombre);
-  redirect('/cotizador');
+  // Respeta ?next= (ej. venir de un link de Pipedrive con deal_id), pero solo
+  // rutas internas: debe empezar con "/" y no con "//" (evita redirección a un
+  // sitio externo disfrazado). Cualquier otra cosa cae al cotizador normal.
+  const next = String(formData.get('next') || '');
+  const destino = next.startsWith('/') && !next.startsWith('//') ? next : '/cotizador';
+  redirect(destino);
 }
 
 export async function logout() {

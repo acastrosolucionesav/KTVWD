@@ -15,6 +15,13 @@ function ResetOkBanner() {
   );
 }
 
+// Preserva el destino (?next=) a través del login — ej. cuando el comercial
+// llega desde un link de Pipedrive con deal_id y aún no tiene sesión.
+function NextField() {
+  const next = useSearchParams().get('next');
+  return next ? <input type="hidden" name="next" value={next} /> : null;
+}
+
 export default function LoginPage() {
   const [state, action, pending] = useActionState(login, undefined);
 
@@ -29,6 +36,9 @@ export default function LoginPage() {
           <ResetOkBanner />
         </Suspense>
         <form action={action} className="space-y-4">
+          <Suspense fallback={null}>
+            <NextField />
+          </Suspense>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1">Correo</label>
             <input name="email" type="email" required autoFocus
