@@ -172,3 +172,60 @@ export async function registrarPropuestaEnviada(dealId: number, args: { urlPropu
     body: JSON.stringify({ value: Math.round(args.valor), ...(stageId ? { stage_id: stageId } : {}) }),
   }).catch((e) => console.error('Pipedrive: error actualizando el trato', e));
 }
+
+// Landing de Alianzas (spec_pagina_alianzas_20260721.md): un candidato llena el
+// formulario público y se crea un LEAD en Pipedrive (no un trato del pipeline
+// de ventas — un candidato de alianza no es un cliente de servicio). Se crea
+// primero la persona y luego el lead ligado a ella, con el título marcado como
+// ALIANZA para que se distinga sin depender de etiquetas pre-creadas. Best
+// effort: si algo falla devuelve null (la solicitud ya quedó guardada en la BD).
+export async function crearLeadAlianza(args: {
+  nombre: string; empresa?: string | null; email: string;
+  telefono?: string | null; ciudad?: string | null; mensaje?: string | null;
+}): Promise<string | null> {
+  if (!habilitado()) return null;
+  try {
+    const personaRes = await fetch(`${BASE}/persons?api_token=${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: args.nombre,
+        email: args.email ? [{ value: args.email, primary: true }] : undefined,
+        phone: args.telefono ? [{ value: args.telefono, primary: true }] : undefined,
+      }),
+    });
+    if (!personaRes.ok) return null;
+    const personaId = (await personaRes.json())?.data?.id;
+    if (!personaId) return null;
+
+    const titulo = `ALIANZA — ${args.empresa || args.nombre}${args.ciudad ? ` (${args.ciudad})` : ''}`;
+    const leadRes = await fetch(`${BASE}/leads?api_token=${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: titulo, person_id: personaId }),
+    });
+    if (!leadRes.ok) return null;
+    const leadId = (await leadRes.json())?.data?.id ?? null;
+
+    if (leadId) {
+      const nota = [
+        `Solicitud de alianza desde la landing pública.`,
+        `Nombre: ${args.nombre}`,
+        args.empresa ? `Empresa: ${args.empresa}` : null,
+        `Email: ${args.email}`,
+        args.telefono ? `Teléfono: ${args.telefono}` : null,
+        args.ciudad ? `Ciudad/Región: ${args.ciudad}` : null,
+        args.mensaje ? `Mensaje: ${args.mensaje}` : null,
+      ].filter(Boolean).join('\n');
+      await fetch(`${BASE}/notes?api_token=${TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: nota, lead_id: leadId }),
+      }).catch((e) => console.error('Pipedrive: error creando nota de alianza', e));
+    }
+    return leadId ? String(leadId) : null;
+  } catch (e) {
+    console.error('Pipedrive: error creando lead de alianza', e);
+    return null;
+  }
+}

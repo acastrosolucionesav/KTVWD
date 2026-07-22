@@ -267,6 +267,22 @@ model ItemTercero {
   creadoAt DateTime @default(now())
 }
 
+// Solicitud desde la landing pública de Alianzas (spec_pagina_alianzas_20260721.md).
+// Se guarda SIEMPRE aquí (nunca se pierde un candidato aunque Pipedrive falle);
+// además, best-effort, se crea un lead en Pipedrive marcado como ALIANZA.
+model SolicitudAlianza {
+  id              String   @id @default(cuid())
+  nombre          String
+  empresa         String?
+  email           String
+  telefono        String?
+  ciudad          String?
+  mensaje         String?
+  pipedriveLeadId String?  // id del lead creado en Pipedrive (null si no se pudo)
+  atendida        Boolean  @default(false)
+  creadoAt        DateTime @default(now())
+}
+
 // Orden de Servicio Comercial interna para Operaciones — NUNCA lleva cifras.
 model OrdenServicio {
   id           String     @id @default(cuid())
