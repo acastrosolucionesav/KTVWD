@@ -59,6 +59,24 @@ export async function crearUsuario(_state: CrearUsuarioState, formData: FormData
   return { ok: true, enlace: url };
 }
 
+// Corregir nombre/correo de una cuenta ya creada — antes solo se podía crear
+// una cuenta nueva, sin forma de arreglar un dato mal digitado (ej. la cuenta
+// quedó con el nombre de quien la crea en Gerencia en vez del comercial real).
+export async function editarUsuario(usuarioId: string, formData: FormData) {
+  await requireRol('GERENCIA');
+
+  const nombre = String(formData.get('nombre') || '').trim();
+  const email = String(formData.get('email') || '').trim().toLowerCase();
+  if (!nombre || !email) return { error: 'Nombre y correo son obligatorios.' };
+
+  const existente = await prisma.usuario.findUnique({ where: { email } });
+  if (existente && existente.id !== usuarioId) return { error: 'Ya existe otra cuenta con ese correo.' };
+
+  await prisma.usuario.update({ where: { id: usuarioId }, data: { nombre, email } });
+  revalidatePath('/usuarios');
+  return { ok: true };
+}
+
 export async function cambiarEstadoUsuario(usuarioId: string, activo: boolean) {
   const session = await requireRol('GERENCIA');
   if (usuarioId === session.userId && !activo) {
