@@ -174,6 +174,74 @@ export function calcularLavado(p: Parametros, args: {
   return { dias, costoOpDia, costoOperacion, precioLavado, precioListaSinDescuento, feeNoruega, comision, costoTotal, margenD, margenP };
 }
 
+// ============================================================================
+// Ítems de lavado — MÚLTIPLES por cotización (spec_multi_item_lavado_20260722.md):
+// un cliente puede pedir varios edificios/superficies distintos en un solo
+// documento (ej. torre + fachada Alucobond + letreros). Cada ítem se costea
+// por separado (su propia área/dificultad determina su costo de cuadrilla),
+// pero el piso de proyecto (MINIMO_PROYECTO_LAVADO — una sola movilización) y
+// el piso de margen se evalúan UNA vez sobre el TOTAL, nunca por ítem — igual
+// que antes se evaluaban sobre el único ítem de una cotización de un solo
+// edificio. El precio final ya con piso/descuento se reparte de vuelta a cada
+// ítem a prorrata de su peso en el precio de lista, para que el cliente vea
+// un precio propio por cada línea que sume exactamente al total.
+export type ItemLavadoInput = {
+  nombre: string; concepto: ConceptoLavado;
+  m2Vidrio: number; m2Opaca: number; superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
+};
+
+export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavadoInput[]; comisionPct: number; descuentoPct?: number }) {
+  const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
+
+  const filas = args.items.map((it) => {
+    const m2 = it.m2Vidrio + it.m2Opaca;
+    const dias = Math.ceil((m2 / productividad(p, it.superficie)) * 2) / 2;
+    const recargo = RECARGO_PCT[it.tipoEdificio] + RECARGO_PCT[it.dificultad];
+    const costoOperacion = dias * costoOpDia * (1 + recargo);
+    // Sin piso de proyecto ni piso de margen aquí — se aplican una sola vez
+    // abajo, sobre la suma de todos los ítems (ver comentario de arriba).
+    const precioConRecargo = m2 * p.TARIFA_LISTA * (1 + recargo);
+    const diasEjecucionSistema = calcularDiasEjecucion(p, { m2Vidrio: it.m2Vidrio, m2Opaca: it.m2Opaca, dificultad: it.dificultad });
+    return { ...it, m2, dias, recargo, costoOperacion, precioConRecargo, diasEjecucionSistema };
+  });
+
+  const sumaCostoOperacion = filas.reduce((s, f) => s + f.costoOperacion, 0);
+  const sumaPrecioConRecargo = filas.reduce((s, f) => s + f.precioConRecargo, 0);
+  const sumaDias = filas.reduce((s, f) => s + f.dias, 0);
+  const diasEjecucionSistema = filas.reduce((s, f) => s + f.diasEjecucionSistema, 0);
+
+  const precioBase = Math.max(sumaPrecioConRecargo, p.MINIMO_PROYECTO_LAVADO ?? 0);
+  const precioPisoMargen = sumaCostoOperacion / (1 - p.MARGEN_MINIMO - p.FEE_NORUEGA - args.comisionPct);
+  const precioListaSinDescuento = Math.max(precioBase, precioPisoMargen);
+  const precioLavado = precioListaSinDescuento * (1 - (args.descuentoPct ?? 0) / 100);
+  const feeNoruega = precioLavado * p.FEE_NORUEGA;
+  const comision = precioLavado * args.comisionPct;
+  const costoTotal = sumaCostoOperacion + feeNoruega + comision;
+  const margenD = precioLavado - costoTotal;
+  const margenP = precioLavado > 0 ? margenD / precioLavado : 0;
+
+  // Reparto proporcional del precio final a cada ítem — el último absorbe el
+  // residuo de redondeo para que la suma cuadre exacto con `precioLavado`.
+  let acumulado = 0;
+  const items = filas.map((f, i) => {
+    const peso = sumaPrecioConRecargo > 0 ? f.precioConRecargo / sumaPrecioConRecargo : 1 / filas.length;
+    const feeNoruegaItem = feeNoruega * peso;
+    let precioItem: number;
+    if (i === filas.length - 1) {
+      precioItem = Math.round((precioLavado - acumulado) * 100) / 100;
+    } else {
+      precioItem = Math.round(precioLavado * peso * 100) / 100;
+      acumulado += precioItem;
+    }
+    return { ...f, peso, precioLavado: precioItem, feeNoruega: feeNoruegaItem };
+  });
+
+  return {
+    dias: sumaDias, costoOpDia, costoOperacion: sumaCostoOperacion, precioLavado, precioListaSinDescuento,
+    feeNoruega, comision, costoTotal, margenD, margenP, diasEjecucionSistema, items,
+  };
+}
+
 function tierTecho(p: Parametros, techo: number): 0 | 1 | 2 | null {
   if (techo > 0 && techo <= p.ROOF_TIER_1_MAX) return 0;
   if (techo > p.ROOF_TIER_1_MAX && techo <= p.ROOF_TIER_2_MAX) return 1;

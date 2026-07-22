@@ -38,6 +38,12 @@ export type CotizacionClienteDTO = {
     // determina el texto que ve el cliente (fachada / vidrios / ambos), nunca el precio.
     concepto: 'SOLO_VENTANAS' | 'SOLO_FACHADA' | 'FACHADA_Y_VENTANAS' | null;
     precioLavadoTotal: number | null; // sin IVA — total, nunca precio/m²
+    // Múltiples ítems de lavado (spec_multi_item_lavado_20260722.md) — cada uno
+    // con su nombre editable y su porción del precio total. Regla A: SOLO
+    // nombre y precio, nunca costoOperacion/feeNoruega. Vacío para cotizaciones
+    // creadas antes de este cambio (esas siguen mostrando el bloque único de
+    // arriba, con `concepto`/`precioLavadoTotal`).
+    itemsLavado: { nombre: string; precioTotal: number }[];
     informeBaseNombre: string | null; // "Diagnóstico Visual KTV" | null (gratis, va en incluyeLavado)
     informeBaseValor: number | null;  // valor de referencia del DV cuando va incluido gratis
     informeBaseCobrado: boolean;      // true si el DV se cobra (no hay lavado con qué regalarlo)
@@ -78,7 +84,7 @@ const NOMBRES_INFORME = {
 export async function getCotizacionClienteDTO(linkToken: string): Promise<CotizacionClienteDTO | null> {
   const c = await prisma.cotizacion.findUnique({
     where: { linkToken },
-    include: { cliente: true, puntual: true, care: true, creadoPor: true, itemsTerceros: true },
+    include: { cliente: true, puntual: true, care: true, creadoPor: true, itemsTerceros: true, itemsLavado: { orderBy: { orden: 'asc' } } },
   });
   if (!c) return null;
 
@@ -115,6 +121,7 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
       incluyeLavado,
       concepto: p.concepto,
       precioLavadoTotal: incluyeLavado ? p.precioLavado ?? null : null,
+      itemsLavado: c.itemsLavado.map((it) => ({ nombre: it.nombre, precioTotal: it.precioLavado })),
       informeBaseNombre: p.tipoInformeBase ? NOMBRES_INFORME[p.tipoInformeBase] : null,
       informeBaseValor: p.precioInformeBase ?? null,
       informeBaseCobrado: !dvEsGratis && !!p.tipoInformeBase,

@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavado, calcularInspeccion, calcularCareTodos, calcularDiasEjecucion, type NivelRecargo, type Superficie, type ConceptoLavado } from '@/lib/pricing';
+import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie, type ConceptoLavado } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
 import { enviarCorreoAprobacionPendiente } from '@/lib/email';
@@ -56,25 +56,46 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
 
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
-  // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md): mismo
-  // precio por m², pero fachada y vidrios se capturan por separado — el
-  // concepto decide qué área(s) se suman al precio y qué texto sale al cliente.
-  const concepto = incluyeLavado ? (String(formData.get('concepto') || 'FACHADA_Y_VENTANAS') as ConceptoLavado) : null;
-  const m2VidrioInput = Number(formData.get('m2Vidrio') || 0);
-  const m2OpacaInput = Number(formData.get('m2Opaca') || 0);
-  const m2Vidrio = concepto === 'SOLO_FACHADA' ? 0 : m2VidrioInput;
-  const m2Opaca = concepto === 'SOLO_VENTANAS' ? 0 : m2OpacaInput;
-  const m2 = m2Vidrio + m2Opaca;
-  if (incluyeLavado && m2 <= 0) return { error: 'Ingrese el área a lavar (fachada y/o vidrios) según el concepto elegido.' };
+  // Múltiples ítems de lavado por cotización (spec_multi_item_lavado_20260722.md):
+  // un cliente puede pedir varios edificios/superficies distintos en un solo
+  // documento (ej. torre + fachada Alucobond + letreros). Cada fila del
+  // formulario llega como una posición más en estos arreglos paralelos (mismo
+  // orden que se renderizaron los inputs — ver CotizadorForm).
+  const itemNombres = formData.getAll('itemNombre').map((v) => String(v).trim());
+  const itemConceptos = formData.getAll('itemConcepto').map((v) => String(v) as ConceptoLavado);
+  const itemM2VidrioInput = formData.getAll('itemM2Vidrio').map((v) => Number(v) || 0);
+  const itemM2OpacaInput = formData.getAll('itemM2Opaca').map((v) => Number(v) || 0);
+  const itemSuperficies = formData.getAll('itemSuperficie').map((v) => String(v) as Superficie);
+  const itemTiposEdificio = formData.getAll('itemTipoEdificio').map((v) => String(v) as NivelRecargo);
+  const itemDificultades = formData.getAll('itemDificultad').map((v) => String(v) as NivelRecargo);
+
+  const itemsLavadoInput = incluyeLavado
+    ? itemNombres.map((nombre, i) => {
+        const concepto = itemConceptos[i] ?? 'FACHADA_Y_VENTANAS';
+        const m2Vidrio = concepto === 'SOLO_FACHADA' ? 0 : itemM2VidrioInput[i] ?? 0;
+        const m2Opaca = concepto === 'SOLO_VENTANAS' ? 0 : itemM2OpacaInput[i] ?? 0;
+        return {
+          nombre,
+          concepto,
+          m2Vidrio, m2Opaca,
+          superficie: itemSuperficies[i] ?? 'MIXTA',
+          tipoEdificio: itemTiposEdificio[i] ?? 'BAJO',
+          dificultad: itemDificultades[i] ?? 'BAJO',
+        };
+      })
+    : [];
+  if (incluyeLavado && itemsLavadoInput.length === 0) return { error: 'Agregue al menos un ítem de lavado (edificio, fachada o superficie a cotizar).' };
+  for (const it of itemsLavadoInput) {
+    if (!it.nombre) return { error: 'Cada ítem de lavado necesita un nombre visible para el cliente (ej. "Torre 14 pisos").' };
+    if (it.m2Vidrio + it.m2Opaca <= 0) return { error: `Ingrese el área a lavar de "${it.nombre}" (fachada y/o vidrios) según el concepto elegido.` };
+  }
+  const m2 = itemsLavadoInput.reduce((s, it) => s + it.m2Vidrio + it.m2Opaca, 0);
 
   const techo = Number(formData.get('techo') || 0);
   if (servicio === 'INSPECCION_SOLA' && techo <= 0) {
     return { error: 'Ingrese el área de techo (m²) para cotizar el Diagnóstico Visual KTV.' };
   }
 
-  const superficie = String(formData.get('superficie') || 'MIXTA') as Superficie;
-  const tipoEdificio = String(formData.get('tipoEdificio') || 'BAJO') as NivelRecargo;
-  const dificultad = String(formData.get('dificultad') || 'BAJO') as NivelRecargo;
   const mostrarInformeInternacional = formData.get('mostrarInformeInternacional') === 'on';
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
@@ -85,28 +106,34 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const condicionPagoNota = String(formData.get('condicionPagoNota') || '').trim() || null;
   const permisoAerocivil = String(formData.get('permisoAerocivil') || '').trim() || null;
 
+  // Descuento manual sobre el lavado (Gerencia 2026-07-17): cualquier valor
+  // distinto de 0 dispara aprobación de Gerencia sin excepción, y nunca puede
+  // bajar el margen general de la cotización de 35% — piso más estricto que
+  // el de excepciones automáticas por dificultad/recargo. Se aplica sobre el
+  // TOTAL del proyecto (todos los ítems), no por ítem individual.
+  const descuentoPct = Number(formData.get('descuentoPct') || 0);
+  if (descuentoPct < 0 || descuentoPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
+
+  // Múltiples ítems de lavado (spec_multi_item_lavado_20260722.md): el piso de
+  // proyecto y el piso de margen se evalúan UNA vez sobre la suma de todos los
+  // ítems (una sola movilización), y el precio final se reparte de vuelta a
+  // cada ítem a prorrata — ver calcularLavadoMultiItem.
+  const lavado = incluyeLavado
+    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct })
+    : null;
+  const insp = calcularInspeccion(parametros, techo);
+
   // Días de ejecución reales (spec_lavado_items_dias_20260717.md): el sistema
-  // calcula con productividad real; aumentar es libre, reducir por debajo del
-  // cálculo dispara aprobación de Gerencia (mismo mecanismo que el descuento).
-  const diasEjecucionSistema = incluyeLavado ? calcularDiasEjecucion(parametros, { m2Vidrio, m2Opaca, dificultad }) : null;
+  // calcula con productividad real (sumada de todos los ítems); aumentar es
+  // libre, reducir por debajo del cálculo dispara aprobación de Gerencia
+  // (mismo mecanismo que el descuento).
+  const diasEjecucionSistema = lavado ? lavado.diasEjecucionSistema : null;
   const diasEjecucionInput = formData.get('diasEjecucion') ? Number(formData.get('diasEjecucion')) : null;
   const diasEjecucion = incluyeLavado ? (diasEjecucionInput ?? diasEjecucionSistema!) : null;
   const requiereAprobacionPorDias = diasEjecucionSistema !== null && diasEjecucion !== null && diasEjecucion < diasEjecucionSistema;
   const ejecucionSitio = incluyeLavado
     ? `${diasEjecucion} día${diasEjecucion === 1 ? '' : 's'} hábil${diasEjecucion === 1 ? '' : 'es'}. Una vez aprobados permisos y recibido el anticipo.`
     : String(formData.get('ejecucionSitio') || '').trim() || null;
-
-  // Descuento manual sobre el lavado (Gerencia 2026-07-17): cualquier valor
-  // distinto de 0 dispara aprobación de Gerencia sin excepción, y nunca puede
-  // bajar el margen general de la cotización de 35% — piso más estricto que
-  // el de excepciones automáticas por dificultad/recargo.
-  const descuentoPct = Number(formData.get('descuentoPct') || 0);
-  if (descuentoPct < 0 || descuentoPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
-
-  const lavado = incluyeLavado
-    ? calcularLavado(parametros, { m2, superficie, tipoEdificio, dificultad, movilizacion: 0, comisionPct: 0.05, descuentoPct })
-    : null;
-  const insp = calcularInspeccion(parametros, techo);
 
   // --- Regla de producto (KWD-SIS-PROMPT-001 v2) ---
   // INSPECCION_SOLA: base = Diagnóstico Visual (cobrado, no hay lavado con qué regalarlo).
@@ -159,17 +186,33 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   }
   const requiereAprobacion = descuentoPct > 0 || requiereAprobacionPorDias ? true : margenP < parametros.MARGEN_MINIMO;
 
+  // Ítems de lavado a persistir (Cotizacion.itemsLavado) — cada fila conserva
+  // su nombre editable y su propio desglose de costo/fee/precio ya repartido
+  // (ver calcularLavadoMultiItem). concepto/m2Vidrio/m2Opaca/superficie/
+  // tipoEdificio/dificultad YA NO se escriben en CotizacionPuntual (deprecados,
+  // ver schema.prisma) — viven únicamente en cada ItemLavado.
+  const itemsLavadoData = lavado
+    ? lavado.items.map((it, orden) => ({
+        orden,
+        nombre: it.nombre,
+        concepto: it.concepto,
+        m2Vidrio: it.m2Vidrio,
+        m2Opaca: it.m2Opaca,
+        superficie: it.superficie,
+        tipoEdificio: it.tipoEdificio,
+        dificultad: it.dificultad,
+        costoOperacion: it.costoOperacion,
+        feeNoruega: it.feeNoruega,
+        precioLavado: it.precioLavado,
+        diasEjecucionSistema: it.diasEjecucionSistema,
+      }))
+    : [];
+
   const puntualData = {
     servicio,
     tipoInformeBase,
     mostrarInformeInternacional,
     m2Fachada: incluyeLavado ? m2 : null,
-    concepto,
-    m2Vidrio: incluyeLavado ? m2Vidrio : null,
-    m2Opaca: incluyeLavado ? m2Opaca : null,
-    superficie: incluyeLavado ? superficie : null,
-    tipoEdificio: incluyeLavado ? tipoEdificio : null,
-    dificultad: incluyeLavado ? dificultad : null,
     rangoTecho: techo || null,
     diasOperacion: (lavado?.dias ?? 0) + (servicio !== 'SOLO_LAVADO' ? insp.diasOperacionInsp : 0),
     costoOperacion: costoOperacionTotal,
@@ -203,6 +246,9 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
         totalCliente,
         observaciones,
         puntual: { update: puntualData },
+        // Se reemplazan por completo — más simple y seguro que diffear filas
+        // (una edición en Borrador puede agregar/quitar/reordenar ítems libremente).
+        itemsLavado: { deleteMany: {}, create: itemsLavadoData },
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
@@ -249,6 +295,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       observaciones,
       versionAnteriorId: anterior?.id,
       puntual: { create: puntualData },
+      itemsLavado: { create: itemsLavadoData },
       auditorias: { create: { usuarioId: session.userId, accion: anterior ? 'creo_correccion' : 'creo' } },
     },
   });

@@ -160,6 +160,7 @@ model Cotizacion {
   aperturas      Apertura[]
   ordenServicio  OrdenServicio?
   itemsTerceros  ItemTercero[]
+  itemsLavado    ItemLavado[]
 }
 
 // ============ FAMILIA 1 — Servicios puntuales (no recurrentes) ============
@@ -174,9 +175,12 @@ model CotizacionPuntual {
 
   // --- Solo interno: nunca se imprime en el documento del cliente ---
   m2Fachada       Float?  // total (m2Vidrio + m2Opaca) — se mantiene para compatibilidad
-  // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md): mismo
-  // precio por m², pero se cotiza fachada, vidrios o ambos por separado — el
-  // concepto determina qué área se suma y qué texto sale en la propuesta.
+  // DEPRECADO (spec_multi_item_lavado_20260722.md): estos 6 campos describían el
+  // ÚNICO ítem de lavado de la cotización. Desde que una cotización puede traer
+  // varios ítems (varios edificios/superficies distintos, ver ItemLavado abajo),
+  // ya no se escriben en cotizaciones nuevas — el desglose por ítem vive en
+  // `itemsLavado`. Se mantienen SOLO para leer cotizaciones creadas antes de
+  // este cambio (nunca se migran ni se borran datos históricos).
   concepto        ConceptoLavado?
   m2Vidrio        Float?
   m2Opaca         Float?
@@ -216,6 +220,38 @@ model CotizacionPuntual {
   diasEjecucionSistema Float?
   diasEjecucion        Float?
   ejecucionSitio       String?
+}
+
+// Ítem de lavado (spec_multi_item_lavado_20260722.md): una cotización puntual
+// de lavado puede pedir varios edificios/superficies distintos en un solo
+// documento (ej. torre + fachada Alucobond + letreros, cada uno con su propia
+// área/dificultad). `nombre` lo escribe/edita el comercial libremente — no hay
+// catálogo fijo de nombres porque cada caso real es distinto. El piso de
+// proyecto (MINIMO_PROYECTO_LAVADO) y el piso de margen se evalúan UNA sola
+// vez sobre la suma de todos los ítems (una sola movilización), nunca por
+// ítem — por eso `precioLavado` aquí es la porción ya repartida del precio
+// final del proyecto, no un precio independiente por ítem.
+model ItemLavado {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  orden        Int            @default(0)
+  nombre       String         // visible al cliente — editable, sin valor por defecto fijo
+  concepto     ConceptoLavado
+  m2Vidrio     Float
+  m2Opaca      Float
+  superficie   Superficie
+  tipoEdificio NivelRecargo
+  dificultad   NivelRecargo
+
+  costoOperacion Float // CONFIDENCIAL — Regla A
+  feeNoruega     Float // CONFIDENCIAL — Regla A
+
+  precioLavado         Float // sin IVA — porción de este ítem en el total del proyecto
+  diasEjecucionSistema Float // cálculo automático de productividad para este ítem
+
+  creadoAt DateTime @default(now())
 }
 
 // ============ FAMILIA 2 — KTV Care (programas recurrentes) ============

@@ -10,18 +10,27 @@ const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none f
 
 type ConceptoLavadoUI = 'SOLO_VENTANAS' | 'SOLO_FACHADA' | 'FACHADA_Y_VENTANAS';
 
+export type ItemLavadoUI = {
+  nombre: string;
+  concepto: ConceptoLavadoUI;
+  m2Vidrio: number;
+  m2Opaca: number;
+  superficie: string;
+  tipoEdificio: string;
+  dificultad: string;
+};
+
+function itemVacio(): ItemLavadoUI {
+  return { nombre: '', concepto: 'FACHADA_Y_VENTANAS', m2Vidrio: 0, m2Opaca: 0, superficie: 'MIXTA', tipoEdificio: 'BAJO', dificultad: 'BAJO' };
+}
+
 export type CotizacionPuntualExistente = {
   id: string;
   clienteNombre: string;
   clienteContacto: string;
   pipedriveDealId: string;
   servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
-  concepto: string | null;
-  m2Vidrio: number;
-  m2Opaca: number;
-  superficie: string;
-  tipoEdificio: string;
-  dificultad: string;
+  itemsLavado: ItemLavadoUI[];
   descuentoPct: number | null;
   techo: number;
   mostrarInformeInternacional: boolean;
@@ -40,9 +49,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: 
   const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
-  const [concepto, setConcepto] = useState<ConceptoLavadoUI>(
-    (existente?.concepto as ConceptoLavadoUI) ?? 'FACHADA_Y_VENTANAS'
-  );
+  const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');
   const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? dealPrefill?.clienteContacto ?? '');
@@ -53,6 +60,18 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: 
       setClienteNombre(deal.orgName || deal.personName || deal.title);
       setClienteContacto(deal.personName ?? '');
     }
+  }
+
+  function actualizarItem(idx: number, patch: Partial<ItemLavadoUI>) {
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function agregarItem() {
+    setItems((prev) => [...prev, itemVacio()]);
+  }
+
+  function quitarItem(idx: number) {
+    setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }
 
   return (
@@ -108,51 +127,77 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: 
       </div>
 
       {incluyeLavado && (
-        <div className="grid grid-cols-3 gap-4 p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20">
-          <div className="col-span-3">
-            <label className={label}>Concepto a cotizar (define el texto que ve el cliente — el precio/m² es el mismo)</label>
-            <select name="concepto" className={input} value={concepto} onChange={(e) => setConcepto(e.target.value as typeof concepto)}>
-              <option value="FACHADA_Y_VENTANAS">Lavado de Fachada + Ventanas</option>
-              <option value="SOLO_FACHADA">Solo Lavado de Fachada</option>
-              <option value="SOLO_VENTANAS">Solo Lavado de Ventanas</option>
-            </select>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <label className={label + ' mb-0'}>Ítems de lavado a cotizar</label>
+            <button type="button" onClick={agregarItem} className="text-xs font-bold text-[#66C2F8] hover:underline">
+              + Agregar otro ítem
+            </button>
           </div>
-          <div className={concepto === 'SOLO_VENTANAS' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
-            <label className={label}>Área de fachada opaca (m²) — solo interno</label>
-            <input name="m2Opaca" type="number" disabled={concepto === 'SOLO_VENTANAS'} className={input}
-              defaultValue={existente?.m2Opaca ?? (concepto === 'SOLO_VENTANAS' ? 0 : 30500)} />
-          </div>
-          <div className={concepto === 'SOLO_FACHADA' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
-            <label className={label}>Área de vidrios/ventanas (m²) — solo interno</label>
-            <input name="m2Vidrio" type="number" disabled={concepto === 'SOLO_FACHADA'} className={input}
-              defaultValue={existente?.m2Vidrio ?? (concepto === 'SOLO_FACHADA' ? 0 : 0)} />
-          </div>
+          <p className="text-[11px] text-gray-400 -mt-3">
+            Un mismo cliente puede pedir varios edificios o superficies distintas en una sola cotización (ej. torre, fachada, letreros) — agregue un ítem por cada uno. El piso mínimo de proyecto se cobra una sola vez para toda la cotización, no por ítem.
+          </p>
+          {items.map((it, idx) => (
+            <div key={idx} className="grid grid-cols-3 gap-4 p-4 bg-[#F7FBFF] rounded-xl border border-[#66C2F8]/20 relative">
+              {items.length > 1 && (
+                <button type="button" onClick={() => quitarItem(idx)}
+                  className="absolute top-3 right-3 text-xs font-bold text-red-500 hover:underline">
+                  Quitar
+                </button>
+              )}
+              <div className="col-span-3">
+                <label className={label}>Nombre de este ítem (lo verá el cliente)</label>
+                <input name="itemNombre" required className={input} placeholder="Ej. Torre 14 pisos / Fachada Alucobond / Letreros"
+                  value={it.nombre} onChange={(e) => actualizarItem(idx, { nombre: e.target.value })} />
+              </div>
+              <div className="col-span-3">
+                <label className={label}>Concepto a cotizar (define el texto que ve el cliente — el precio/m² es el mismo)</label>
+                <select name="itemConcepto" className={input} value={it.concepto} onChange={(e) => actualizarItem(idx, { concepto: e.target.value as ConceptoLavadoUI })}>
+                  <option value="FACHADA_Y_VENTANAS">Lavado de Fachada + Ventanas</option>
+                  <option value="SOLO_FACHADA">Solo Lavado de Fachada</option>
+                  <option value="SOLO_VENTANAS">Solo Lavado de Ventanas</option>
+                </select>
+              </div>
+              <div className={it.concepto === 'SOLO_VENTANAS' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
+                <label className={label}>Área de fachada opaca (m²) — solo interno</label>
+                <input name="itemM2Opaca" type="number" disabled={it.concepto === 'SOLO_VENTANAS'} className={input}
+                  placeholder="30500" value={it.concepto === 'SOLO_VENTANAS' ? 0 : it.m2Opaca}
+                  onChange={(e) => actualizarItem(idx, { m2Opaca: Number(e.target.value) || 0 })} />
+              </div>
+              <div className={it.concepto === 'SOLO_FACHADA' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
+                <label className={label}>Área de vidrios/ventanas (m²) — solo interno</label>
+                <input name="itemM2Vidrio" type="number" disabled={it.concepto === 'SOLO_FACHADA'} className={input}
+                  placeholder="0" value={it.concepto === 'SOLO_FACHADA' ? 0 : it.m2Vidrio}
+                  onChange={(e) => actualizarItem(idx, { m2Vidrio: Number(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <label className={label}>Superficie</label>
+                <select name="itemSuperficie" className={input} value={it.superficie} onChange={(e) => actualizarItem(idx, { superficie: e.target.value })}>
+                  <option value="VIDRIO">Vidrio</option>
+                  <option value="MIXTA">Mixta</option>
+                  <option value="DIFICIL">Difícil</option>
+                </select>
+              </div>
+              <div>
+                <label className={label}>Tipo edificio</label>
+                <select name="itemTipoEdificio" className={input} value={it.tipoEdificio} onChange={(e) => actualizarItem(idx, { tipoEdificio: e.target.value })}>
+                  <option value="BAJO">Bajo (0%)</option>
+                  <option value="MEDIO">Medio (+5%)</option>
+                  <option value="ALTO">Alto (+10%)</option>
+                </select>
+              </div>
+              <div>
+                <label className={label}>Dificultad</label>
+                <select name="itemDificultad" className={input} value={it.dificultad} onChange={(e) => actualizarItem(idx, { dificultad: e.target.value })}>
+                  <option value="BAJO">Baja (0%)</option>
+                  <option value="MEDIO">Media (+5%)</option>
+                  <option value="ALTO">Alta (+10%)</option>
+                </select>
+              </div>
+            </div>
+          ))}
           <div>
-            <label className={label}>Superficie</label>
-            <select name="superficie" className={input} defaultValue={existente?.superficie ?? 'MIXTA'}>
-              <option value="VIDRIO">Vidrio</option>
-              <option value="MIXTA">Mixta</option>
-              <option value="DIFICIL">Difícil</option>
-            </select>
-          </div>
-          <div>
-            <label className={label}>Tipo edificio</label>
-            <select name="tipoEdificio" className={input} defaultValue={existente?.tipoEdificio ?? 'BAJO'}>
-              <option value="BAJO">Bajo (0%)</option>
-              <option value="MEDIO">Medio (+5%)</option>
-              <option value="ALTO">Alto (+10%)</option>
-            </select>
-          </div>
-          <div>
-            <label className={label}>Dificultad</label>
-            <select name="dificultad" className={input} defaultValue={existente?.dificultad ?? 'BAJO'}>
-              <option value="BAJO">Baja (0%)</option>
-              <option value="MEDIO">Media (+5%)</option>
-              <option value="ALTO">Alta (+10%)</option>
-            </select>
-          </div>
-          <div className="col-span-3">
-            <label className={label}>Descuento manual sobre el lavado (%) — opcional</label>
+            <label className={label}>Descuento manual sobre el lavado (%) — opcional, aplica sobre el total de todos los ítems</label>
             <input name="descuentoPct" type="number" min="0" max="99" step="0.1" className={input}
               placeholder="0" defaultValue={existente?.descuentoPct ?? ''} />
             <p className="text-[11px] text-amber-700 mt-1">
@@ -204,7 +249,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: 
           <div>
             <label className={label}>Días de ejecución en sitio — vacío para que el sistema lo calcule</label>
             <input name="diasEjecucion" type="number" min="0" step="0.5" className={input}
-              placeholder="Se calcula automático con la productividad real" defaultValue={existente?.diasEjecucion ?? ''} />
+              placeholder="Se calcula automático con la productividad real (suma de todos los ítems)" defaultValue={existente?.diasEjecucion ?? ''} />
             <p className="text-[11px] text-amber-700 mt-1">
               Aumentar el plazo es libre. Poner menos días de los que calcula el sistema requiere aprobación de Gerencia.
             </p>

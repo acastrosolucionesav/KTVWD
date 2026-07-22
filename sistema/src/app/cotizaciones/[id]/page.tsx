@@ -43,6 +43,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
       versionAnterior: { select: { id: true, idTrazabilidad: true } },
       versionNueva: { select: { id: true, idTrazabilidad: true } },
       itemsTerceros: { orderBy: { creadoAt: 'asc' } },
+      itemsLavado: { orderBy: { orden: 'asc' } },
     },
   });
   if (!c) notFound();
@@ -133,7 +134,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
               <dt className="text-gray-400">Días de operación (costeo)</dt><dd>{c.puntual!.diasOperacion ?? '—'}</dd>
               <dt className="text-gray-400">Costo operación</dt><dd>{cop(c.puntual!.costoOperacion)}</dd>
               <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(c.puntual!.feeNoruega)}</dd>
-              {c.puntual!.concepto && (
+              {c.itemsLavado.length === 0 && c.puntual!.concepto && (
                 <>
                   <dt className="text-gray-400">Concepto de lavado</dt><dd>{NOMBRES_CONCEPTO[c.puntual!.concepto]}</dd>
                   <dt className="text-gray-400">m² opaca / vidrio</dt><dd>{c.puntual!.m2Opaca ?? 0} / {c.puntual!.m2Vidrio ?? 0}</dd>
@@ -141,6 +142,23 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                   <dd className={c.puntual!.diasEjecucion != null && c.puntual!.diasEjecucionSistema != null && c.puntual!.diasEjecucion < c.puntual!.diasEjecucionSistema ? 'text-amber-400 font-bold' : ''}>
                     {c.puntual!.diasEjecucionSistema ?? '—'} / {c.puntual!.diasEjecucion ?? '—'}
                   </dd>
+                </>
+              )}
+              {c.itemsLavado.length > 0 && (
+                <>
+                  <dt className="text-gray-400">Días de ejecución (sistema / final)</dt>
+                  <dd className={c.puntual!.diasEjecucion != null && c.puntual!.diasEjecucionSistema != null && c.puntual!.diasEjecucion < c.puntual!.diasEjecucionSistema ? 'text-amber-400 font-bold' : ''}>
+                    {c.puntual!.diasEjecucionSistema ?? '—'} / {c.puntual!.diasEjecucion ?? '—'}
+                  </dd>
+                  <dt className="col-span-2 text-gray-400 pt-2 border-t border-white/10">Ítems de lavado ({c.itemsLavado.length})</dt>
+                  {c.itemsLavado.map((it) => (
+                    <div key={it.id} className="col-span-2 grid grid-cols-2 gap-y-1 pl-3 border-l border-white/10">
+                      <dt className="text-gray-400">{it.nombre} — {NOMBRES_CONCEPTO[it.concepto]}</dt><dd>{cop(it.precioLavado)}</dd>
+                      <dt className="text-gray-400">m² opaca / vidrio</dt><dd>{it.m2Opaca} / {it.m2Vidrio}</dd>
+                      <dt className="text-gray-400">Costo operación / Fee</dt><dd>{cop(it.costoOperacion)} / {cop(it.feeNoruega)}</dd>
+                      <dt className="text-gray-400">Días sistema</dt><dd>{it.diasEjecucionSistema}</dd>
+                    </div>
+                  ))}
                 </>
               )}
               {c.puntual!.descuentoPct != null && (
