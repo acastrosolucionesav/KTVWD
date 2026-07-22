@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
 import { calcularCareTodos, type Parametros } from '@/lib/pricing';
-import { aprobarCotizacion, rechazarCotizacion, marcarEnviada, toggleLinkPropuesta } from '@/app/actions/cotizaciones';
+import { aprobarCotizacion, rechazarCotizacion, marcarEnviada, toggleLinkPropuesta, extenderVigencia } from '@/app/actions/cotizaciones';
 import AgregarItemTerceroForm from './AgregarItemTerceroForm';
 import EliminarItemTerceroBoton from './EliminarItemTerceroBoton';
 
@@ -298,6 +298,27 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
             {c.linkActivo ? 'ACTIVO' : 'INACTIVO'}
           </span>
         </div>
+        {c.vigenteHasta && (() => {
+          const vencida = new Date(c.vigenteHasta) < new Date() && !c.aceptadaPorCliente;
+          return (
+            <div className="mt-3 flex items-center justify-between gap-3 flex-wrap border-t border-gray-100 pt-3">
+              <p className="text-xs text-gray-500">
+                {c.aceptadaPorCliente
+                  ? <>Aceptada por el cliente {c.aceptadaAt ? `el ${c.aceptadaAt.toLocaleDateString('es-CO')}` : ''}.</>
+                  : vencida
+                    ? <span className="text-red-600 font-semibold">⏳ Vencida el {new Date(c.vigenteHasta).toLocaleDateString('es-CO')} — el cliente ya no puede abrirla ni aceptarla.</span>
+                    : <>Vigente hasta el <b>{new Date(c.vigenteHasta).toLocaleDateString('es-CO')}</b>.</>}
+              </p>
+              {!c.aceptadaPorCliente && !c.versionNueva && (
+                <form action={extenderVigencia.bind(null, c.id)}>
+                  <button className="text-xs font-bold rounded-full px-4 py-2 border border-[#66C2F8] text-[#171E27]">
+                    Extender vigencia (+30 días)
+                  </button>
+                </form>
+              )}
+            </div>
+          );
+        })()}
         <div className="mt-4">
           <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">
             Aperturas del cliente: {c.aperturas.length}

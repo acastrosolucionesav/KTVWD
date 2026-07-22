@@ -342,6 +342,10 @@ export async function marcarEnviada(cotizacionId: string) {
 export async function aceptarPropuesta(linkToken: string) {
   const c = await prisma.cotizacion.findUnique({ where: { linkToken } });
   if (!c || !c.linkActivo || c.aceptadaPorCliente) return; // link desactivado = no se puede aceptar
+  // Vencida: pasada la fecha de vigencia y aún sin aceptar, no se puede aceptar
+  // (guard de servidor — un link viejo/cacheado no debe poder colarse). Gerencia
+  // puede extender la vigencia si el cliente pide más plazo.
+  if (c.vigenteHasta && c.vigenteHasta < new Date()) return;
 
   await prisma.$transaction([
     prisma.cotizacion.update({
@@ -369,6 +373,21 @@ export async function toggleLinkPropuesta(cotizacionId: string) {
   await prisma.auditoria.create({
     data: { cotizacionId: c.id, usuarioId: session.userId, accion: c.linkActivo ? 'desactivo_link' : 'reactivo_link' },
   });
+  revalidatePath(`/cotizaciones/${c.id}`);
+  revalidatePath(`/propuesta/${c.linkToken}`);
+}
+
+// Extender la vigencia 30 días más desde hoy — para cuando el cliente pide más
+// plazo y la propuesta ya venció (o está por vencer). Reactiva el link por si
+// estaba desactivado. Cualquier usuario del sistema puede hacerlo; queda auditado.
+export async function extenderVigencia(cotizacionId: string) {
+  const session = await verifySession();
+  const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionId } });
+  if (!c) return;
+  const nuevaVigencia = new Date();
+  nuevaVigencia.setDate(nuevaVigencia.getDate() + 30);
+  await prisma.cotizacion.update({ where: { id: c.id }, data: { vigenteHasta: nuevaVigencia, linkActivo: true } });
+  await prisma.auditoria.create({ data: { cotizacionId: c.id, usuarioId: session.userId, accion: 'extendio_vigencia' } });
   revalidatePath(`/cotizaciones/${c.id}`);
   revalidatePath(`/propuesta/${c.linkToken}`);
 }

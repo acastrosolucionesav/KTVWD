@@ -88,6 +88,28 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
     );
   }
 
+  // Vencida: pasada la fecha de vigencia y aún sin aceptar, la propuesta deja de
+  // estar disponible (si ya la aceptó a tiempo, sigue visible). Gerencia puede
+  // extender la vigencia desde el detalle si el cliente pide más plazo.
+  const vencida = !!dto.vigenteHasta && new Date(dto.vigenteHasta) < new Date() && !dto.aceptadaPorCliente;
+  if (vencida) {
+    return (
+      <div className="min-h-screen bg-[#eef2f6] flex items-center justify-center px-4">
+        <div className="max-w-md bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center">
+          <p className="text-4xl mb-3">⏳</p>
+          <h1 className="text-lg font-extrabold text-[#171E27]">Esta propuesta ya venció</h1>
+          <p className="text-sm text-gray-500 mt-2">
+            La vigencia de esta propuesta expiró. Comuníquese con su asesor KTV Working Drone para
+            recibir una propuesta actualizada.
+          </p>
+          <a href={URL_CATALOGO_FRIO} className="inline-block mt-5 bg-[#66C2F8] text-white text-sm font-bold rounded-full px-6 py-2">
+            Conocer KTV Working Drone →
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // Tracking de apertura: solo cuentan los visitantes SIN sesión (el cliente);
   // las vistas internas del equipo no se registran.
   const session = await getSession();
