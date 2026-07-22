@@ -5,7 +5,9 @@ import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
 import { registrarEnvioMaterialPipedrive } from '@/app/actions/pipedrive';
 
-const MATERIALES = [
+type Material = { key: 'LANDING' | 'PLANES' | 'ALIANZAS'; titulo: string; desc: string; url: string; compartirSolo?: boolean };
+
+const MATERIALES: Material[] = [
   {
     key: 'LANDING' as const,
     titulo: 'Brochure de prospección (en frío)',
@@ -18,6 +20,15 @@ const MATERIALES = [
     desc: 'Los 3 programas de mantenimiento — para clientes que ya conocen KTV.',
     url: 'https://landing.ktvworkingdrone.com.co/planes.html',
   },
+  {
+    // No se registra contra un trato de cliente: es para reclutar aliados, no
+    // para venderle a un cliente. Solo abrir/copiar para reenviar al candidato.
+    key: 'ALIANZAS' as const,
+    titulo: 'Página de Alianzas y Subfranquicias',
+    desc: 'Para empresas de aseo, referidores o interesados en operar la marca — no es un cliente de servicio.',
+    url: 'https://propuestas.ktvworkingdrone.com.co/alianzas',
+    compartirSolo: true,
+  },
 ];
 
 export default function MaterialesForm() {
@@ -25,8 +36,8 @@ export default function MaterialesForm() {
   const [pending, startTransition] = useTransition();
   const [estado, setEstado] = useState<Record<string, 'ok' | 'error' | 'copiado' | undefined>>({});
 
-  function registrar(key: 'LANDING' | 'PLANES') {
-    if (!deal) return;
+  function registrar(key: 'LANDING' | 'PLANES' | 'ALIANZAS') {
+    if (!deal || key === 'ALIANZAS') return;
     startTransition(async () => {
       const r = await registrarEnvioMaterialPipedrive(deal.id, key);
       setEstado((s) => ({ ...s, [key]: r.ok ? 'ok' : 'error' }));
@@ -46,7 +57,8 @@ export default function MaterialesForm() {
         <h1 className="text-lg font-extrabold text-[#171E27]">Enviar material comercial</h1>
         <p className="text-sm text-gray-500 mt-1">
           Comparta el brochure de prospección o el catálogo de planes con un cliente y déjelo
-          registrado en su trato de Pipedrive.
+          registrado en su trato de Pipedrive. La página de alianzas se comparte con posibles
+          aliados (no se registra contra un trato de cliente).
         </p>
       </div>
 
@@ -70,14 +82,16 @@ export default function MaterialesForm() {
                 className="text-xs font-bold rounded-full px-4 py-2 border border-gray-300 text-gray-700 hover:border-[#66C2F8]">
                 {estado[m.key + '_copy'] === 'copiado' ? '¡Copiado!' : 'Copiar enlace'}
               </button>
-              <button type="button" onClick={() => registrar(m.key)} disabled={!deal || pending}
-                className="text-xs font-bold rounded-full px-4 py-2 bg-[#66C2F8] text-white disabled:opacity-40">
-                Registrar envío en Pipedrive
-              </button>
+              {!m.compartirSolo && (
+                <button type="button" onClick={() => registrar(m.key)} disabled={!deal || pending}
+                  className="text-xs font-bold rounded-full px-4 py-2 bg-[#66C2F8] text-white disabled:opacity-40">
+                  Registrar envío en Pipedrive
+                </button>
+              )}
               {estado[m.key] === 'ok' && <span className="text-xs text-emerald-600 font-semibold">✓ Registrado en el trato</span>}
               {estado[m.key] === 'error' && <span className="text-xs text-red-600 font-semibold">No se pudo registrar</span>}
             </div>
-            {!deal && <p className="text-[11px] text-gray-400 mt-2">Busque primero un trato para poder registrar el envío.</p>}
+            {!m.compartirSolo && !deal && <p className="text-[11px] text-gray-400 mt-2">Busque primero un trato para poder registrar el envío.</p>}
           </div>
         ))}
       </div>
