@@ -9,6 +9,9 @@ export const metadata = {
   description: 'Lleve KTV Working Drone a su región. Alianzas y subfranquicias para expandir la marca líder en mantenimiento de fachadas con drones en Colombia.',
 };
 
+// Mismo número comercial que usan las landings de prospección (planes.html).
+const WHATSAPP = 'https://wa.me/573142358441?text=' + encodeURIComponent('Hola, estoy interesado en ser aliado de KTV Working Drone. Me gustaría conocer los modelos de asociación.');
+
 const MODELOS = [
   {
     nombre: 'Aliado Comercial',
@@ -42,9 +45,15 @@ export default function AlianzasPage() {
           <p className="text-white/90 text-base md:text-lg font-light mt-4 max-w-2xl">
             Alianzas y subfranquicias para expandir la marca líder en mantenimiento de fachadas con drones en Colombia.
           </p>
-          <a href="#contacto" className="inline-block mt-6 bg-white text-[#171E27] font-bold rounded-full px-7 py-3 text-sm">
-            Quiero ser aliado →
-          </a>
+          <div className="flex flex-wrap gap-3 mt-6">
+            <a href="#contacto" className="inline-block bg-white text-[#171E27] font-bold rounded-full px-7 py-3 text-sm">
+              Quiero ser aliado →
+            </a>
+            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-[#25D366] text-white font-bold rounded-full px-7 py-3 text-sm">
+              <span>Escríbenos por WhatsApp</span>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -52,7 +61,7 @@ export default function AlianzasPage() {
         {/* 2. Por qué asociarse */}
         <section>
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#66C2F8] mb-3">Por qué asociarse con KTV Working Drone</h2>
-          <p className="text-lg md:text-xl text-[#171E27] leading-relaxed">
+          <p className="text-lg md:text-xl text-[#171E27] leading-relaxed text-justify">
             KTV Working Drone es una marca internacional presente en 68 países, con tecnología propia de lavado,
             inspección e impermeabilización de fachadas mediante drones. En Colombia contamos con el único permiso
             de explotador UAS de la Aeronáutica Civil en nuestra categoría — un proceso regulatorio de más de 2 años
@@ -63,7 +72,7 @@ export default function AlianzasPage() {
         {/* 3. El problema que resolvemos */}
         <section className="bg-[#171E27] rounded-2xl p-8 md:p-10">
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#66C2F8] mb-3">Lo que resolvemos para nuestros aliados</h2>
-          <p className="text-base md:text-lg text-white/90 leading-relaxed">
+          <p className="text-base md:text-lg text-white/90 leading-relaxed text-justify">
             Montar una operación de drones desde cero implica inversión en equipos, procesos regulatorios largos,
             entrenamiento especializado y desarrollo de marca. Asociarse con KTV Working Drone significa acceder a
             todo esto ya resuelto — tecnología, respaldo legal, marca reconocida y soporte comercial — sin empezar
@@ -73,17 +82,19 @@ export default function AlianzasPage() {
 
         {/* 4. Modelos de asociación */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[#66C2F8] mb-1 text-center">Modelos de asociación</h2>
-          <p className="text-sm text-gray-500 text-center mb-6">Elegimos juntos el que mejor se ajusta a su empresa.</p>
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#171E27]">Modelos de asociación</h2>
+            <p className="text-base text-gray-500 mt-2">Elegimos juntos el que mejor se ajusta a su empresa.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 items-stretch">
             {MODELOS.map((m) => (
               <div key={m.nombre}
-                className={`rounded-2xl p-6 flex flex-col bg-white border-2 ${m.destacado ? 'border-[#66C2F8] shadow-lg shadow-[#66C2F8]/20 md:-translate-y-2' : 'border-gray-200'}`}>
+                className={`rounded-2xl p-8 flex flex-col bg-white border-2 ${m.destacado ? 'border-[#66C2F8] shadow-xl shadow-[#66C2F8]/20 md:-translate-y-2' : 'border-gray-200'}`}>
                 {m.destacado && (
-                  <span className="self-start text-[10px] font-extrabold uppercase tracking-wide bg-[#66C2F8] text-white rounded-full px-3 py-1 mb-3">Más elegido</span>
+                  <span className="self-start text-[10px] font-extrabold uppercase tracking-wide bg-[#66C2F8] text-white rounded-full px-3 py-1 mb-4">Más elegido</span>
                 )}
-                <h3 className="text-base font-extrabold text-[#171E27]">{m.nombre}</h3>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">{m.texto}</p>
+                <h3 className="text-xl font-extrabold text-[#171E27]">{m.nombre}</h3>
+                <p className="text-[15px] text-gray-600 mt-3 leading-relaxed text-justify flex-1">{m.texto}</p>
               </div>
             ))}
           </div>
@@ -92,7 +103,7 @@ export default function AlianzasPage() {
         {/* 5. Por qué ahora */}
         <section>
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#66C2F8] mb-3">Por qué ahora</h2>
-          <p className="text-lg md:text-xl text-[#171E27] leading-relaxed">
+          <p className="text-lg md:text-xl text-[#171E27] leading-relaxed text-justify">
             El mercado de inspección técnica de fachadas en Colombia está prácticamente sin explotar — ningún
             competidor local ofrece hoy un servicio de diagnóstico técnico con el respaldo de ingeniería
             internacional que tiene KTV. Ser aliado de KTV Working Drone es entrar temprano a un mercado con
@@ -102,7 +113,11 @@ export default function AlianzasPage() {
 
         {/* 6. Formulario */}
         <section id="contacto" className="scroll-mt-6">
-          <h2 className="text-xl md:text-2xl font-extrabold text-[#171E27] mb-4">Hablemos de su alianza</h2>
+          <h2 className="text-xl md:text-2xl font-extrabold text-[#171E27] mb-1">Hablemos de su alianza</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Déjenos sus datos y le contactamos, o escríbanos directo por{' '}
+            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="text-[#25D366] font-semibold underline">WhatsApp</a>.
+          </p>
           <AlianzaForm />
         </section>
       </div>
