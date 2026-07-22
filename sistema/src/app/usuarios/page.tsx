@@ -3,6 +3,7 @@ import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
 import CrearUsuarioForm from './CrearUsuarioForm';
 import EstadoUsuarioBoton from './EstadoUsuarioBoton';
+import EnlaceAccesoBoton from './EnlaceAccesoBoton';
 
 const NOMBRES_ROL = {
   COMERCIAL: 'Comercial',
@@ -21,8 +22,10 @@ export default async function UsuariosPage() {
       <div>
         <h1 className="text-lg font-extrabold text-[#171E27]">Usuarios del sistema</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Solo Gerencia. Al crear una cuenta se envía un correo de bienvenida con un enlace (vence en 7 días)
-          para que la persona cree su propia contraseña — nadie más la conoce ni la define.
+          Solo Gerencia. Al crear una cuenta se genera un enlace (vence en 7 días) para que la persona
+          cree su propia contraseña — nadie más la conoce ni la define. Ese enlace se muestra en pantalla
+          para que lo copie y lo envíe por WhatsApp o como prefiera (además se intenta por correo). El
+          mismo botón &quot;Generar enlace de acceso&quot; sirve si alguien olvidó su contraseña.
         </p>
       </div>
 
@@ -51,7 +54,10 @@ export default async function UsuariosPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <EstadoUsuarioBoton usuarioId={u.id} activo={u.activo} esMismoUsuario={u.id === session.userId} />
+                  <div className="flex flex-col items-end gap-2">
+                    <EnlaceAccesoBoton usuarioId={u.id} />
+                    <EstadoUsuarioBoton usuarioId={u.id} activo={u.activo} esMismoUsuario={u.id === session.userId} />
+                  </div>
                 </td>
               </tr>
             ))}
