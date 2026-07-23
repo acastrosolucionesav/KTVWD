@@ -59,8 +59,16 @@ enum ConceptoLavado {
   FACHADA_Y_VENTANAS
 }
 
+// Reestructuración 2026-07-23 (spec_reestructuracion_care_20260723.md): los 3
+// planes son una escalera de compromiso creciente. BASIC (= el "Essential"
+// anterior): 1 año, 1 lavada/año, DV cada año. ESSENTIAL (nuevo): 3 años, 1
+// lavada/año, DV en años 1 y 3 (año 2 sin inspección). COMPLETE: 3 años, 2
+// lavadas/año, Informe Internacional año 1 + DV año 3. Se retiró el plan
+// "Inspect" (solo diagnóstico) — quien solo quiera inspección compra un DV/II
+// suelto (Familia 2). Las cotizaciones viejas con Inspect/Essential se
+// remapearon a Basic en la migración.
 enum PlanCare {
-  INSPECT
+  BASIC
   ESSENTIAL
   COMPLETE
 }
@@ -264,6 +272,9 @@ model CotizacionCare {
   cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
 
   planRecomendado PlanCare
+  // La duración ya no la elige el comercial: es fija por plan (Basic 1 año,
+  // Essential y Complete 3 años). Se guarda la del plan recomendado como
+  // referencia del registro.
   contratoAnios   Int       @default(1)
   formaPago       FormaPago @default(CONTADO)
 
@@ -277,8 +288,8 @@ model CotizacionCare {
   tipoEdificio NivelRecargo? // solo interno
   dificultad   NivelRecargo? // solo interno
 
-  valorAnualInspect     Float
-  valorMensualInspect   Float
+  valorAnualBasic       Float
+  valorMensualBasic     Float
   valorAnualEssential   Float
   valorMensualEssential Float
   valorAnualComplete    Float

@@ -49,9 +49,9 @@ const DESC_INTERNACIONAL = 'Soporte técnico bajo estándar internacional KTV �
 // Copy de checklist por paquete Care — mismo contenido aprobado del catálogo
 // público (landing/planes.html), adaptado a la propuesta con precio real.
 const CARACTERISTICAS_CARE: Record<string, string[]> = {
-  INSPECT: ['Inspección anual con informe de estado', 'Gestión preventiva del activo', 'Tarifa preferencial en servicios KTV'],
-  ESSENTIAL: ['Inspección anual con Diagnóstico Visual KTV', '1 lavada de fachada al año', 'Prioridad de agenda preferente', 'Precio preferente vs. servicio puntual'],
-  COMPLETE: ['Año 1 con Informe Internacional Inotek (Noruega)', 'Año 3 con Diagnóstico Visual KTV', '2 lavadas de fachada al año, los 3 años', 'Prioridad máxima + atención de urgencias', 'Máximo beneficio de precio por volumen'],
+  BASIC: ['Contrato de 1 año', '1 lavada de fachada al año', 'Diagnóstico Visual KTV cada año', 'Tarifa preferencial frente al servicio puntual'],
+  ESSENTIAL: ['Contrato de 3 años', '1 lavada de fachada al año (3 en total)', 'Diagnóstico Visual KTV en los años 1 y 3', 'Año 2 sin inspección — se mantiene la lavada', 'Prioridad de agenda preferente', 'Mejor tarifa por m² que Basic'],
+  COMPLETE: ['Contrato de 3 años', '2 lavadas de fachada al año (6 en total)', 'Año 1: Informe Internacional Inotek (Noruega)', 'Año 2: sin inspección — se mantienen las 2 lavadas', 'Año 3: Diagnóstico Visual KTV', 'Prioridad máxima + atención de urgencias', 'La mejor tarifa por m² de todos los planes'],
 };
 
 // Destaque visual por plan — mismo tratamiento que el catálogo público
@@ -59,9 +59,9 @@ const CARACTERISTICAS_CARE: Record<string, string[]> = {
 // con header sólido. Es fijo por plan (no depende de cuál sea el recomendado
 // para este cliente en particular, que se marca aparte con una estrella).
 const DESTAQUE_CARE: Record<string, { tag: string; badge?: string; feat?: boolean; pop?: boolean }> = {
-  INSPECT: { tag: 'Diagnóstico y gestión' },
-  ESSENTIAL: { tag: 'Corporativos y bodegas', badge: 'Más popular', pop: true },
-  COMPLETE: { tag: 'Alta exigencia', badge: 'Máximo valor', feat: true },
+  BASIC: { tag: 'Entrada · 1 año' },
+  ESSENTIAL: { tag: 'Corporativos y bodegas · 3 años', badge: 'Más popular', pop: true },
+  COMPLETE: { tag: 'Alta exigencia · 3 años', badge: 'Máximo valor', feat: true },
 };
 
 export default async function PropuestaPublicaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -310,10 +310,11 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                       </div>
                       <div className="bg-[#EBF8FF] border border-[#66C2F8]/40 rounded-lg px-2.5 py-2 text-[11px] text-gray-700">
                         {paq.plan === 'COMPLETE' ? (
-                          <><b className="text-[#171E27]">Año 1 con respaldo internacional Inotek</b> (Noruega), <b className="text-[#171E27]">año 3 con Diagnóstico Visual KTV</b> (con IA) · {paq.nLavadas} lavadas de fachada al año, los 3 años</>
+                          <><b className="text-[#171E27]">Año 1:</b> Informe Internacional Inotek (Noruega) · <b className="text-[#171E27]">Año 2:</b> sin inspección (se mantienen las 2 lavadas) · <b className="text-[#171E27]">Año 3:</b> Diagnóstico Visual KTV (con IA) · 2 lavadas de fachada al año, los 3 años</>
+                        ) : paq.plan === 'ESSENTIAL' ? (
+                          <><b className="text-[#171E27]">Diagnóstico Visual KTV</b> (con IA) en los años 1 y 3 (año 2 sin inspección) · 1 lavada de fachada al año · contrato de 3 años</>
                         ) : (
-                          <>Incluye <b className="text-[#171E27]">Diagnóstico Visual KTV</b> (con IA) · valor {cop(dto.care!.informeIncluidoValor)}
-                          {paq.nLavadas > 0 ? ` + ${paq.nLavadas} lavada${paq.nLavadas > 1 ? 's' : ''} de fachada` : ''}</>
+                          <>Incluye <b className="text-[#171E27]">Diagnóstico Visual KTV</b> (con IA) cada año · valor {cop(dto.care!.informeIncluidoValor)} + 1 lavada de fachada al año · contrato de 1 año</>
                         )}
                       </div>
                       <ul className="text-xs text-gray-600 space-y-1.5 flex-1">
@@ -334,7 +335,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                     <span className="font-bold text-[#171E27] shrink-0">{cop(dto.care.informeInternacional.precioTotal)}</span>
                   </div>
                   <p className="px-4 pb-3 text-xs text-gray-400">
-                    Este valor aplica por igual a los 3 planes. En <b>KTV Care Complete</b> ya viene incluido en el año 1 (referencia de lo que recibe sin costo adicional); en <b>Inspect</b> y <b>Essential</b> es un servicio independiente, opcional y no incluido en el valor mostrado arriba — se cotiza y factura aparte solo si lo solicita.
+                    En <b>KTV Care Complete</b> ya viene incluido en el año 1 (referencia de lo que recibe sin costo adicional); en <b>Basic</b> y <b>Essential</b> es un servicio independiente, opcional y no incluido en el valor mostrado arriba — se cotiza y factura aparte solo si lo solicita.
                   </p>
                 </div>
               )}
@@ -361,7 +362,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 <p className="text-sm text-gray-700 text-justify">
                   Facturación mensual, mes vencido, desde el inicio del programa — aplica por igual sin importar el plan elegido o la duración del contrato. La ejecución del servicio anual (lavado e inspección) se agenda de común acuerdo con el cliente
                   {dto.care.formaPago === 'CONTADO' ? '.' : ' · valor diferido en 12 cuotas al año (no aplica como descuento).'}
-                  {' '}Disponible en contratos de 1 o 3 años (el de 3 años congela el valor el primer año y lo ajusta por IPC en los siguientes).
+                  {' '}La duración es fija según el plan: <b>Basic</b> 1 año; <b>Essential</b> y <b>Complete</b> 3 años (congelan el valor del primer año y lo ajustan por IPC en los siguientes).
                 </p>
               </div>
             </div>

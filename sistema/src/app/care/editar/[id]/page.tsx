@@ -28,7 +28,6 @@ export default async function EditarCotizacionCarePage({ params }: { params: Pro
         superficie: care.superficie ?? 'MIXTA',
         tipoEdificio: care.tipoEdificio ?? 'BAJO',
         dificultad: care.dificultad ?? 'BAJO',
-        contratoAnios: care.contratoAnios,
         formaPago: care.formaPago,
         observaciones: c.observaciones ?? '',
       }}

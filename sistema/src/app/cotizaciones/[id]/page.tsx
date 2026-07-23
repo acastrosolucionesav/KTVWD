@@ -21,7 +21,7 @@ const NOMBRES_CONCEPTO: Record<string, string> = {
 };
 
 const NOMBRES_PLAN: Record<string, string> = {
-  INSPECT: 'KTV Care Inspect',
+  BASIC: 'KTV Care Basic',
   ESSENTIAL: 'KTV Care Essential',
   COMPLETE: 'KTV Care Complete',
 };
@@ -98,7 +98,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         {esCare && c.care ? (
           <div className="grid grid-cols-3 gap-3">
             {([
-              ['INSPECT', c.care.valorMensualInspect, c.care.valorAnualInspect],
+              ['BASIC', c.care.valorMensualBasic, c.care.valorAnualBasic],
               ['ESSENTIAL', c.care.valorMensualEssential, c.care.valorAnualEssential],
               ['COMPLETE', c.care.valorMensualComplete, c.care.valorAnualComplete],
             ] as [string, number, number][]).map(([plan, mensual, anual]) => (
@@ -174,18 +174,21 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
             </dl>
           ) : careTodos ? (
             <div className="space-y-4">
-              <p className="text-xs text-gray-400">El cliente puede elegir cualquiera de los 3 — el margen se evalúa para cada uno.</p>
-              {(['INSPECT', 'ESSENTIAL'] as const).map((plan) => {
-                const t = careTodos[plan];
+              <p className="text-xs text-gray-400">El cliente puede elegir cualquiera de los 3 — el margen se evalúa para cada uno. El descuento por volumen nunca baja el margen del 35%.</p>
+
+              {/* Basic: 1 año, DV entregado. Margen único. */}
+              {(() => {
+                const t = careTodos.BASIC;
                 return (
-                  <div key={plan}>
-                    <h3 className="text-[11px] font-bold uppercase text-[#66C2F8] mb-1">{NOMBRES_PLAN[plan]}{plan === c.care!.planRecomendado ? ' (recomendado)' : ''}</h3>
+                  <div>
+                    <h3 className="text-[11px] font-bold uppercase text-[#66C2F8] mb-1">{NOMBRES_PLAN.BASIC}{c.care!.planRecomendado === 'BASIC' ? ' (recomendado)' : ''} · 1 año</h3>
                     <dl className="grid grid-cols-2 gap-y-1 text-sm">
                       <dt className="text-gray-400">Días de operación / año</dt><dd>{t.diasOperacion}</dd>
                       <dt className="text-gray-400">Costo lavadas ({t.nLavadas}/año)</dt><dd>{cop(t.costoLavadas)}</dd>
                       <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(t.costoInspeccion)}</dd>
                       <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(t.feeNoruega)}</dd>
                       <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(t.comision)}</dd>
+                      <dt className="text-gray-400">Descuento aplicado</dt><dd>{(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}</dd>
                       <dt className="text-gray-400">Costo total / año</dt><dd>{cop(t.costoTotal)}</dd>
                       <dt className="text-gray-400">Margen</dt>
                       <dd className={t.margenP < 0.35 ? 'text-red-400 font-bold' : t.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
@@ -194,18 +197,20 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                     </dl>
                   </div>
                 );
-              })}
+              })()}
 
-              {/* Complete: DV y II nunca son el mismo costo — año 1 (II) tiene un costo mucho
-                  mayor por el fee Noruega. Nunca promediar los 3 años en un margen único. */}
-              {(() => {
-                const t = careTodos.COMPLETE;
+              {/* Essential y Complete: 3 años, año 2 sin inspección. El margen cambia por
+                  año (año 1 más caro por la inspección) — nunca promediar los 3 años. */}
+              {(['ESSENTIAL', 'COMPLETE'] as const).map((plan) => {
+                const t = careTodos[plan];
                 return (
-                  <div>
+                  <div key={plan}>
                     <h3 className="text-[11px] font-bold uppercase text-[#66C2F8] mb-1">
-                      {NOMBRES_PLAN.COMPLETE}{c.care!.planRecomendado === 'COMPLETE' ? ' (recomendado)' : ''}
+                      {NOMBRES_PLAN[plan]}{c.care!.planRecomendado === plan ? ' (recomendado)' : ''} · 3 años
                     </h3>
-                    <p className="text-[11px] text-gray-500 mb-2">Días de operación/año (lavadas + inspección): {t.diasOperacion} · Costo lavadas (2/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)}</p>
+                    <p className="text-[11px] text-gray-500 mb-2">
+                      Días de operación/año: {t.diasOperacion} · Costo lavadas ({t.nLavadas}/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)} · Descuento: {(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}
+                    </p>
                     <div className="grid grid-cols-3 gap-3">
                       {([1, 2, 3] as const).map((anio) => {
                         const a = t.porAnio![anio];
@@ -222,7 +227,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                     </div>
                   </div>
                 );
-              })()}
+              })}
             </div>
           ) : null}
         </div>

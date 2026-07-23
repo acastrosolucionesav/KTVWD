@@ -24,8 +24,11 @@ export type Parametros = {
   PROD_INSPECCION_M2_DIA: number;   // ⚠️ PLACEHOLDER — falta calibrar con Órdenes de Vuelo reales
   COSTO_INFORME_ANALISIS: number;   // ⚠️ PENDIENTE — aún no definido con Gerencia (hoy en 0, no cerrar costeo sin esto)
   IVA: number;
-  CARE_ESSENTIAL_DESC: number;
-  CARE_COMPLETE_DESC: number;
+  // Descuentos de compromiso por plan Care (spec_reestructuracion_care_20260723.md),
+  // sobre la tarifa de lista $6.000/m². Cada escalón de compromiso baja más.
+  CARE_BASIC_DESC: number;     // Basic (= "Essential" anterior): 5% → $5.700/m²
+  CARE_ESSENTIAL_DESC: number; // Essential (nuevo, 3 años): 7,5% → $5.550/m²
+  CARE_COMPLETE_DESC: number;  // Complete (3 años): 10% → $5.400/m²
   DV_PRECIO: number;
   DV_TIER_1: number;
   DV_TIER_2: number;
@@ -80,8 +83,9 @@ export const PARAMETROS_INICIALES: Parametros = {
   PROD_INSPECCION_M2_DIA: 20000, // placeholder inicial — AJUSTAR con datos reales
   COSTO_INFORME_ANALISIS: 0,     // pendiente — ver nota arriba
   IVA: 0.19,
-  CARE_ESSENTIAL_DESC: 0.05, // 1 lavada a $5.700/m² — alineado a la regla de negocio (antes 0.06/$5.640 por error)
-  CARE_COMPLETE_DESC: 0.10,
+  CARE_BASIC_DESC: 0.05,      // Basic: 1 lavada/año a $5.700/m² — antes se llamaba "Essential"
+  CARE_ESSENTIAL_DESC: 0.075, // Essential (nuevo, 3 años, 1 lavada/año): $5.550/m² (reestructuración 2026-07-23)
+  CARE_COMPLETE_DESC: 0.10,   // Complete (3 años, 2 lavadas/año): $5.400/m²
   DV_PRECIO: 4500000,
   DV_TIER_1: 3500000,
   DV_TIER_2: 4500000,
@@ -190,6 +194,18 @@ export type ItemLavadoInput = {
   m2Vidrio: number; m2Opaca: number; superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
 };
 
+// Descuento por volumen (spec_reestructuracion_care_20260723.md): se calcula
+// SIEMPRE sobre la tarifa de lista ($6.000/m²) según el total de m² de fachada,
+// independiente del descuento de compromiso de cada plan Care. Nunca se
+// multiplica con otro descuento — la combinación (mayor de los dos) y el piso
+// de 35% se resuelven en quien lo llama (calcularCare / la acción de Familia 1).
+export function descuentoVolumen(m2Total: number): number {
+  if (m2Total > 50000) return 0.10;
+  if (m2Total > 20000) return 0.06;
+  if (m2Total > 5000) return 0.03;
+  return 0;
+}
+
 export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavadoInput[]; comisionPct: number; descuentoPct?: number }) {
   const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
 
@@ -213,7 +229,14 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
   const precioBase = Math.max(sumaPrecioConRecargo, p.MINIMO_PROYECTO_LAVADO ?? 0);
   const precioPisoMargen = sumaCostoOperacion / (1 - p.MARGEN_MINIMO - p.FEE_NORUEGA - args.comisionPct);
   const precioListaSinDescuento = Math.max(precioBase, precioPisoMargen);
-  const precioLavado = precioListaSinDescuento * (1 - (args.descuentoPct ?? 0) / 100);
+  // El precio con descuento NUNCA baja del piso de 35% de margen (regla Gerencia
+  // 2026-07-23 para el descuento por volumen; y ya era el piso del descuento
+  // manual). Si el descuento pedido perforaría el 35%, se recorta al piso —
+  // `pisoAplicado` avisa que el descuento no cupo completo (la acción decide si
+  // eso es un descuento manual demasiado profundo que hay que bloquear).
+  const precioConDescuento = precioListaSinDescuento * (1 - (args.descuentoPct ?? 0) / 100);
+  const precioLavado = Math.max(precioConDescuento, precioPisoMargen);
+  const pisoAplicado = precioConDescuento < precioPisoMargen;
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = sumaCostoOperacion + feeNoruega + comision;
@@ -238,7 +261,7 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
 
   return {
     dias: sumaDias, costoOpDia, costoOperacion: sumaCostoOperacion, precioLavado, precioListaSinDescuento,
-    feeNoruega, comision, costoTotal, margenD, margenP, diasEjecucionSistema, items,
+    pisoAplicado, feeNoruega, comision, costoTotal, margenD, margenP, diasEjecucionSistema, items,
   };
 }
 
@@ -290,30 +313,37 @@ export function calcularInspeccion(p: Parametros, techo: number) {
   };
 }
 
-// Care — costo y margen REALES (spec_calcularCare.md 2026-07-14):
-// - Lavadas: mismas fórmulas de días×costo/día del lavado puntual — superficie real
-//   (productividad) y recargo de edificio/dificultad, igual que Familia 1. Corrección
-//   2026-07-16: antes SIEMPRE asumía MIXTA/BAJO/BAJO sin importar el edificio real, el
-//   mismo hueco de margen que ya se corrigió en calcularLavado — el recargo también se
-//   traslada al precio de la lavada dentro de la cuota, no solo al costo.
-// - Inspección: DV e II NUNCA son el mismo costo — el DV no paga fee a Noruega, el II sí.
-//   costo_DV = COSTO_OPERATIVO_DV_TRAMO[tramo] (costo operativo puro, sin fee).
-//   costo_II = fee Noruega (mismo cálculo que Familia 1) + costoOperacionInsp existente.
-// - Complete entrega 2 inspecciones en los 3 años del contrato (nunca 3): año 1 = II
-//   (costo mucho mayor por el fee), año 2 sin inspección (solo las 2 lavadas de fachada
-//   se mantienen), año 3 = DV — decisión Gerencia 2026-07-15, para dejar un punto de
-//   contacto con informe justo antes de la renovación. El precio de venta (valorAnual)
-//   es una cuota estable — no cambia por año — pero el margen SÍ depende del año, así
-//   que se devuelve un desglose por año (`porAnio`) en vez de un margen único que
-//   promediaría (y escondería) un año 1 más ajustado.
-// - Fee Noruega 7% sobre el valor anual + comisión comercial (5% venta en frío por
-//   defecto — año 1; las renovaciones al 1% mejoran el margen en años siguientes).
+// Care — costo y margen REALES. Reestructuración 2026-07-23
+// (spec_reestructuracion_care_20260723.md): los 3 planes son una escalera de
+// compromiso creciente.
+// - BASIC (= el "Essential" anterior): 1 año, 1 lavada/año a $5.700/m² (5%),
+//   Diagnóstico Visual cada año. Margen único (un solo año).
+// - ESSENTIAL (nuevo): 3 años, 1 lavada/año a $5.550/m² (7,5%), 2 DV en total
+//   (años 1 y 3 — año 2 SIN inspección). Sin Informe Internacional incluido
+//   (se ofrece como referencia opcional). Margen por año (el peor de los 3).
+// - COMPLETE: 3 años, 2 lavadas/año a $5.400/m² (10%), Informe Internacional
+//   año 1 + DV año 3 (año 2 sin inspección). Estructura sin cambios.
+// Reglas base que se mantienen:
+// - Lavadas: días×costo/día con superficie real (productividad) y recargo de
+//   edificio/dificultad, igual que Familia 1 — el recargo también sube el precio.
+// - DV e II NUNCA son el mismo costo — el DV no paga fee a Noruega, el II sí.
+//   costo_DV = COSTO_OPERATIVO_DV_TRAMO[tramo]; costo_II = fee Noruega + operación.
+// - La cuota (valorAnual) es estable los 3 años, pero el margen depende del año
+//   (año 1 más caro por el fee del II en Complete) — se devuelve `porAnio` en
+//   planes de 3 años, nunca un promedio que esconda el año más ajustado.
+// - Fee Noruega 7% sobre el valor anual + comisión comercial (5% por defecto).
+// Descuento por volumen (nuevo): sobre la tarifa de lista, por m² de fachada.
+// Se toma el MAYOR entre el descuento de compromiso del plan y el de volumen
+// (nunca se multiplican). Ese descuento por volumen jamás puede hacer caer el
+// margen por debajo del 35% ya pactado: si lo haría, se cae al descuento de
+// compromiso del plan (que por diseño mantiene ≥35%). Decisión Gerencia 2026-07-23.
 export function calcularCare(p: Parametros, args: {
-  plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number; comisionPct?: number;
+  plan: 'BASIC' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number; comisionPct?: number;
   superficie?: Superficie; tipoEdificio?: NivelRecargo; dificultad?: NivelRecargo;
 }) {
   const superficie = args.superficie ?? 'MIXTA';
   const recargo = RECARGO_PCT[args.tipoEdificio ?? 'BAJO'] + RECARGO_PCT[args.dificultad ?? 'BAJO'];
+  const comisionPct = args.comisionPct ?? 0.05;
 
   const insp = calcularInspeccion(p, args.techo);
   const dv = insp.dvPrecio;
@@ -326,61 +356,74 @@ export function calcularCare(p: Parametros, args: {
   const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
   const diasUnaLavada = Math.ceil((args.m2 / productividad(p, superficie)) * 2) / 2;
   const costoUnaLavada = diasUnaLavada * costoOpDia * (1 + recargo);
+  const diasOperacionInsp = insp.diasOperacionInsp;
 
-  const nLavadas = args.plan === 'INSPECT' ? 0 : args.plan === 'ESSENTIAL' ? 1 : 2;
-  let valorAnual: number;
-  if (args.plan === 'INSPECT') {
-    valorAnual = dv;
-  } else if (args.plan === 'ESSENTIAL') {
-    valorAnual = args.m2 * p.TARIFA_LISTA * (1 - p.CARE_ESSENTIAL_DESC) * (1 + recargo) + dv;
-  } else {
-    // Complete cobra por el Informe Internacional (lo que realmente entrega en año 1,
-    // aunque sea una sola vez en los 3 años), no por el DV — mucho más barato — como
-    // se hacía antes. Corrección Gerencia 2026-07-14: la cuota estaba fijada con el
-    // valor equivocado, por eso el margen de año 1 caía por debajo del piso del 35%.
-    valorAnual = 2 * args.m2 * p.TARIFA_LISTA * (1 - p.CARE_COMPLETE_DESC) * (1 + recargo) + (insp.precioInternacional ?? dv);
-  }
+  const nLavadas = args.plan === 'COMPLETE' ? 2 : 1;
+  const contratoAnios = args.plan === 'BASIC' ? 1 : 3;
+  // ?? por si un snapshot viejo (anterior a la reestructuración) no trae la clave.
+  const compromisoDisc =
+    args.plan === 'BASIC' ? (p.CARE_BASIC_DESC ?? 0.05)
+    : args.plan === 'ESSENTIAL' ? (p.CARE_ESSENTIAL_DESC ?? 0.075)
+    : (p.CARE_COMPLETE_DESC ?? 0.10);
+  const volDisc = descuentoVolumen(args.m2);
 
-  const feeNoruega = valorAnual * p.FEE_NORUEGA;
-  const comision = valorAnual * (args.comisionPct ?? 0.05);
   const costoLavadas = costoUnaLavada * nLavadas;
   const diasOperacionLavadas = diasUnaLavada * nLavadas;
 
-  if (args.plan === 'COMPLETE') {
-    const margenP = (costo: number) => (valorAnual > 0 ? (valorAnual - costo) / valorAnual : 0);
+  // Arma el resultado completo del plan para un descuento dado sobre la lista.
+  function conDescuento(disc: number) {
+    const tarifaLavadaM2 = p.TARIFA_LISTA * (1 - disc) * (1 + recargo);
+    const ingresoLavadas = nLavadas * args.m2 * tarifaLavadaM2;
+    // La cuota anual incluye las lavadas del año + el informe (DV en Basic/
+    // Essential; el Informe Internacional del año 1 en Complete — lo que
+    // realmente entrega, aunque sea una vez en los 3 años).
+    const valorAnual = ingresoLavadas + (args.plan === 'COMPLETE' ? (insp.precioInternacional ?? dv) : dv);
+    const feeNoruega = valorAnual * p.FEE_NORUEGA;
+    const comision = valorAnual * comisionPct;
+    const margenPFn = (costo: number) => (valorAnual > 0 ? (valorAnual - costo) / valorAnual : 0);
+    type Entregable = 'II' | 'DV' | null;
+    type Anio = { entregable: Entregable; costoTotal: number; margenD: number; margenP: number };
+    // Forma de retorno UNIFORME (mismos campos siempre) para que el tipo no sea
+    // una unión — los planes de 3 años traen `porAnio`, el de 1 año trae
+    // `costoInspeccion`/`costoTotal`/`margenD`; los que no aplican van undefined.
+    const comun = {
+      disc, valorAnual, valorMensual: valorAnual / 12, nLavadas, contratoAnios,
+      diasOperacion: diasOperacionLavadas + diasOperacionInsp, costoLavadas, feeNoruega, comision,
+      costoInspeccion: undefined as number | undefined,
+      costoTotal: undefined as number | undefined,
+      margenD: undefined as number | undefined,
+      porAnio: undefined as { 1: Anio; 2: Anio; 3: Anio } | undefined,
+    };
 
-    // Año 1: II (costo mucho mayor por el fee Noruega).
-    const costoTotalAnio1 = (costoII ?? 0) + costoLavadas + feeNoruega + comision;
-    // Año 2: sin inspección — solo se mantienen las 2 lavadas de fachada.
-    const costoTotalAnio2 = costoLavadas + feeNoruega + comision;
-    // Año 3: DV — punto de contacto con informe justo antes de la renovación.
-    const costoTotalAnio3 = costoDV + costoLavadas + feeNoruega + comision;
+    if (args.plan === 'BASIC') {
+      // 1 año, DV entregado. Margen único (= el "Essential" anterior).
+      const costoTotal = costoLavadas + costoDV + feeNoruega + comision;
+      return { ...comun, costoInspeccion: costoDV, costoTotal, margenD: valorAnual - costoTotal, margenP: margenPFn(costoTotal) };
+    }
 
+    // ESSENTIAL y COMPLETE: 3 años, año 2 sin inspección. Desglose por año.
+    const c1 = args.plan === 'COMPLETE'
+      ? (costoII ?? 0) + costoLavadas + feeNoruega + comision   // Complete año 1: Informe Internacional
+      : costoDV + costoLavadas + feeNoruega + comision;          // Essential año 1: DV
+    const c2 = costoLavadas + feeNoruega + comision;             // año 2: sin inspección
+    const c3 = costoDV + costoLavadas + feeNoruega + comision;   // año 3: DV
     const porAnio = {
-      1: { entregable: 'II' as const, costoTotal: costoTotalAnio1, margenD: valorAnual - costoTotalAnio1, margenP: margenP(costoTotalAnio1) },
-      2: { entregable: null, costoTotal: costoTotalAnio2, margenD: valorAnual - costoTotalAnio2, margenP: margenP(costoTotalAnio2) },
-      3: { entregable: 'DV' as const, costoTotal: costoTotalAnio3, margenD: valorAnual - costoTotalAnio3, margenP: margenP(costoTotalAnio3) },
+      1: { entregable: (args.plan === 'COMPLETE' ? 'II' : 'DV') as Entregable, costoTotal: c1, margenD: valorAnual - c1, margenP: margenPFn(c1) },
+      2: { entregable: null as Entregable, costoTotal: c2, margenD: valorAnual - c2, margenP: margenPFn(c2) },
+      3: { entregable: 'DV' as Entregable, costoTotal: c3, margenD: valorAnual - c3, margenP: margenPFn(c3) },
     };
-    // margenP a nivel de paquete = el peor de los 3 años — nunca promediar (esconde el año 1).
-    const margenPMinimo = Math.min(porAnio[1].margenP, porAnio[2].margenP, porAnio[3].margenP);
-
-    return {
-      valorAnual, valorMensual: valorAnual / 12,
-      nLavadas, diasOperacion: diasOperacionLavadas + insp.diasOperacionInsp,
-      costoLavadas, feeNoruega, comision, porAnio, margenP: margenPMinimo,
-    };
+    return { ...comun, porAnio, margenP: Math.min(porAnio[1].margenP, porAnio[2].margenP, porAnio[3].margenP) };
   }
 
-  // INSPECT y ESSENTIAL: un único año, siempre DV — sin cambio de entregable.
-  const costoTotal = costoDV + costoLavadas + feeNoruega + comision;
-  const margenD = valorAnual - costoTotal;
-  const margenP = valorAnual > 0 ? margenD / valorAnual : 0;
-
-  return {
-    valorAnual, valorMensual: valorAnual / 12,
-    nLavadas, diasOperacion: diasOperacionLavadas + insp.diasOperacionInsp,
-    costoLavadas, costoInspeccion: costoDV, feeNoruega, comision, costoTotal, margenD, margenP,
-  };
+  // Mayor de los dos descuentos, con piso de margen de 35% para el de volumen.
+  const efectivo = Math.max(compromisoDisc, volDisc);
+  let resultado = conDescuento(efectivo);
+  let descuentoLimitadoPorMargen = false;
+  if (efectivo > compromisoDisc && resultado.margenP < p.MARGEN_MINIMO) {
+    resultado = conDescuento(compromisoDisc);
+    descuentoLimitadoPorMargen = true;
+  }
+  return { ...resultado, compromisoDisc, volDisc, descuentoAplicado: resultado.disc, descuentoLimitadoPorMargen };
 }
 
 // Regla Gerencia 2026-07-13: la propuesta de Care siempre muestra los 3
@@ -391,7 +434,7 @@ export function calcularCareTodos(p: Parametros, args: {
   superficie?: Superficie; tipoEdificio?: NivelRecargo; dificultad?: NivelRecargo;
 }) {
   return {
-    INSPECT: calcularCare(p, { plan: 'INSPECT', ...args }),
+    BASIC: calcularCare(p, { plan: 'BASIC', ...args }),
     ESSENTIAL: calcularCare(p, { plan: 'ESSENTIAL', ...args }),
     COMPLETE: calcularCare(p, { plan: 'COMPLETE', ...args }),
   };

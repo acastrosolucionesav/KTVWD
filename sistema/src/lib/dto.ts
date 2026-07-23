@@ -56,17 +56,18 @@ export type CotizacionClienteDTO = {
     permisoAerocivil: string | null;
     ejecucionSitio: string | null;
   };
-  // Familia 2 — los 3 paquetes se muestran siempre juntos (regla Gerencia 2026-07-13)
+  // Familia 2 — los 3 paquetes se muestran siempre juntos (regla Gerencia 2026-07-13).
+  // Reestructuración 2026-07-23: Basic (1 año) / Essential (3 años) / Complete (3 años).
   care?: {
-    planRecomendado: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
-    contratoAnios: number;
+    planRecomendado: 'BASIC' | 'ESSENTIAL' | 'COMPLETE';
     formaPago: 'CONTADO' | 'DIFERIDO_12';
     informeIncluidoValor: number;
     informeInternacional: { precioTotal: number } | null;
     paquetes: {
-      plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+      plan: 'BASIC' | 'ESSENTIAL' | 'COMPLETE';
       nombre: string;
-      nLavadas: number;
+      nLavadas: number;       // lavadas por año
+      contratoAnios: number;  // duración fija del plan (Basic 1, Essential/Complete 3)
       valorAnual: number;
       valorMensual: number;
       recomendado: boolean;
@@ -144,17 +145,16 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
     const insp = calcularInspeccion(snapshot, care.rangoTecho ?? 0);
     base.care = {
       planRecomendado: care.planRecomendado,
-      contratoAnios: care.contratoAnios,
       formaPago: care.formaPago,
       informeIncluidoValor: insp.dvPrecio,
       // Cuadro de referencia único debajo de los 3 paquetes (corrección 2026-07-16):
-      // mismo precio de venta que usa Complete año 1 y Familia 1/Inspect — nunca
-      // fee ni costo interno (Regla A). Se muestra siempre, en los 3 planes.
+      // mismo precio de venta que usa Complete año 1 y Familia 1 — nunca fee ni
+      // costo interno (Regla A). Se muestra siempre, en los 3 planes.
       informeInternacional: insp.precioInternacional ? { precioTotal: insp.precioInternacional } : null,
       paquetes: [
-        { plan: 'INSPECT', nombre: 'KTV Care Inspect', nLavadas: 0, valorAnual: care.valorAnualInspect, valorMensual: care.valorMensualInspect, recomendado: care.planRecomendado === 'INSPECT' },
-        { plan: 'ESSENTIAL', nombre: 'KTV Care Essential', nLavadas: 1, valorAnual: care.valorAnualEssential, valorMensual: care.valorMensualEssential, recomendado: care.planRecomendado === 'ESSENTIAL' },
-        { plan: 'COMPLETE', nombre: 'KTV Care Complete', nLavadas: 2, valorAnual: care.valorAnualComplete, valorMensual: care.valorMensualComplete, recomendado: care.planRecomendado === 'COMPLETE' },
+        { plan: 'BASIC', nombre: 'KTV Care Basic', nLavadas: 1, contratoAnios: 1, valorAnual: care.valorAnualBasic, valorMensual: care.valorMensualBasic, recomendado: care.planRecomendado === 'BASIC' },
+        { plan: 'ESSENTIAL', nombre: 'KTV Care Essential', nLavadas: 1, contratoAnios: 3, valorAnual: care.valorAnualEssential, valorMensual: care.valorMensualEssential, recomendado: care.planRecomendado === 'ESSENTIAL' },
+        { plan: 'COMPLETE', nombre: 'KTV Care Complete', nLavadas: 2, contratoAnios: 3, valorAnual: care.valorAnualComplete, valorMensual: care.valorMensualComplete, recomendado: care.planRecomendado === 'COMPLETE' },
       ],
     };
   }

@@ -13,20 +13,19 @@ export type CotizacionCareExistente = {
   clienteNombre: string;
   clienteContacto: string;
   pipedriveDealId: string;
-  plan: 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+  plan: 'BASIC' | 'ESSENTIAL' | 'COMPLETE';
   m2: number;
   techo: number;
   superficie: string;
   tipoEdificio: string;
   dificultad: string;
-  contratoAnios: number;
   formaPago: string;
   observaciones: string;
 };
 
 export default function CareForm({ existente, esCorreccion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean }) {
   const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
-  const [plan, setPlan] = useState<'INSPECT' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
+  const [plan, setPlan] = useState<'BASIC' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? '');
   const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? '');
@@ -54,11 +53,11 @@ export default function CareForm({ existente, esCorreccion }: { existente?: Coti
       <div>
         <label className={label}>Plan recomendado (se destaca en la propuesta)</label>
         <select name="plan" className={input} value={plan} onChange={(e) => setPlan(e.target.value as typeof plan)}>
-          <option value="INSPECT">KTV Care Inspect — solo diagnóstico, sin lavadas</option>
-          <option value="ESSENTIAL">KTV Care Essential — 1 lavada / año</option>
-          <option value="COMPLETE">KTV Care Complete — 2 lavadas / año</option>
+          <option value="BASIC">KTV Care Basic — 1 año · 1 lavada/año · Diagnóstico Visual anual</option>
+          <option value="ESSENTIAL">KTV Care Essential — 3 años · 1 lavada/año · DV años 1 y 3</option>
+          <option value="COMPLETE">KTV Care Complete — 3 años · 2 lavadas/año · Informe Internacional año 1 + DV año 3</option>
         </select>
-        <p className="text-[11px] text-gray-400 mt-1">La propuesta siempre muestra los 3 paquetes juntos — este es solo el que se destaca con la insignia &quot;Recomendado&quot;.</p>
+        <p className="text-[11px] text-gray-400 mt-1">La propuesta siempre muestra los 3 paquetes juntos — este es solo el que se destaca con la insignia &quot;Recomendado&quot;. La duración es fija por plan (Basic 1 año, Essential y Complete 3 años).</p>
       </div>
 
       {existente ? (
@@ -123,21 +122,13 @@ export default function CareForm({ existente, esCorreccion }: { existente?: Coti
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={label}>Duración del contrato</label>
-          <select name="contratoAnios" className={input} defaultValue={String(existente?.contratoAnios ?? 1)}>
-            <option value="1">1 año</option>
-            <option value="3">3 años (congela precio año 1 + IPC)</option>
-          </select>
-        </div>
-        <div>
-          <label className={label}>Forma de pago</label>
-          <select name="formaPago" className={input} defaultValue={existente?.formaPago ?? 'CONTADO'}>
-            <option value="CONTADO">Contado</option>
-            <option value="DIFERIDO_12">Diferido 12 cuotas (no es descuento)</option>
-          </select>
-        </div>
+      <div>
+        <label className={label}>Forma de pago</label>
+        <select name="formaPago" className={input} defaultValue={existente?.formaPago ?? 'CONTADO'}>
+          <option value="CONTADO">Contado</option>
+          <option value="DIFERIDO_12">Diferido 12 cuotas (no es descuento)</option>
+        </select>
+        <p className="text-[11px] text-gray-400 mt-1">La duración del contrato es fija según el plan (Basic 1 año; Essential y Complete 3 años, que congelan el precio del año 1 + IPC).</p>
       </div>
 
       <div>

@@ -45,6 +45,7 @@ export default function AgregarItemTerceroForm({ cotizacionId }: { cotizacionId:
             <option value="PRODUCTO">Producto (15% margen neto)</option>
             <option value="SERVICIO">Servicio (25% margen neto)</option>
           </select>
+          <p className="text-[10px] text-gray-400 mt-1">Transporte y viáticos (servicios fuera de Bogotá) van como <b>Producto</b>.</p>
         </div>
         <div>
           <label className={label}>Costo real del tercero (COP)</label>

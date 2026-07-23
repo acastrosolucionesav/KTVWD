@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, type NivelRecargo, type Superficie, type ConceptoLavado } from '@/lib/pricing';
+import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
 import { enviarCorreoAprobacionPendiente } from '@/lib/email';
@@ -108,20 +108,35 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
 
   // Descuento manual sobre el lavado (Gerencia 2026-07-17): cualquier valor
   // distinto de 0 dispara aprobación de Gerencia sin excepción, y nunca puede
-  // bajar el margen general de la cotización de 35% — piso más estricto que
-  // el de excepciones automáticas por dificultad/recargo. Se aplica sobre el
-  // TOTAL del proyecto (todos los ítems), no por ítem individual.
-  const descuentoPct = Number(formData.get('descuentoPct') || 0);
-  if (descuentoPct < 0 || descuentoPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
+  // bajar el margen general de la cotización de 35%. Se aplica sobre el TOTAL
+  // del proyecto (todos los ítems), no por ítem individual.
+  const descuentoManualPct = Number(formData.get('descuentoPct') || 0);
+  if (descuentoManualPct < 0 || descuentoManualPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
+
+  // Descuento por volumen (spec_reestructuracion_care_20260723.md): automático
+  // según el total de m² de fachada de todos los ítems, sobre la tarifa de
+  // lista. NO se multiplica con el descuento manual: se aplica el MAYOR de los
+  // dos. El de volumen es una política publicada (no requiere aprobación); el
+  // manual, si supera al de volumen, sigue disparando aprobación de Gerencia.
+  const descuentoVolumenPct = incluyeLavado ? descuentoVolumen(m2) * 100 : 0;
+  const descuentoEfectivoPct = Math.max(descuentoVolumenPct, descuentoManualPct);
 
   // Múltiples ítems de lavado (spec_multi_item_lavado_20260722.md): el piso de
   // proyecto y el piso de margen se evalúan UNA vez sobre la suma de todos los
   // ítems (una sola movilización), y el precio final se reparte de vuelta a
   // cada ítem a prorrata — ver calcularLavadoMultiItem.
   const lavado = incluyeLavado
-    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct })
+    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct: descuentoEfectivoPct })
     : null;
   const insp = calcularInspeccion(parametros, techo);
+
+  // El descuento manual nunca puede perforar el 35%: si el comercial pide un
+  // descuento manual mayor al de volumen y el piso de margen tuvo que recortarlo
+  // (pisoAplicado), se bloquea para que lo reduzca. El de volumen, en cambio, se
+  // recorta solo en silencio (es política, no negociación).
+  if (incluyeLavado && descuentoManualPct > descuentoVolumenPct && lavado!.pisoAplicado) {
+    return { error: `Con este descuento manual el margen del lavado cae por debajo del mínimo permitido (35%). Redúzcalo — el edificio ya recibe ${descuentoVolumenPct}% automático por volumen.` };
+  }
 
   // Días de ejecución reales (spec_lavado_items_dias_20260717.md): el sistema
   // calcula con productividad real (sumada de todos los ítems); aumentar es
@@ -181,10 +196,14 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const margenD = totalCliente - costoTotalTrato;
   const margenP = totalCliente > 0 ? margenD / totalCliente : 0;
 
-  if (descuentoPct > 0 && margenP < 0.35) {
-    return { error: `Con este descuento el margen queda en ${(margenP * 100).toFixed(1)}% — por debajo del mínimo permitido (35%) para descuentos manuales. Reduzca el descuento.` };
-  }
-  const requiereAprobacion = descuentoPct > 0 || requiereAprobacionPorDias ? true : margenP < parametros.MARGEN_MINIMO;
+  // El descuento por volumen es automático (política) y no dispara aprobación;
+  // solo el descuento MANUAL por encima del de volumen, o recortar días, la
+  // dispara. Un margen general bajo 35% (p. ej. por absorber un DV de regalo)
+  // también la dispara.
+  const requiereAprobacion =
+    descuentoManualPct > descuentoVolumenPct || requiereAprobacionPorDias
+      ? true
+      : margenP < parametros.MARGEN_MINIMO;
 
   // Ítems de lavado a persistir (Cotizacion.itemsLavado) — cada fila conserva
   // su nombre editable y su propio desglose de costo/fee/precio ya repartido
@@ -218,7 +237,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
     costoOperacion: costoOperacionTotal,
     feeNoruega: feeNoruegaTotal,
     margenPct: margenP,
-    descuentoPct: incluyeLavado && descuentoPct > 0 ? descuentoPct : null,
+    descuentoPct: incluyeLavado && descuentoManualPct > 0 ? descuentoManualPct : null,
     precioLavadoSinDescuento: lavado?.precioListaSinDescuento ?? null,
     precioLavado,
     precioInformeBase,
@@ -482,19 +501,22 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
     }
   }
 
-  const planRecomendado = String(formData.get('plan')) as 'INSPECT' | 'ESSENTIAL' | 'COMPLETE';
+  const planRecomendado = String(formData.get('plan')) as 'BASIC' | 'ESSENTIAL' | 'COMPLETE';
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
   if (!clienteNombre) return { error: 'El nombre del cliente es obligatorio.' };
   const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
 
   // Los 3 paquetes se cotizan siempre juntos, así que el área de fachada es
-  // obligatoria aunque el plan destacado sea Inspect (Essential/Complete la necesitan).
+  // obligatoria aunque el plan destacado sea Basic (Essential/Complete la necesitan).
   const m2 = Number(formData.get('m2') || 0);
-  if (m2 <= 0) return { error: 'Ingrese el área de fachada (m²) — se usa para calcular Essential y Complete.' };
+  if (m2 <= 0) return { error: 'Ingrese el área de fachada (m²) — se usa para calcular los 3 planes.' };
 
   const techo = Number(formData.get('techo') || 0);
-  const contratoAnios = Number(formData.get('contratoAnios') || 1);
+  // La duración ya no la elige el comercial: es fija por plan (reestructuración
+  // 2026-07-23) — Basic 1 año, Essential y Complete 3 años. Se guarda la del
+  // plan recomendado como referencia del registro.
+  const contratoAnios = planRecomendado === 'BASIC' ? 1 : 3;
   const formaPago = String(formData.get('formaPago') || 'CONTADO') as 'CONTADO' | 'DIFERIDO_12';
   const observaciones = String(formData.get('observaciones') || '').trim() || null;
 
@@ -518,7 +540,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const careData = {
     planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,
     superficie, tipoEdificio, dificultad,
-    valorAnualInspect: todos.INSPECT.valorAnual, valorMensualInspect: todos.INSPECT.valorMensual,
+    valorAnualBasic: todos.BASIC.valorAnual, valorMensualBasic: todos.BASIC.valorMensual,
     valorAnualEssential: todos.ESSENTIAL.valorAnual, valorMensualEssential: todos.ESSENTIAL.valorMensual,
     valorAnualComplete: todos.COMPLETE.valorAnual, valorMensualComplete: todos.COMPLETE.valorMensual,
   };
