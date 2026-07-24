@@ -188,7 +188,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                       <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(t.costoInspeccion)}</dd>
                       <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(t.feeNoruega)}</dd>
                       <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(t.comision)}</dd>
-                      <dt className="text-gray-400">Descuento aplicado</dt><dd>{(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}</dd>
+                      <dt className="text-gray-400">Descuento aplicado</dt><dd>{(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}</dd>
                       <dt className="text-gray-400">Costo total / año</dt><dd>{cop(t.costoTotal)}</dd>
                       <dt className="text-gray-400">Margen</dt>
                       <dd className={t.margenP < 0.35 ? 'text-red-400 font-bold' : t.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
@@ -209,7 +209,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                       {NOMBRES_PLAN[plan]}{c.care!.planRecomendado === plan ? ' (recomendado)' : ''} · 3 años
                     </h3>
                     <p className="text-[11px] text-gray-500 mb-2">
-                      Días de operación/año: {t.diasOperacion} · Costo lavadas ({t.nLavadas}/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)} · Descuento: {(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}
+                      Días de operación/año: {t.diasOperacion} · Costo lavadas ({t.nLavadas}/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)} · Descuento: {(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}
                     </p>
                     <div className="grid grid-cols-3 gap-3">
                       {([1, 2, 3] as const).map((anio) => {

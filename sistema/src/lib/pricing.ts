@@ -366,6 +366,23 @@ export function calcularCare(p: Parametros, args: {
     : args.plan === 'ESSENTIAL' ? (p.CARE_ESSENTIAL_DESC ?? 0.075)
     : (p.CARE_COMPLETE_DESC ?? 0.10);
   const volDisc = descuentoVolumen(args.m2);
+  // Techo de escalón (hallazgo Gerencia 2026-07-24): en edificios grandes, el
+  // descuento por volumen (hasta 10%) podía alcanzar o superar el compromiso
+  // del plan SIGUIENTE — ej. a >50.000 m² el volumen (10%) igualaba a Basic
+  // (5%) Y a Essential (7,5%), dejando a Basic y Essential con el MISMO precio
+  // (misma cantidad de lavadas, mismo informe DV) — rompía la escalera de
+  // compromiso que exige el spec ("nunca igual al escalón siguiente"). Se
+  // limita el volumen para que nunca alcance el compromiso propio del
+  // siguiente escalón, con un margen mínimo de separación (GAP_ESCALON).
+  const GAP_ESCALON = 0.005; // medio punto porcentual de separación mínima garantizada
+  const compromisoEssentialRef = p.CARE_ESSENTIAL_DESC ?? 0.075;
+  const compromisoCompleteRef = p.CARE_COMPLETE_DESC ?? 0.10;
+  const topeSiguienteEscalon =
+    args.plan === 'BASIC' ? compromisoEssentialRef - GAP_ESCALON
+    : args.plan === 'ESSENTIAL' ? compromisoCompleteRef - GAP_ESCALON
+    : null; // Complete es el escalón más alto — sin siguiente que proteger
+  const volDiscLimitado = topeSiguienteEscalon !== null ? Math.min(volDisc, topeSiguienteEscalon) : volDisc;
+  const volumenLimitadoPorEscalon = volDiscLimitado < volDisc;
 
   const costoLavadas = costoUnaLavada * nLavadas;
   const diasOperacionLavadas = diasUnaLavada * nLavadas;
@@ -415,15 +432,19 @@ export function calcularCare(p: Parametros, args: {
     return { ...comun, porAnio, margenP: Math.min(porAnio[1].margenP, porAnio[2].margenP, porAnio[3].margenP) };
   }
 
-  // Mayor de los dos descuentos, con piso de margen de 35% para el de volumen.
-  const efectivo = Math.max(compromisoDisc, volDisc);
+  // Mayor de los dos descuentos (volumen ya limitado por escalón arriba), con
+  // piso de margen de 35% para el de volumen.
+  const efectivo = Math.max(compromisoDisc, volDiscLimitado);
   let resultado = conDescuento(efectivo);
   let descuentoLimitadoPorMargen = false;
   if (efectivo > compromisoDisc && resultado.margenP < p.MARGEN_MINIMO) {
     resultado = conDescuento(compromisoDisc);
     descuentoLimitadoPorMargen = true;
   }
-  return { ...resultado, compromisoDisc, volDisc, descuentoAplicado: resultado.disc, descuentoLimitadoPorMargen };
+  return {
+    ...resultado, compromisoDisc, volDisc, volumenLimitadoPorEscalon,
+    descuentoAplicado: resultado.disc, descuentoLimitadoPorMargen,
+  };
 }
 
 // Regla Gerencia 2026-07-13: la propuesta de Care siempre muestra los 3
