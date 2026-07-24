@@ -291,13 +291,15 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                   const d = DESTAQUE_CARE[paq.plan];
                   return (
                   <div key={paq.plan} className={`rounded-xl border-2 overflow-hidden flex flex-col bg-white ${d.feat || d.pop ? 'border-[#66C2F8]' : 'border-gray-200'} ${d.feat ? 'shadow-lg shadow-[#66C2F8]/20 md:-translate-y-1.5' : ''}`}>
-                    <div className={`relative px-4 py-3 ${d.feat ? 'bg-[#66C2F8] text-white' : 'bg-gray-50 text-[#171E27]'} ${d.pop ? 'border-t-4 border-t-[#66C2F8]' : ''}`}>
-                      {d.badge && (
-                        <span className={`absolute top-3 right-3 text-[9px] font-extrabold uppercase tracking-wide rounded-full px-2.5 py-1 ${d.feat ? 'bg-white text-[#66C2F8]' : 'bg-[#66C2F8] text-white'}`}>
-                          {d.badge}
-                        </span>
-                      )}
-                      <p className={`text-[10px] font-bold uppercase tracking-wide ${d.feat ? 'text-white/85' : 'text-[#66C2F8]'}`}>{d.tag}</p>
+                    <div className={`px-4 py-3 ${d.feat ? 'bg-[#66C2F8] text-white' : 'bg-gray-50 text-[#171E27]'} ${d.pop ? 'border-t-4 border-t-[#66C2F8]' : ''}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-[10px] font-bold uppercase tracking-wide flex-1 min-w-0 ${d.feat ? 'text-white/85' : 'text-[#66C2F8]'}`}>{d.tag}</p>
+                        {d.badge && (
+                          <span className={`shrink-0 whitespace-nowrap text-[9px] font-extrabold uppercase tracking-wide rounded-full px-2.5 py-1 ${d.feat ? 'bg-white text-[#66C2F8]' : 'bg-[#66C2F8] text-white'}`}>
+                            {d.badge}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-base font-extrabold mt-1">{paq.nombre}</p>
                       {paq.recomendado && (
                         <p className={`text-[10px] font-bold uppercase tracking-wide mt-1.5 ${d.feat ? 'text-white' : 'text-[#66C2F8]'}`}>★ Recomendado para su edificio</p>
