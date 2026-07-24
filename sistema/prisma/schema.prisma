@@ -1,0 +1,360 @@
+// KTV Working Drone — Sistema Comercial
+// Modelo de datos: Familia 1 (servicios puntuales) y Familia 2 (KTV Care) como
+// entidades SEPARADAS, unidas por Cotizacion. Ver KWD-SIS-PROMPT-001 v2.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rol {
+  COMERCIAL
+  DIRECTOR_COMERCIAL
+  GERENCIA
+}
+
+enum Familia {
+  PUNTUAL
+  CARE
+}
+
+enum EstadoCotizacion {
+  BORRADOR
+  PENDIENTE_APROBACION
+  APROBADA
+  RECHAZADA
+  ENVIADA
+}
+
+enum ServicioPuntual {
+  INSPECCION_SOLA
+  LAVADO_MAS_INSPECCION
+  SOLO_LAVADO
+}
+
+enum TipoInforme {
+  DIAGNOSTICO_VISUAL
+  INTERNACIONAL
+}
+
+enum Superficie {
+  VIDRIO
+  MIXTA
+  DIFICIL
+}
+
+enum NivelRecargo {
+  BAJO
+  MEDIO
+  ALTO
+}
+
+enum ConceptoLavado {
+  SOLO_VENTANAS
+  SOLO_FACHADA
+  FACHADA_Y_VENTANAS
+}
+
+// Reestructuración 2026-07-23 (spec_reestructuracion_care_20260723.md): los 3
+// planes son una escalera de compromiso creciente. BASIC (= el "Essential"
+// anterior): 1 año, 1 lavada/año, DV cada año. ESSENTIAL (nuevo): 3 años, 1
+// lavada/año, DV en años 1 y 3 (año 2 sin inspección). COMPLETE: 3 años, 2
+// lavadas/año, Informe Internacional año 1 + DV año 3. Se retiró el plan
+// "Inspect" (solo diagnóstico) — quien solo quiera inspección compra un DV/II
+// suelto (Familia 2). Las cotizaciones viejas con Inspect/Essential se
+// remapearon a Basic en la migración.
+enum PlanCare {
+  BASIC
+  ESSENTIAL
+  COMPLETE
+}
+
+enum FormaPago {
+  CONTADO
+  DIFERIDO_12
+}
+
+enum TipoItemTercero {
+  PRODUCTO
+  SERVICIO
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  rol          Rol
+  activo       Boolean  @default(true)
+  creadoAt     DateTime @default(now())
+
+  // "Olvidé mi contraseña": token de un solo uso enviado por correo, con
+  // vencimiento corto. Null cuando no hay solicitud de recuperación pendiente.
+  resetToken           String?   @unique
+  resetTokenExpiresAt  DateTime?
+
+  cotizacionesCreadas  Cotizacion[] @relation("CreadoPor")
+  cotizacionesAprobadas Cotizacion[] @relation("AprobadoPor")
+  auditorias           Auditoria[]
+}
+
+// Parámetros editables por Gerencia — nunca hardcodeados en el motor.
+model Parametro {
+  clave          String   @id
+  valor          String   // guardado como texto, se castea según unidad en el motor
+  unidad         String
+  actualizadoPor String?
+  actualizadoAt  DateTime @updatedAt
+}
+
+model ClienteProspecto {
+  id                 String   @id @default(cuid())
+  nombre             String
+  empresa            String?
+  contacto           String?
+  canalOrigen        String?
+  pipedrivePersonId  String?
+  pipedriveDealId    String?
+  creadoAt           DateTime @default(now())
+
+  cotizaciones Cotizacion[]
+}
+
+// Entidad común a las 2 familias — nunca se mezclan los datos de una y otra.
+model Cotizacion {
+  id                 String            @id @default(cuid())
+  idTrazabilidad     String            @unique // el que ve el cliente en el documento (KTV-YYYYMMDD-NNNN)
+  // Módulo 2 — presentador: el link público usa este token NO adivinable
+  // (el idTrazabilidad es secuencial por fecha, sería enumerable por terceros).
+  linkToken          String            @unique @default(cuid())
+  linkActivo         Boolean           @default(true)
+  familia            Familia
+  clienteId          String
+  cliente            ClienteProspecto  @relation(fields: [clienteId], references: [id])
+  creadoPorId        String
+  creadoPor          Usuario           @relation("CreadoPor", fields: [creadoPorId], references: [id])
+  estado             EstadoCotizacion  @default(BORRADOR)
+  requiereAprobacion Boolean           @default(false)
+  aprobadoPorId      String?
+  aprobadoPor        Usuario?          @relation("AprobadoPor", fields: [aprobadoPorId], references: [id])
+  aprobadoAt         DateTime?
+  enviadoAt          DateTime?
+  vigenteHasta       DateTime?
+  snapshotParametros String            // JSON congelado en el momento de generar (foto congelada)
+  totalCliente       Float             // único número que ve el cliente (+ mensual si aplica, en CotizacionCare)
+  observaciones       String?
+
+  aceptadaPorCliente Boolean  @default(false)
+  aceptadaAt         DateTime?
+
+  creadoAt DateTime @default(now())
+
+  // Corrección de una cotización ya enviada/aprobada/rechazada (nunca se edita
+  // en el mismo registro fuera de Borrador — se desactiva el link viejo y se
+  // crea esta como versión nueva, ligada a la anterior). Único por anterior:
+  // cada versión solo se corrige una vez — para volver a corregir, se corrige
+  // la versión más reciente, no la original.
+  versionAnteriorId String?     @unique
+  versionAnterior   Cotizacion? @relation("VersionDeCorreccion", fields: [versionAnteriorId], references: [id])
+  versionNueva      Cotizacion? @relation("VersionDeCorreccion")
+
+  puntual        CotizacionPuntual?
+  care           CotizacionCare?
+  auditorias     Auditoria[]
+  aperturas      Apertura[]
+  ordenServicio  OrdenServicio?
+  itemsTerceros  ItemTercero[]
+  itemsLavado    ItemLavado[]
+}
+
+// ============ FAMILIA 1 — Servicios puntuales (no recurrentes) ============
+model CotizacionPuntual {
+  id            String     @id @default(cuid())
+  cotizacionId  String     @unique
+  cotizacion    Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  servicio                    ServicioPuntual
+  tipoInformeBase             TipoInforme?     // el informe que va en la línea base (null si SOLO_LAVADO)
+  mostrarInformeInternacional Boolean          @default(false) // REGLA B: por cotización
+
+  // --- Solo interno: nunca se imprime en el documento del cliente ---
+  m2Fachada       Float?  // total (m2Vidrio + m2Opaca) — se mantiene para compatibilidad
+  // DEPRECADO (spec_multi_item_lavado_20260722.md): estos 6 campos describían el
+  // ÚNICO ítem de lavado de la cotización. Desde que una cotización puede traer
+  // varios ítems (varios edificios/superficies distintos, ver ItemLavado abajo),
+  // ya no se escriben en cotizaciones nuevas — el desglose por ítem vive en
+  // `itemsLavado`. Se mantienen SOLO para leer cotizaciones creadas antes de
+  // este cambio (nunca se migran ni se borran datos históricos).
+  concepto        ConceptoLavado?
+  m2Vidrio        Float?
+  m2Opaca         Float?
+  superficie      Superficie?
+  tipoEdificio    NivelRecargo?
+  dificultad      NivelRecargo?
+  ciudadFuera     Boolean       @default(false)
+  movilizacion    Float         @default(0)
+  rangoTecho      Float?
+
+  diasOperacion   Float?
+  costoOperacion  Float?   // costo interno del lavado y/o inspección
+  feeNoruega      Float?   // CONFIDENCIAL — Regla A, nunca sale de acá
+  margenPct       Float?   // CONFIDENCIAL — Regla A
+
+  // Descuento manual sobre el lavado (Gerencia 2026-07-17) — SIEMPRE dispara
+  // aprobación de Gerencia y nunca puede bajar el margen general de 35%
+  // (piso más estricto que el 25% de excepciones automáticas por dificultad).
+  descuentoPct           Float?  // 0-99, % aplicado sobre el precio de lista del lavado
+  precioLavadoSinDescuento Float? // CONFIDENCIAL — Regla A, referencia interna del precio antes del descuento
+
+  precioLavado           Float? // sin IVA
+  precioInformeBase      Float? // sin IVA (DV o Internacional, según tipoInformeBase)
+  precioInformeAdicional Float? // sin IVA (Internacional cuando es adicional, no base)
+
+  // --- Campos manuales del comercial (varían por operación) ---
+  anticipoPct       Int?
+  saldoPct          Int?
+  condicionPagoNota String?
+  permisoAerocivil  String?
+  // Días de ejecución (spec_lavado_items_dias_20260717.md): diasEjecucionSistema
+  // es el cálculo automático (productividad real), congelado al crear/corregir.
+  // diasEjecucion es el valor final (editable) — aumentar es libre, reducir por
+  // debajo del sistema dispara aprobación de Gerencia (mismo mecanismo que el
+  // descuento manual). ejecucionSitio sigue siendo el texto que ve el cliente,
+  // ahora construido a partir de diasEjecucion en vez de un rango fijo.
+  diasEjecucionSistema Float?
+  diasEjecucion        Float?
+  ejecucionSitio       String?
+}
+
+// Ítem de lavado (spec_multi_item_lavado_20260722.md): una cotización puntual
+// de lavado puede pedir varios edificios/superficies distintos en un solo
+// documento (ej. torre + fachada Alucobond + letreros, cada uno con su propia
+// área/dificultad). `nombre` lo escribe/edita el comercial libremente — no hay
+// catálogo fijo de nombres porque cada caso real es distinto. El piso de
+// proyecto (MINIMO_PROYECTO_LAVADO) y el piso de margen se evalúan UNA sola
+// vez sobre la suma de todos los ítems (una sola movilización), nunca por
+// ítem — por eso `precioLavado` aquí es la porción ya repartida del precio
+// final del proyecto, no un precio independiente por ítem.
+model ItemLavado {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  orden        Int            @default(0)
+  nombre       String         // visible al cliente — editable, sin valor por defecto fijo
+  concepto     ConceptoLavado
+  m2Vidrio     Float
+  m2Opaca      Float
+  superficie   Superficie
+  tipoEdificio NivelRecargo
+  dificultad   NivelRecargo
+
+  costoOperacion Float // CONFIDENCIAL — Regla A
+  feeNoruega     Float // CONFIDENCIAL — Regla A
+
+  precioLavado         Float // sin IVA — porción de este ítem en el total del proyecto
+  diasEjecucionSistema Float // cálculo automático de productividad para este ítem
+
+  creadoAt DateTime @default(now())
+}
+
+// ============ FAMILIA 2 — KTV Care (programas recurrentes) ============
+// Regla Gerencia 2026-07-13: los 3 paquetes (Inspect/Essential/Complete) se
+// calculan y se muestran SIEMPRE juntos al cliente, como comparación — nunca
+// uno solo. planRecomendado es únicamente cuál lleva la insignia "RECOMENDADO".
+model CotizacionCare {
+  id           String     @id @default(cuid())
+  cotizacionId String     @unique
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  planRecomendado PlanCare
+  // La duración ya no la elige el comercial: es fija por plan (Basic 1 año,
+  // Essential y Complete 3 años). Se guarda la del plan recomendado como
+  // referencia del registro.
+  contratoAnios   Int       @default(1)
+  formaPago       FormaPago @default(CONTADO)
+
+  m2Fachada  Float?  // solo interno
+  rangoTecho Float?  // solo interno
+  // Corrección 2026-07-16: calcularCare nunca recibía estas variables — el costo
+  // (y ahora el precio) de las lavadas de Care siempre asumía MIXTA/BAJO/BAJO,
+  // sin importar el edificio real. Mismo hueco de margen que ya se corrigió en
+  // el lavado de Familia 1 (ver calcularLavado).
+  superficie   Superficie?   // solo interno
+  tipoEdificio NivelRecargo? // solo interno
+  dificultad   NivelRecargo? // solo interno
+
+  valorAnualBasic       Float
+  valorMensualBasic     Float
+  valorAnualEssential   Float
+  valorMensualEssential Float
+  valorAnualComplete    Float
+  valorMensualComplete  Float
+}
+
+// Ítem de Tercero (spec_items_terceros_20260716_2.md): producto o servicio
+// subcontratado y revendido con margen fijo, facturado bajo el nombre de KTV.
+// Genérico y aplicable a cualquier familia — no es catálogo fijo por caso.
+model ItemTercero {
+  id                 String          @id @default(cuid())
+  cotizacionId       String
+  cotizacion         Cotizacion      @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+
+  descripcionCliente String          // visible al cliente — nunca debe mencionar "tercero"/"subcontratado"
+  notaInterna        String?         // CONFIDENCIAL — Regla A, para control contable de Gerencia
+  tipo               TipoItemTercero
+  costoReal          Float           // CONFIDENCIAL — Regla A, lo que KTV le paga al tercero
+  margenNetoDeseado  Float           // CONFIDENCIAL — Regla A, 0.15 (producto) o 0.25 (servicio)
+  precioVenta        Float           // lo único de este ítem que ve el cliente
+
+  creadoAt DateTime @default(now())
+}
+
+// Solicitud desde la landing pública de Alianzas (spec_pagina_alianzas_20260721.md).
+// Se guarda SIEMPRE aquí (nunca se pierde un candidato aunque Pipedrive falle);
+// además, best-effort, se crea un lead en Pipedrive marcado como ALIANZA.
+model SolicitudAlianza {
+  id              String   @id @default(cuid())
+  nombre          String
+  empresa         String?
+  email           String
+  telefono        String?
+  ciudad          String?
+  mensaje         String?
+  pipedriveLeadId String?  // id del lead creado en Pipedrive (null si no se pudo)
+  atendida        Boolean  @default(false)
+  creadoAt        DateTime @default(now())
+}
+
+// Orden de Servicio Comercial interna para Operaciones — NUNCA lleva cifras.
+model OrdenServicio {
+  id           String     @id @default(cuid())
+  cotizacionId String     @unique
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  anticipoConfirmado Boolean @default(false)
+  notasOperativas    String?
+  creadoAt     DateTime @default(now())
+}
+
+model Auditoria {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  usuarioId    String
+  usuario      Usuario    @relation(fields: [usuarioId], references: [id])
+  accion       String     // creo | edito | aprobo | rechazo | envio | acepto_cliente
+  detalle      String?
+  timestamp    DateTime   @default(now())
+}
+
+model Apertura {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  userAgent    String?    // referencia del dispositivo/navegador del cliente
+  timestamp    DateTime   @default(now())
+}

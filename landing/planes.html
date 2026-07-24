@@ -7,26 +7,24 @@
 <meta name="description" content="Programas de mantenimiento de fachadas con tecnología de drones. Precio preferencial, informe técnico anual incluido y respaldo de operador certificado.">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#34C7FF;--blue-dk:#00AADF;--blue-nk:#1F4E78;--blue-bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--white:#FFFFFF;--off:#F7FBFF;--r:24px;}
+:root{--blue:#66C2F8;--blue-dk:#66C2F8;--blue-nk:#171E27;--blue-bg:#EBF8FF;--ink:#1A1A2E;--body:#2D3748;--muted:#718096;--white:#FFFFFF;--off:#F7FBFF;--r:24px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
 body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);background:var(--white);overflow-x:hidden;line-height:1.6;}
 
 /* nav */
-.nav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(52,199,255,.15);padding:0 40px;height:66px;display:flex;align-items:center;justify-content:space-between;}
+.nav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(102,194,248,.15);padding:0 40px;height:66px;display:flex;align-items:center;justify-content:space-between;}
 .nav-logo img{height:38px;display:block;}
 .nav-btn{background:var(--blue);color:#fff;font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;text-decoration:none;padding:11px 24px;border-radius:50px;transition:background .2s,transform .15s;white-space:nowrap;}
 .nav-btn:hover{background:var(--blue-dk);transform:translateY(-1px);}
 
-/* hero premium (diferenciado del landing de prospección: oscuro, sin video) */
-.hero{position:relative;min-height:76vh;display:flex;align-items:center;padding:120px 40px 84px;background:linear-gradient(150deg,#1F4E78 0%,#0C1E33 100%);overflow:hidden;}
-.hero::before{content:'';position:absolute;width:680px;height:680px;top:-240px;right:-160px;border-radius:50%;background:radial-gradient(circle,rgba(52,199,255,.28),transparent 68%);}
-.hero::after{content:'';position:absolute;width:520px;height:520px;bottom:-240px;left:-140px;border-radius:50%;background:radial-gradient(circle,rgba(52,199,255,.14),transparent 70%);}
-.hero-grid{position:relative;z-index:2;max-width:1180px;margin:0 auto;width:100%;display:grid;grid-template-columns:1.05fr .95fr;gap:50px;align-items:center;}
-.hero-in{max-width:620px;}
-.hero-media{border-radius:22px;overflow:hidden;box-shadow:0 28px 64px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);aspect-ratio:9/12.5;background:#000;}
-.hero-media video{width:100%;height:100%;object-fit:cover;display:block;}
-.hero .eyebrow{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:rgba(52,199,255,.18);border:1px solid rgba(52,199,255,.45);padding:8px 18px;border-radius:50px;margin-bottom:24px;}
+/* hero con video de fondo + superposición (mismo estilo que el brochure de prospección) */
+.hero{position:relative;min-height:92vh;display:flex;align-items:flex-end;overflow:hidden;padding:0 40px 72px;}
+.hero-video{position:absolute;inset:0;z-index:0;}
+.hero-video video{width:100%;height:100%;object-fit:cover;display:block;}
+.hero-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(160deg,rgba(102,194,248,.68) 0%,rgba(20,20,50,.88) 100%);}
+.hero-content{position:relative;z-index:2;max-width:760px;}
+.hero .eyebrow{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:var(--blue);padding:8px 18px;border-radius:50px;margin-bottom:24px;}
 .hero h1{font-size:clamp(38px,6vw,66px);font-weight:800;line-height:1.05;color:#fff;letter-spacing:-.02em;margin-bottom:22px;}
 .hero h1 em{font-style:normal;color:var(--blue);}
 .hero p{font-size:19px;font-weight:300;color:rgba(255,255,255,.9);max-width:640px;margin-bottom:36px;}
@@ -51,17 +49,19 @@ body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);back
 /* planes (protagonistas) */
 .care{background:var(--off);}
 .care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch;}
-.plan{background:#fff;border:1.5px solid rgba(52,199,255,.22);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
-.plan.pop{border-color:var(--blue);box-shadow:0 12px 34px rgba(0,170,223,.14);}
-.plan.feat{border-color:var(--blue);box-shadow:0 20px 46px rgba(0,170,223,.20);transform:translateY(-6px);}
-.plan-hd{padding:26px 26px 22px;border-bottom:1px solid rgba(52,199,255,.14);position:relative;}
+.plan{background:#fff;border:1.5px solid rgba(102,194,248,.22);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;}
+.plan.pop{border-color:var(--blue);box-shadow:0 12px 34px rgba(102,194,248,.14);}
+.plan.feat{border-color:var(--blue);box-shadow:0 20px 46px rgba(102,194,248,.20);transform:translateY(-6px);}
+.plan-hd{padding:26px 26px 22px;border-bottom:1px solid rgba(102,194,248,.14);position:relative;}
 .plan.pop .plan-hd{border-top:4px solid var(--blue);}
 .plan.feat .plan-hd{background:linear-gradient(150deg,var(--blue),var(--blue-dk));color:#fff;}
 .plan-hd .tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-dk);}
 .plan.feat .plan-hd .tag{color:rgba(255,255,255,.9);}
 .plan-hd h3{font-size:24px;font-weight:800;color:var(--ink);margin-top:4px;letter-spacing:-.01em;}
 .plan.feat .plan-hd h3{color:#fff;}
-.plan-hd .for{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5;min-height:58px;}
+.plan-hd .pitch{font-size:14.5px;font-weight:700;color:var(--blue-dk);margin-top:8px;line-height:1.35;min-height:40px;}
+.plan.feat .plan-hd .pitch{color:#fff;}
+.plan-hd .for{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5;min-height:40px;}
 .plan.feat .plan-hd .for{color:rgba(255,255,255,.85);}
 .plan-badge{position:absolute;top:22px;right:22px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:50px;}
 .plan.pop .plan-badge{background:var(--blue);color:#fff;}
@@ -82,43 +82,43 @@ body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);back
 
 /* pasos */
 .pasos{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
-.paso{background:var(--off);border:1px solid rgba(52,199,255,.16);border-radius:var(--r);padding:26px 20px;text-align:center;}
+.paso{background:var(--off);border:1px solid rgba(102,194,248,.16);border-radius:var(--r);padding:26px 20px;text-align:center;}
 .paso .n{width:46px;height:46px;border-radius:50%;background:var(--blue);color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
 .paso h4{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;}
 .paso p{font-size:13px;color:var(--muted);line-height:1.55;}
 
 /* diferencia */
 .diff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
-.dc{background:#fff;border:1px solid rgba(52,199,255,.18);border-radius:var(--r);padding:28px 24px;transition:transform .2s,box-shadow .2s;}
-.dc:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,170,223,.12);}
-.dc .ic{width:52px;height:52px;border-radius:14px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px;}
+.dc{background:#fff;border:1px solid rgba(102,194,248,.18);border-radius:var(--r);padding:28px 24px;transition:transform .2s,box-shadow .2s;}
+.dc:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(102,194,248,.12);}
+.dc .ic{width:52px;height:52px;border-radius:14px;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px;}
 .dc h3{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px;}
 .dc p{font-size:14.5px;color:var(--muted);line-height:1.65;}
 
 /* plus */
 .plus{background:#fff;}
 .plus-in{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;}
-.plus-card{background:linear-gradient(155deg,var(--blue-nk),#16324f);border-radius:var(--r);padding:40px 36px;color:#fff;}
+.plus-card{background:var(--blue-nk);border-radius:var(--r);padding:40px 36px;color:#fff;}
 .plus-card .ic{font-size:34px;margin-bottom:14px;}
 .plus-card h3{font-size:24px;font-weight:800;margin-bottom:12px;}
 .plus-card p{font-size:15px;font-weight:300;color:rgba(255,255,255,.85);line-height:1.7;}
 .plus-list{list-style:none;display:flex;flex-direction:column;gap:16px;}
 .plus-list li{display:flex;gap:14px;align-items:flex-start;}
-.plus-list .ic{width:44px;height:44px;border-radius:12px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.plus-list .ic{width:44px;height:44px;border-radius:12px;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .plus-list h4{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:3px;}
 .plus-list p{font-size:14px;color:var(--muted);line-height:1.6;}
 
 /* respaldo */
-.resp{background:var(--off);border-top:1px solid rgba(52,199,255,.14);}
+.resp{background:var(--off);border-top:1px solid rgba(102,194,248,.14);}
 .resp-in{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:1.2fr 1fr;gap:56px;align-items:center;}
 .resp-badges{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.rb{background:#fff;border:1px solid rgba(52,199,255,.2);border-radius:16px;padding:22px 20px;text-align:center;}
+.rb{background:#fff;border:1px solid rgba(102,194,248,.2);border-radius:16px;padding:22px 20px;text-align:center;}
 .rb .ic{font-size:26px;}
 .rb .n{font-size:26px;font-weight:800;color:var(--blue-dk);margin-top:6px;line-height:1;}
 .rb .l{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.4;}
 
 /* cta band */
-.cta-band{background:linear-gradient(150deg,var(--blue-dk),var(--blue-nk));text-align:center;color:#fff;}
+.cta-band{background:var(--blue-dk);text-align:center;color:#fff;}
 .cta-band h2{font-size:clamp(28px,4vw,44px);font-weight:800;color:#fff;margin-bottom:14px;letter-spacing:-.01em;}
 .cta-band p{font-size:18px;font-weight:300;color:rgba(255,255,255,.9);max-width:600px;margin:0 auto 32px;}
 .cta-band .btn-w{box-shadow:0 10px 34px rgba(0,0,0,.25);}
@@ -147,14 +147,12 @@ footer{background:var(--ink);padding:56px 40px 32px;}
 
 @media(max-width:900px){
   .nav{padding:0 20px;}
-  .hero{padding:100px 22px 64px;}
-  .hero-grid{grid-template-columns:1fr;gap:30px;}
-  .hero-media{aspect-ratio:9/11;max-width:300px;margin:0 auto;order:2;}
+  .hero{padding:0 22px 56px;min-height:88vh;}
   .sec{padding:56px 22px;}
   .plus-in,.resp-in{grid-template-columns:1fr;gap:36px;}
   .care-grid,.diff-grid{grid-template-columns:1fr;}
   .plan.feat{transform:none;}
-  .plan-hd .for{min-height:0;}
+  .plan-hd .for,.plan-hd .pitch{min-height:0;}
   .pasos{grid-template-columns:1fr 1fr;}
   .footer-top{grid-template-columns:1fr;gap:30px;}
 }
@@ -169,23 +167,22 @@ footer{background:var(--ink);padding:56px 40px 32px;}
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-grid">
-    <div class="hero-in">
-      <span class="eyebrow">Programas exclusivos de mantenimiento</span>
-      <h1>El mantenimiento de su fachada,<br><em>planificado y sin sorpresas.</em></h1>
-      <p>Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin riesgo de trabajo en alturas.</p>
-      <div class="hero-btns">
-        <a href="#contacto" class="btn-w">Agendar inspección sin costo</a>
-        <a href="#planes" class="btn-o">Ver los programas ↓</a>
-      </div>
-      <div class="hero-stats">
-        <div class="hs"><div class="n">68</div><div class="l">países en la red KTV</div></div>
-        <div class="hs"><div class="n">3–5×</div><div class="l">más rápido que andamios</div></div>
-        <div class="hs"><div class="n">0</div><div class="l">trabajo en alturas</div></div>
-      </div>
+  <div class="hero-video">
+    <video autoplay muted loop playsinline preload="auto"><source src="videos/hero.mp4" type="video/mp4"></video>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <span class="eyebrow">Programas exclusivos de mantenimiento</span>
+    <h1>El mantenimiento de su fachada,<br><em>planificado y sin sorpresas.</em></h1>
+    <p>Un programa anual a la medida de su edificio: precio preferencial, prioridad de agenda e informe técnico de estado incluido. Con tecnología de drones — sin andamios y sin riesgo de trabajo en alturas.</p>
+    <div class="hero-btns">
+      <a href="#contacto" class="btn-w">Agendar inspección sin costo</a>
+      <a href="#planes" class="btn-o">Ver los programas ↓</a>
     </div>
-    <div class="hero-media">
-      <video autoplay muted loop playsinline preload="auto"><source src="videos/accion-1.mp4" type="video/mp4"></video>
+    <div class="hero-stats">
+      <div class="hs"><div class="n">68</div><div class="l">países en la red KTV</div></div>
+      <div class="hs"><div class="n">3–5×</div><div class="l">más rápido que andamios</div></div>
+      <div class="hs"><div class="n">0</div><div class="l">trabajo en alturas</div></div>
     </div>
   </div>
 </section>
@@ -204,6 +201,7 @@ footer{background:var(--ink);padding:56px 40px 32px;}
         <div class="plan-hd">
           <div class="tag">Diagnóstico y gestión</div>
           <h3>KTV Care Inspect</h3>
+          <div class="pitch">Conozca el estado de su fachada.</div>
           <div class="for">Ideal para: diagnóstico y gestión preventiva del activo.</div>
         </div>
         <div class="plan-bd">
@@ -222,6 +220,7 @@ footer{background:var(--ink);padding:56px 40px 32px;}
           <span class="plan-badge">Más popular</span>
           <div class="tag">Corporativos y bodegas</div>
           <h3>KTV Care Essential</h3>
+          <div class="pitch">Mantenga su fachada — 1 lavada al año.</div>
           <div class="for">Ideal para: edificios corporativos y bodegas.</div>
         </div>
         <div class="plan-bd">
@@ -240,11 +239,12 @@ footer{background:var(--ink);padding:56px 40px 32px;}
           <span class="plan-badge">Máximo valor</span>
           <div class="tag">Alta exigencia</div>
           <h3>KTV Care Complete</h3>
+          <div class="pitch">Máxima protección — 2 lavadas al año.</div>
           <div class="for">Ideal para: centros comerciales, sedes corporativas e infraestructura de alta exigencia.</div>
         </div>
         <div class="plan-bd">
           <div class="pf">
-            <div class="row"><span>Inspección anual <span class="hl">(informe certificado institucional)</span></span></div>
+            <div class="row"><span>Inspección <span class="hl">(año 1 Informe Internacional Inotek, año 3 Diagnóstico Visual)</span></span></div>
             <div class="row"><span><span class="hl">2 lavadas</span> de fachada al año</span></div>
             <div class="row"><span>Prioridad <span class="hl">máxima</span> + atención de urgencias</span></div>
             <div class="row"><span>Máximo beneficio de precio por volumen anual</span></div>
@@ -305,7 +305,7 @@ footer{background:var(--ink);padding:56px 40px 32px;}
     </div>
     <div class="rv">
       <div class="lbl">Respaldo técnico adicional</div>
-      <h2 class="ttl" style="font-size:30px;">Informe Certificado internacional</h2>
+      <h2 class="ttl" style="font-size:30px;">Informe Internacional KTV</h2>
       <ul class="plus-list">
         <li><div class="ic">🏛️</div><div><h4>Para due diligence y auditorías</h4><p>Compraventa de inmuebles, interventorías o soporte técnico ante terceros.</p></div></li>
         <li><div class="ic">🌐</div><div><h4>Estándar internacional KTV</h4><p>Bajo el estándar de la red presente en 68 países. Se cotiza aparte según el área de cubierta.</p></div></li>

@@ -20,7 +20,10 @@ para que Claude trabaje sin re-explicar nada y sin contradecir decisiones ya tom
 
 ## 2. Estándares de documentos (obligatorios)
 
-- Código de documentos: prefijo **KWD-**. Azul corporativo **#2E75B6**, azul oscuro #1F4E78, logo ktvwd23.png. Todo en español.
+- Código de documentos: prefijo **KWD-**. **Azul corporativo oficial: #66C2F8 (RGB 102,194,248)** — medido por Gerencia con el regulador RGB numérico de PowerPoint directamente sobre el archivo oficial de marca (remedido y corregido 2026-07-13; la lectura anterior con cuentagotas del 2026-07-11 había dado #66C3F8, un dígito corrido en el canal verde). **CONFIRMADO Y CERRADO por Gerencia.** Es el ÚNICO azul de marca, no hay un segundo tono "oscuro" distinto. Carbón/negro **#171E27** solo para: fondo de zonas neutras oscuras (hero/encabezado con video) y para el TEXTO de los títulos de sección sobre blanco. Logo ktvwd23. Español.
+  - **Regla de aplicación (para que no se repita el error del carbón):** toda caja destacada — filas de "TOTAL", encabezados de tabla, tarjeta "Recomendado", botones de llamado a la acción — lleva el **azul #66C2F8 como relleno SÓLIDO** (fondo azul, texto blanco), nunca carbón. El carbón NO reemplaza al azul en ningún elemento prominente; solo se usa como color de texto/neutro de fondo, nunca donde debería resaltar la marca.
+  - **Regla inversa (error encontrado y corregido 2026-07-12):** los fondos oscuros (hero/encabezado) van en **carbón PURO #171E27, sólido — nunca degradado ni mezclado con el azul de marca**. Se habían colado degradados `linear-gradient(#222C38, #0B0F14)` y una superposición con azul al 30% sobre video — visualmente leían como "azul oscuro/marino", no como carbón. Corregido a `#171E27` sólido en `sistema/` (propuesta pública, bloque Care) y en `cotizador.html` (`.hero`, `.hd`, overlay de video). Verificado por pixel exacto (`rgb(23,30,39)`). Si aparece cualquier degradado o mezcla de color en una zona oscura, es sospechoso — debe ser #171E27 plano.
+  - ⚠️ HISTORIA (no repetir): el manual da valores inconsistentes entre sí — texto "web code #34C7FF", sRGB declarado 65/182/230 (#41B6E6), portada del PDF #02BEFD — y ninguno coincidía con lo que Gerencia reconoce como su marca. El cierre fue medir el PPT oficial: **#66C2F8**. NO usar #34C7FF, #41B6E6, #02BEFD ni #2E75B6. Si aparece otro material con otro tono, preguntar a Gerencia ANTES de cambiar nada.
 - **Protocolo de trabajo:** pausar antes de generar cualquier documento; confirmar alcance con preguntas de opción múltiple; trabajar un punto a la vez; documentos separados, nunca combinados; versionar (v1.0, v1.1...) y actualizar el **Índice Maestro KWD-GES-IDX-001**, que es la única fuente de verdad sobre qué documento está vigente.
 - Al corregir un documento, retirar la versión obsoleta y registrar en el índice el porqué del reemplazo.
 - Documentos vigentes: KWD-EST-EMC-001 (+A1) estudio de mercado; KWD-COM-PSV-001 v1.2 (+A1 v1.1) portafolio y KTV Care; KWD-FIN-MPV-001 v1.5 modelo de precios; KWD-EXP-MOD-001 v1.0 expansión; KWD-COM-PCM-001 v1.0 plan de comisiones y metas; KWD-JUR-ANC-001 y KWD-JUR-AMA-001 (borradores para Aseo Diamante, sujetos a revisión legal); KWD-COM-BRO-001 brochure de paquetes con precios (cuentas clave); KWD-COM-WEB-001 correcciones del brochure público; KWD-SIS-PROMPT-001 prompt maestro para Claude Code; KWD-GES-IDX-001 índice maestro.
@@ -40,7 +43,7 @@ para que Claude trabaje sin re-explicar nada y sin contradecir decisiones ya tom
 | Estructura (NO va al costo por proyecto) | Jefe de Pilotos $4,93M/mes, Líder Operaciones $4,93M/mes, Gerente SMS $3,12M/mes → costos fijos |
 | Productividades de partida | vidrio 1.350 / mixta 900 / difícil 600 m²/día — calibrar con m²/día real de cada Orden de Vuelo |
 | Recargos | Tipo edificio y dificultad: Bajo 0% / Medio 5% / Alto 10% |
-| Margen mínimo sin aprobación | 25%. Bajo eso: aprobación Gerencia. Bajo USD 1,5/m²: doble aprobación |
+| Margen mínimo sin aprobación | **35%** (confirmado por Gerencia 2026-07-12 — el 25% NUNCA se trabaja salvo excepción forzada; no confundir con el piso de tarifa). Bajo 35%: aprobación Gerencia. Bajo USD 1,5/m²: doble aprobación |
 | Fijos mensuales | ~$20,7M (BlueTag + comercial + estructura + admin). Punto de equilibrio ~7.660 m²/mes |
 | Inversión franquicia a recuperar | ~$663,6M (los equipos NO: se recuperan vía depreciación por proyecto) |
 
@@ -53,6 +56,9 @@ para que Claude trabaje sin re-explicar nada y sin contradecir decisiones ya tom
 5. **Terceros y materiales: NUNCA se absorben al costo** — se facturan al cliente con +15% de administración.
 6. **Pago diferido a 12 meses NO es descuento** (mismo precio, solo se difiere el cobro). Descuento solo por pago anticipado. Nunca acumular descuento Care + descuento por diferir.
 7. **Paquetes KTV Care:** Inspect (informe a elección DV o Certificado) / Essential (DV incluido + 1 lavada a $5.700/m²) / Complete (DV incluido, Certificado en versión institucional, + 2 lavadas a $5.400/m²). Contrato 3 años sin descuento adicional: congela precio año 1 + IPC. Márgenes ~54–63%.
+   - **La brecha corta entre Inspect y Essential es INTENCIONAL** (confirmado por Gerencia 2026-07-12): en edificios chicos Essential cuesta apenas ~8-25% más que Inspect a propósito, para empujar la venta hacia Essential. NO "corregir" esto con pisos de diferencia entre planes.
+8. **Cargo mínimo por proyecto de lavado: $1.500.000** (`MINIMO_PROYECTO_LAVADO`, aprobado por Gerencia 2026-07-12). El precio del lavado nunca baja de ahí aunque los m² den menos — el costo de salir a operar no baja de medio día, y sin este piso las fachadas chicas daban margen negativo (hasta -377%).
+9. **Piso de mercado del Informe Internacional: $9.000.000** (`INT_PISO_MERCADO`, aprobado por Gerencia 2026-07-12 con base en el estudio de mercado de julio 2026: firmas colombianas de patología cobran $8-20M por edificio mediano). Solo afecta el tramo pequeño (la fórmula 2×fee+operación daba $7,5M ahí); los tramos mediano/grande ya lo superan.
 8. **Mercado excluido:** condominios residenciales habitados (directriz del franquiciante). Edificios residenciales EN CONSTRUCCIÓN sí, vía constructora.
 9. **Competencia de precio bajo** (XDroneCleaner B/quilla $1.500–4.500): nunca seguir el $1.500 (bajo el piso de cualquiera); el $4.500 es peleable desde ~750 m²/día. La venta se gana con costo total y riesgo (SST Res. 4272/2021, días de interferencia, daño de fachada, certificación verificable en el listado público de Aerocivil), no bajando precio.
 10. **Nadie opera jamás bajo el certificado UAS de KTV.** Sin excepciones.
@@ -75,10 +81,11 @@ Escalera de 4 modelos — el producto es el catálogo de la Fase 2; esto define 
 
 ## 7. Canales digitales y sistema comercial
 
-- **Brochure de prospección en frío (landing pública):** colombia.ktvworkingdrone.com.co — SIN precios, para difusión amplia. No incluye robot J1 ni fumigación (esta última no desarrollada). Cifra de velocidad defendible: "3 a 5 veces más rápido" (NO "10x"). Correcciones pendientes en KWD-COM-WEB-001.
+- **Brochure de prospección en frío (landing pública):** **landing.ktvworkingdrone.com.co** (el subdominio real y verificado — "colombia.ktvworkingdrone.com.co" NO existe en DNS, no usar) — SIN precios, para difusión amplia. No incluye robot J1 ni fumigación (esta última no desarrollada). Cifra de velocidad defendible: "3 a 5 veces más rápido" (NO "10x"). Correcciones pendientes en KWD-COM-WEB-001.
 - **Brochure de paquetes (KWD-COM-BRO-001):** CON precios, solo para cuentas clave del estudio de mercado; se envía controladamente.
 - **Sistema comercial (cotizador web + presentador + Pipedrive + agente de alertas):** especificado en KWD-SIS-PROMPT-001 para Claude Code. Se desarrolla por etapas; Gerencia aprueba toda cotización antes de enviar. NO automatizar procesos operativos hasta pasar la inspección de Aerocivil.
 - **Pipedrive:** el registro de llamadas y las alertas básicas ya existen nativas; activar desde Marketplace. El agente a medida se construye vía API.
+- **⚠️ Regla de seguridad Vercel (incidente real 2026-07-12, ver ESTADO_PROYECTO.md §2):** en cualquier proyecto de Vercel conectado a este repo, "Root Directory" por sí solo NO aísla contenido — hay que fijar TAMBIÉN "Output Directory" explícitamente (override activado). Sin esto, un proyecto "Other"/sin build puede servir el repositorio COMPLETO igual, exponiendo `sistema/` y `cotizador.html` (confidencial) al público. Verificar siempre con la URL `.vercel.app` de la build ANTES de asignar el dominio real.
 
 ## 8. Confidencialidad
 
