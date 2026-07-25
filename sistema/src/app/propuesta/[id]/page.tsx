@@ -55,13 +55,13 @@ const CARACTERISTICAS_CARE: Record<string, string[]> = {
 };
 
 // Destaque visual por plan — mismo tratamiento que el catálogo público
-// (landing/planes.html): Essential "Más popular", Complete "Máximo valor"
+// (landing/planes.html): Essential "Más comprado", Complete "Máximo cuidado"
 // con header sólido. Es fijo por plan (no depende de cuál sea el recomendado
 // para este cliente en particular, que se marca aparte con una estrella).
 const DESTAQUE_CARE: Record<string, { tag: string; badge?: string; feat?: boolean; pop?: boolean }> = {
   BASIC: { tag: 'Entrada · 1 año' },
-  ESSENTIAL: { tag: 'Corporativos y bodegas · 3 años', badge: 'Más popular', pop: true },
-  COMPLETE: { tag: 'Alta exigencia · 3 años', badge: 'Máximo valor', feat: true },
+  ESSENTIAL: { tag: 'Corporativos y bodegas · 3 años', badge: 'Más comprado', pop: true },
+  COMPLETE: { tag: 'Alta exigencia · 3 años', badge: 'Máximo cuidado', feat: true },
 };
 
 export default async function PropuestaPublicaPage({ params }: { params: Promise<{ id: string }> }) {
