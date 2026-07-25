@@ -1,12 +1,17 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { crearCotizacionCare } from '@/app/actions/cotizaciones';
+import { crearCotizacionCare, previsualizarCare } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
 const label = 'block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1';
 const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#66C2F8] text-sm';
+
+function cop(n: number | undefined) {
+  if (n === undefined) return '—';
+  return 'COP ' + Math.round(n).toLocaleString('es-CO');
+}
 
 export type CotizacionCareExistente = {
   id: string;
@@ -25,6 +30,10 @@ export type CotizacionCareExistente = {
 
 export default function CareForm({ existente, esCorreccion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean }) {
   const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
+  // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25) — mismo mecanismo que
+  // el cotizador de Familia 1: "Calcular" no toca la base, solo "Crear
+  // cotización"/"Guardar cambios" persiste.
+  const [preview, previewAction, previewPending] = useActionState(previsualizarCare, undefined);
   const [plan, setPlan] = useState<'BASIC' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? '');
@@ -137,12 +146,39 @@ export default function CareForm({ existente, esCorreccion }: { existente?: Coti
           defaultValue={existente?.observaciones ?? ''} />
       </div>
 
+      {preview?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{preview.error}</p>}
+      {preview?.ok && (
+        <div className="bg-[#EBF8FF] border border-[#66C2F8]/40 rounded-lg px-4 py-3 text-sm space-y-1">
+          <p className="font-bold text-[#171E27]">Basic: {cop(preview.valorMensualBasic)}/mes · {cop(preview.valorAnualBasic)}/año</p>
+          <p className="font-bold text-[#171E27]">Essential: {cop(preview.valorMensualEssential)}/mes · {cop(preview.valorAnualEssential)}/año</p>
+          <p className="font-bold text-[#171E27]">Complete: {cop(preview.valorMensualComplete)}/mes · {cop(preview.valorAnualComplete)}/año</p>
+          {preview.informeInternacionalAparte !== undefined && (
+            <p className="text-gray-500">Informe Internacional (Complete, año 1, facturado aparte): {cop(preview.informeInternacionalAparte)}</p>
+          )}
+          {preview.peorMargen !== undefined && (
+            <p className={preview.peorMargen < 0.35 ? 'text-amber-700' : 'text-gray-500'}>
+              Peor margen entre los 3 planes: {(preview.peorMargen * 100).toFixed(1)}%
+            </p>
+          )}
+          {preview.requiereAprobacion && (
+            <p className="text-amber-700 font-bold">Quedará pendiente de aprobación de Gerencia antes de poder enviarse.</p>
+          )}
+          <p className="text-xs text-gray-400">Esta vista previa NO guarda nada — solo "{esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización Care'}" crea el registro.</p>
+        </div>
+      )}
+
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
 
-      <button type="submit" disabled={pending}
-        className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-        {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización Care'}
-      </button>
+      <div className="flex items-center gap-3">
+        <button type="submit" formAction={previewAction} disabled={previewPending}
+          className="bg-white border border-[#66C2F8] text-[#171E27] font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
+          {previewPending ? 'Calculando…' : 'Calcular'}
+        </button>
+        <button type="submit" disabled={pending}
+          className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
+          {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización Care'}
+        </button>
+      </div>
     </form>
   );
 }

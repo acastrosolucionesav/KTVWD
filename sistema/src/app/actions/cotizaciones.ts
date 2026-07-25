@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado } from '@/lib/pricing';
+import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
 import { enviarCorreoAprobacionPendiente } from '@/lib/email';
@@ -25,30 +25,49 @@ export type CrearCareState = { error?: string; ok?: boolean } | undefined;
 // tenga que borrar y volver a crear por un dato mal digitado (m², días de
 // Aerocivil, etc.).
 // ============================================================================
-export async function crearCotizacionPuntual(_state: CrearPuntualState, formData: FormData): Promise<CrearPuntualState> {
-  const session = await verifySession();
-  const { parametros, snapshotJson } = await getParametrosVigentes();
+type PuntualData = {
+  servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
+  tipoInformeBase: 'DIAGNOSTICO_VISUAL' | 'INTERNACIONAL' | null;
+  mostrarInformeInternacional: boolean;
+  m2Fachada: number | null;
+  rangoTecho: number | null;
+  diasOperacion: number;
+  costoOperacion: number;
+  feeNoruega: number;
+  margenPct: number;
+  descuentoPct: number | null;
+  precioLavadoSinDescuento: number | null;
+  precioLavado: number | null;
+  precioInformeBase: number | null;
+  precioInformeAdicional: number | null;
+  anticipoPct: number | null;
+  saldoPct: number | null;
+  condicionPagoNota: string | null;
+  permisoAerocivil: string | null;
+  diasEjecucionSistema: number | null;
+  diasEjecucion: number | null;
+  ejecucionSitio: string | null;
+};
+type ItemLavadoData = {
+  orden: number; nombre: string; concepto: ConceptoLavado;
+  m2Vidrio: number; m2Opaca: number; superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
+  costoOperacion: number; feeNoruega: number; precioLavado: number; diasEjecucionSistema: number;
+};
+type ResultadoPuntual =
+  | { error: string }
+  | {
+      error?: undefined;
+      clienteNombre: string; clienteContacto: string | null; pipedriveDealId: string | null;
+      observaciones: string | null; totalCliente: number; margenP: number; requiereAprobacion: boolean;
+      puntualData: PuntualData; itemsLavadoData: ItemLavadoData[];
+    };
 
-  const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
-  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
-  let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
-  if (cotizacionExistenteId) {
-    const c = await prisma.cotizacion.findUnique({
-      where: { id: cotizacionExistenteId },
-      include: { versionNueva: { select: { idTrazabilidad: true } } },
-    });
-    if (!c) return { error: 'La cotización ya no existe.' };
-    if (c.estado === 'BORRADOR') {
-      existente = c;
-    } else if (c.versionNueva) {
-      return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
-    } else {
-      // No editable en el mismo registro (ya enviada/aprobada/rechazada): se
-      // corrige creando una versión nueva, ver bloque de corrección más abajo.
-      anterior = c;
-    }
-  }
-
+// Cálculo y validación PUROS de una cotización puntual — no toca la base de
+// datos. Es la ÚNICA fuente de verdad del número: crearCotizacionPuntual la usa
+// justo antes de persistir, y previsualizarPuntual la usa solo para mostrarle el
+// precio al comercial sin guardar nada. Así lo que se previsualiza es EXACTO lo
+// que se termina guardando — nunca dos fórmulas que se puedan desalinear.
+function computarPuntual(formData: FormData, parametros: Parametros): ResultadoPuntual {
   const servicio = String(formData.get('servicio')) as 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
@@ -196,14 +215,17 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const margenD = totalCliente - costoTotalTrato;
   const margenP = totalCliente > 0 ? margenD / totalCliente : 0;
 
-  // El descuento por volumen es automático (política) y no dispara aprobación;
-  // solo el descuento MANUAL por encima del de volumen, o recortar días, la
-  // dispara. Un margen general bajo 35% (p. ej. por absorber un DV de regalo)
-  // también la dispara.
+  // Piso de margen del 35% (decisión Gerencia 2026-07-25): baja de 35% SOLO con
+  // autorización explícita de Gerencia — nunca en automático, ni el sistema ni el
+  // comercial la activan solos. El mecanismo es el mismo que ya existe para el
+  // descuento manual y los días recortados: la cotización queda en
+  // PENDIENTE_APROBACION y solo Gerencia (rol GERENCIA) puede aprobarla o
+  // rechazarla desde el detalle — nunca un bloqueo ciego que no se pueda destrabar.
   const requiereAprobacion =
-    descuentoManualPct > descuentoVolumenPct || requiereAprobacionPorDias
-      ? true
-      : margenP < parametros.MARGEN_MINIMO;
+    descuentoManualPct > descuentoVolumenPct
+    || requiereAprobacionPorDias
+    || !!lavado?.sobreTarifaLista // tope $6.000/m² incompatible con el 35% (superficie difícil + recargo alto)
+    || margenP < parametros.MARGEN_MINIMO;
 
   // Ítems de lavado a persistir (Cotizacion.itemsLavado) — cada fila conserva
   // su nombre editable y su propio desglose de costo/fee/precio ya repartido
@@ -250,6 +272,41 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
     diasEjecucion,
     ejecucionSitio,
   };
+
+  return {
+    clienteNombre, clienteContacto, pipedriveDealId, observaciones,
+    totalCliente, margenP, requiereAprobacion,
+    puntualData, itemsLavadoData,
+  };
+}
+
+export async function crearCotizacionPuntual(_state: CrearPuntualState, formData: FormData): Promise<CrearPuntualState> {
+  const session = await verifySession();
+  const { parametros, snapshotJson } = await getParametrosVigentes();
+
+  const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
+  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
+  let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
+  if (cotizacionExistenteId) {
+    const c = await prisma.cotizacion.findUnique({
+      where: { id: cotizacionExistenteId },
+      include: { versionNueva: { select: { idTrazabilidad: true } } },
+    });
+    if (!c) return { error: 'La cotización ya no existe.' };
+    if (c.estado === 'BORRADOR') {
+      existente = c;
+    } else if (c.versionNueva) {
+      return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
+    } else {
+      // No editable en el mismo registro (ya enviada/aprobada/rechazada): se
+      // corrige creando una versión nueva, ver bloque de corrección más abajo.
+      anterior = c;
+    }
+  }
+
+  const r = computarPuntual(formData, parametros);
+  if (r.error !== undefined) return { error: r.error };
+  const { clienteNombre, clienteContacto, pipedriveDealId, observaciones, totalCliente, margenP, requiereAprobacion, puntualData, itemsLavadoData } = r;
 
   if (existente) {
     await prisma.clienteProspecto.update({
@@ -350,6 +407,36 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
 
   revalidatePath('/cotizaciones');
   redirect(`/cotizaciones/${cotizacion.id}`);
+}
+
+// Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25): antes, el único botón
+// del cotizador calculaba Y persistía a la vez — cualquier intento de ver el
+// precio (ajustar m², probar otro tipo de edificio) creaba una cotización real
+// en BORRADOR, acumulando decenas de registros por cada una que de verdad se
+// enviaba. Esta acción usa la MISMA fórmula (computarPuntual) pero no toca la
+// base de datos — se llama desde el botón "Calcular" del formulario; "Crear
+// cotización" sigue siendo el único botón que persiste.
+//
+// Regla A: el margen/costo real solo se muestra si la sesión es GERENCIA — un
+// comercial ve el total y si haría falta aprobación, nunca el margen.
+export type PreviewPuntualState = {
+  error?: string; ok?: boolean;
+  totalCliente?: number; requiereAprobacion?: boolean;
+  margenPct?: number;
+} | undefined;
+
+export async function previsualizarPuntual(_state: PreviewPuntualState, formData: FormData): Promise<PreviewPuntualState> {
+  const session = await verifySession();
+  const { parametros } = await getParametrosVigentes();
+  const r = computarPuntual(formData, parametros);
+  if (r.error !== undefined) return { error: r.error };
+  const esGerencia = session.rol === 'GERENCIA';
+  return {
+    ok: true,
+    totalCliente: r.totalCliente,
+    requiereAprobacion: r.requiereAprobacion,
+    ...(esGerencia ? { margenPct: r.margenP } : {}),
+  };
 }
 
 export async function aprobarCotizacion(cotizacionId: string) {
@@ -479,28 +566,30 @@ export async function eliminarCotizacion(cotizacionId: string) {
 // Edición: solo mientras la cotización esté en BORRADOR — mismo criterio que
 // crearCotizacionPuntual.
 // ============================================================================
-export async function crearCotizacionCare(_state: CrearCareState, formData: FormData): Promise<CrearCareState> {
-  const session = await verifySession();
-  const { parametros, snapshotJson } = await getParametrosVigentes();
+type CareData = {
+  planRecomendado: 'BASIC' | 'ESSENTIAL' | 'COMPLETE'; contratoAnios: number; formaPago: 'CONTADO' | 'DIFERIDO_12';
+  m2Fachada: number; rangoTecho: number | null;
+  superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
+  valorAnualBasic: number; valorMensualBasic: number;
+  valorAnualEssential: number; valorMensualEssential: number;
+  valorAnualComplete: number; valorMensualComplete: number;
+};
+type ResultadoCare =
+  | { error: string }
+  | {
+      error?: undefined;
+      clienteNombre: string; clienteContacto: string | null; pipedriveDealId: string | null;
+      observaciones: string | null;
+      planRecomendado: 'BASIC' | 'ESSENTIAL' | 'COMPLETE';
+      todos: ReturnType<typeof calcularCareTodos>;
+      requiereAprobacion: boolean; peorMargen: number;
+      careData: CareData;
+    };
 
-  const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
-  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
-  let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
-  if (cotizacionExistenteId) {
-    const c = await prisma.cotizacion.findUnique({
-      where: { id: cotizacionExistenteId },
-      include: { versionNueva: { select: { idTrazabilidad: true } } },
-    });
-    if (!c) return { error: 'La cotización ya no existe.' };
-    if (c.estado === 'BORRADOR') {
-      existente = c;
-    } else if (c.versionNueva) {
-      return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
-    } else {
-      anterior = c;
-    }
-  }
-
+// Cálculo y validación PUROS de una cotización Care — no toca la base de datos.
+// Misma disciplina que computarPuntual: única fuente de verdad compartida entre
+// crearCotizacionCare (persiste) y previsualizarCare (solo muestra, nunca guarda).
+function computarCare(formData: FormData, parametros: Parametros): ResultadoCare {
   const planRecomendado = String(formData.get('plan')) as 'BASIC' | 'ESSENTIAL' | 'COMPLETE';
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
@@ -527,23 +616,57 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const dificultad = String(formData.get('dificultad') || 'BAJO') as NivelRecargo;
 
   const todos = calcularCareTodos(parametros, { m2, techo, superficie, tipoEdificio, dificultad });
-  // Semáforo de margen (spec_calcularCare.md 2026-07-14): bajo 35% requiere aprobación
-  // de Gerencia (igual que Familia 1); bajo 25% es un piso absoluto — ni Gerencia puede
-  // enviarla, hay que ajustar parámetros o alcance primero. Para Complete, el margen de
-  // CADA año de contrato cuenta (el peor de los 3, nunca un promedio que esconda el año 1).
-  const margenesMinimos = Object.values(todos).map((t) => t.margenP);
-  if (margenesMinimos.some((m) => m < 0.25)) {
-    return { error: 'El margen de esta cotización cae por debajo del mínimo absoluto (25%) en al menos un paquete o año de contrato. No se puede generar — ajuste los parámetros o el alcance antes de continuar.' };
-  }
-  const requiereAprobacion = margenesMinimos.some((m) => m < parametros.MARGEN_MINIMO);
+  // Piso de margen del 35% (decisión Gerencia 2026-07-25): baja de 35% SOLO con
+  // autorización explícita de Gerencia — igual mecanismo que Familia 1, nunca un
+  // bloqueo ciego. Para Essential y Complete cuenta el margen de CADA año del
+  // contrato (el peor, nunca un promedio que esconda el año más ajustado), y en
+  // Complete cuenta además la línea del Informe Internacional, que se factura
+  // aparte y por lo tanto tiene su propio margen.
+  const margenesMinimos = Object.values(todos).map((t) =>
+    Math.min(t.margenP, t.internacionalAparte?.margenP ?? 1),
+  );
+  const peorMargen = Math.min(...margenesMinimos);
+  const requiereAprobacion = peorMargen < parametros.MARGEN_MINIMO;
 
-  const careData = {
+  const careData: CareData = {
     planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,
     superficie, tipoEdificio, dificultad,
     valorAnualBasic: todos.BASIC.valorAnual, valorMensualBasic: todos.BASIC.valorMensual,
     valorAnualEssential: todos.ESSENTIAL.valorAnual, valorMensualEssential: todos.ESSENTIAL.valorMensual,
     valorAnualComplete: todos.COMPLETE.valorAnual, valorMensualComplete: todos.COMPLETE.valorMensual,
   };
+
+  return {
+    clienteNombre, clienteContacto, pipedriveDealId, observaciones,
+    planRecomendado, todos, requiereAprobacion, peorMargen, careData,
+  };
+}
+
+export async function crearCotizacionCare(_state: CrearCareState, formData: FormData): Promise<CrearCareState> {
+  const session = await verifySession();
+  const { parametros, snapshotJson } = await getParametrosVigentes();
+
+  const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
+  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
+  let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
+  if (cotizacionExistenteId) {
+    const c = await prisma.cotizacion.findUnique({
+      where: { id: cotizacionExistenteId },
+      include: { versionNueva: { select: { idTrazabilidad: true } } },
+    });
+    if (!c) return { error: 'La cotización ya no existe.' };
+    if (c.estado === 'BORRADOR') {
+      existente = c;
+    } else if (c.versionNueva) {
+      return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
+    } else {
+      anterior = c;
+    }
+  }
+
+  const r = computarCare(formData, parametros);
+  if (r.error !== undefined) return { error: r.error };
+  const { clienteNombre, clienteContacto, pipedriveDealId, observaciones, planRecomendado, todos, requiereAprobacion, peorMargen, careData } = r;
 
   if (existente) {
     await prisma.clienteProspecto.update({
@@ -566,7 +689,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       await enviarCorreoAprobacionPendiente({
         idTrazabilidad: existente.idTrazabilidad,
         clienteNombre,
-        margenPct: Math.min(...margenesMinimos),
+        margenPct: peorMargen,
         urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacionExistenteId}`,
       }).catch((e) => console.error('Error enviando alerta de aprobación', e));
     }
@@ -616,7 +739,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
     await enviarCorreoAprobacionPendiente({
       idTrazabilidad: cotizacion.idTrazabilidad,
       clienteNombre,
-      margenPct: Math.min(...margenesMinimos),
+      margenPct: peorMargen,
       urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacion.id}`,
     }).catch((e) => console.error('Error enviando alerta de aprobación', e));
   }
@@ -634,4 +757,33 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
 
   revalidatePath('/cotizaciones');
   redirect(`/cotizaciones/${cotizacion.id}`);
+}
+
+// Vista previa SIN GUARDAR — mismo mecanismo que previsualizarPuntual: calcula
+// con computarCare, nunca toca prisma. Regla A: margen solo si es Gerencia.
+export type PreviewCareState = {
+  error?: string; ok?: boolean;
+  valorAnualBasic?: number; valorMensualBasic?: number;
+  valorAnualEssential?: number; valorMensualEssential?: number;
+  valorAnualComplete?: number; valorMensualComplete?: number;
+  informeInternacionalAparte?: number;
+  requiereAprobacion?: boolean;
+  peorMargen?: number;
+} | undefined;
+
+export async function previsualizarCare(_state: PreviewCareState, formData: FormData): Promise<PreviewCareState> {
+  const session = await verifySession();
+  const { parametros } = await getParametrosVigentes();
+  const r = computarCare(formData, parametros);
+  if (r.error !== undefined) return { error: r.error };
+  const esGerencia = session.rol === 'GERENCIA';
+  return {
+    ok: true,
+    valorAnualBasic: r.todos.BASIC.valorAnual, valorMensualBasic: r.todos.BASIC.valorMensual,
+    valorAnualEssential: r.todos.ESSENTIAL.valorAnual, valorMensualEssential: r.todos.ESSENTIAL.valorMensual,
+    valorAnualComplete: r.todos.COMPLETE.valorAnual, valorMensualComplete: r.todos.COMPLETE.valorMensual,
+    informeInternacionalAparte: r.todos.COMPLETE.internacionalAparte?.precio,
+    requiereAprobacion: r.requiereAprobacion,
+    ...(esGerencia ? { peorMargen: r.peorMargen } : {}),
+  };
 }
