@@ -330,6 +330,24 @@ model SolicitudAlianza {
   creadoAt        DateTime @default(now())
 }
 
+// Solicitud desde el formulario de contacto del sitio público principal
+// (ktvworkingdrone.com.co, migración de web_documento_consolidado_20260724.md).
+// Mismo patrón que SolicitudAlianza: se guarda SIEMPRE (nunca se pierde un
+// interesado aunque Pipedrive falle) y, best-effort, se crea un lead marcado
+// como WEB. Es un formulario de interés general (cotización/consulta), no de
+// alianza — de ahí el modelo separado.
+model SolicitudContacto {
+  id              String   @id @default(cuid())
+  nombre          String
+  compania        String?
+  email           String
+  telefono        String?
+  mensaje         String?
+  pipedriveLeadId String?  // id del lead creado en Pipedrive (null si no se pudo)
+  atendida        Boolean  @default(false)
+  creadoAt        DateTime @default(now())
+}
+
 // Orden de Servicio Comercial interna para Operaciones — NUNCA lleva cifras.
 model OrdenServicio {
   id           String     @id @default(cuid())

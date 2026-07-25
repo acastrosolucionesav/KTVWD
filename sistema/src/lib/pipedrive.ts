@@ -229,3 +229,56 @@ export async function crearLeadAlianza(args: {
     return null;
   }
 }
+
+// Mismo patrón que crearLeadAlianza — formulario de contacto general del
+// sitio público principal (ktvworkingdrone.com.co), marcado como WEB en vez
+// de ALIANZA para que Gerencia distinga el canal de origen en Pipedrive.
+export async function crearLeadContacto(args: {
+  nombre: string; compania?: string | null; email: string;
+  telefono?: string | null; mensaje?: string | null;
+}): Promise<string | null> {
+  if (!habilitado()) return null;
+  try {
+    const personaRes = await fetch(`${BASE}/persons?api_token=${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: args.nombre,
+        email: args.email ? [{ value: args.email, primary: true }] : undefined,
+        phone: args.telefono ? [{ value: args.telefono, primary: true }] : undefined,
+      }),
+    });
+    if (!personaRes.ok) return null;
+    const personaId = (await personaRes.json())?.data?.id;
+    if (!personaId) return null;
+
+    const titulo = `WEB — ${args.compania || args.nombre}`;
+    const leadRes = await fetch(`${BASE}/leads?api_token=${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: titulo, person_id: personaId }),
+    });
+    if (!leadRes.ok) return null;
+    const leadId = (await leadRes.json())?.data?.id ?? null;
+
+    if (leadId) {
+      const nota = [
+        `Solicitud de contacto desde ktvworkingdrone.com.co.`,
+        `Nombre: ${args.nombre}`,
+        args.compania ? `Compañía: ${args.compania}` : null,
+        `Email: ${args.email}`,
+        args.telefono ? `Teléfono: ${args.telefono}` : null,
+        args.mensaje ? `Mensaje: ${args.mensaje}` : null,
+      ].filter(Boolean).join('\n');
+      await fetch(`${BASE}/notes?api_token=${TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: nota, lead_id: leadId }),
+      }).catch((e) => console.error('Pipedrive: error creando nota de contacto', e));
+    }
+    return leadId ? String(leadId) : null;
+  } catch (e) {
+    console.error('Pipedrive: error creando lead de contacto', e);
+    return null;
+  }
+}
