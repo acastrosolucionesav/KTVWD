@@ -81,7 +81,7 @@ img,video{max-width:100%;}
 .lbl-w{color:rgba(255,255,255,.8);}
 .ttl{font-size:clamp(26px,3.4vw,36px);font-weight:800;line-height:1.15;color:var(--ink);margin-bottom:16px;}
 .ttl-w{color:var(--white);}
-.bod{font-size:16px;font-weight:400;color:var(--muted);line-height:1.75;max-width:600px;}
+.bod{font-size:16px;font-weight:400;color:var(--muted);line-height:1.75;max-width:600px;text-align:justify;}
 .bod-w{color:rgba(255,255,255,.9);}
 .btn{display:inline-block;font-family:inherit;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:var(--br);border:none;cursor:pointer;transition:opacity .2s;}
 .btn:hover{opacity:.88;}
@@ -103,7 +103,7 @@ img,video{max-width:100%;}
 .sc-body{padding:24px 24px 28px;display:flex;flex-direction:column;flex:1;}
 .sc-ic{font-size:34px;margin-bottom:6px;}
 .sc-n{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px;}
-.sc-d{font-size:14.5px;font-weight:400;color:var(--muted);line-height:1.7;margin-bottom:20px;flex:1;}
+.sc-d{font-size:14.5px;font-weight:400;color:var(--muted);line-height:1.7;margin-bottom:20px;flex:1;text-align:justify;}
 .sc-btn{align-self:flex-start;}
 .why{background:var(--off);}
 .why-in{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:center;}
@@ -116,9 +116,9 @@ img,video{max-width:100%;}
 .alianzas{background:var(--navy);}
 .al-in{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;}
 .al-modelos{display:flex;flex-direction:column;gap:14px;}
-.al-m{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:22px 24px;}
-.al-m h4{color:var(--white);font-size:15px;font-weight:800;margin-bottom:6px;}
-.al-m p{color:rgba(255,255,255,.65);font-size:13.5px;line-height:1.65;}
+.al-m{background:var(--blue);border-radius:var(--r);padding:26px 24px;text-decoration:none;display:block;transition:opacity .2s;}
+.al-m:hover{opacity:.88;}
+.al-m h4{color:var(--white);font-size:17px;font-weight:800;text-align:center;}
 .process{background:var(--white);}
 .nosotros-in{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:.9fr 1.1fr;gap:56px;align-items:center;}
 .nosotros-in img{width:100%;height:100%;object-fit:cover;border-radius:var(--r);display:block;}
@@ -328,8 +328,8 @@ footer{background:var(--blue);padding:48px 64px 0;}
       </div>
     </div>
     <div class="al-modelos rv">
-      <div class="al-m"><h4>Aliado Comercial</h4><p>Refiera proyectos y reciba comisión por cada uno que se concrete.</p></div>
-      <div class="al-m"><h4>Subfranquicia</h4><p>Opere KTV Working Drone en su región bajo el respaldo internacional de la marca, con el permiso regulatorio, la marca y el soporte técnico ya resueltos.</p></div>
+      <a class="al-m" href="https://propuestas.ktvworkingdrone.com.co/alianzas"><h4>Aliado Comercial</h4></a>
+      <a class="al-m" href="https://propuestas.ktvworkingdrone.com.co/alianzas"><h4>Subfranquicia</h4></a>
     </div>
   </div>
 </section>
@@ -355,7 +355,7 @@ footer{background:var(--blue);padding:48px 64px 0;}
     <div class="lbl lbl-w">Únase al equipo</div>
     <h2 class="ttl ttl-w">Estamos Contratando</h2>
     <p class="bod bod-w">Puestos vacantes en KTV Working Drone. Buscamos pilotos, técnicos y personal comercial que quieran ser parte de la operación de drones industriales más avanzada del país.</p>
-    <div style="margin-top:24px;"><a href="mailto:mercadeo@ktvworkingdrone.com.co?subject=Quiero%20trabajar%20en%20KTV%20Working%20Drone" class="btn btn-navy">Aplicar ahora</a></div>
+    <div style="margin-top:24px;"><a href="mailto:mercadeo@ktvworkingdrone.com.co?subject=Quiero%20trabajar%20en%20KTV%20Working%20Drone" class="btn btn-blue">Aplicar ahora</a></div>
   </div>
 </section>
 
