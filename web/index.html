@@ -47,15 +47,16 @@
 <style>
 :root{--blue:#5BC8F5;--blue-dk:#3EB4E8;--navy:#123640;--topbar:#14161f;--blue-bg:#EBF8FF;--ink:#111318;--body:#2D3748;--muted:#5A6472;--white:#FFFFFF;--off:#F5F7F9;--r:10px;--br:6px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);background:var(--white);overflow-x:hidden;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
+body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);background:var(--white);}
 img,video{max-width:100%;}
 .topbar{background:var(--topbar);padding:10px 48px;display:flex;align-items:center;justify-content:flex-end;gap:16px;}
 .topbar span{color:rgba(255,255,255,.8);font-size:13px;font-weight:600;}
 .topbar .footer-social{margin:0;}
 .topbar .soc-btn{width:28px;height:28px;background:transparent;border:none;color:var(--white);}
 .topbar .soc-btn:hover{color:var(--blue);}
-.nav{position:sticky;top:0;left:0;right:0;z-index:200;background:var(--blue);padding:0 48px;height:72px;display:flex;align-items:center;justify-content:space-between;}
+.hdr-sticky{position:sticky;top:0;left:0;right:0;z-index:200;}
+.nav{background:var(--blue);padding:0 48px;height:72px;display:flex;align-items:center;justify-content:space-between;}
 .nav-logo{height:34px;}
 .nav-links{display:flex;gap:30px;list-style:none;}
 .nav-links a{font-size:15px;font-weight:600;text-decoration:none;color:var(--white);padding-bottom:4px;border-bottom:2px solid transparent;transition:border-color .2s;}
@@ -220,6 +221,7 @@ footer{background:var(--blue);padding:48px 64px 0;}
 </head>
 <body>
 
+<div class="hdr-sticky">
 <div class="topbar">
   <span>Síguenos en nuestras redes sociales:</span>
   <div class="footer-social">
@@ -250,6 +252,7 @@ footer{background:var(--blue);padding:48px 64px 0;}
   </ul>
   <a href="#contacto" class="nav-btn">Cotizar ahora</a>
 </nav>
+</div>
 
 <!-- 1. HERO -->
 <section class="hero" id="inicio">
