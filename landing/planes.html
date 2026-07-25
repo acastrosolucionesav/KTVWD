@@ -57,6 +57,10 @@ body{font-family:'Open Sans',Verdana,Helvetica,sans-serif;color:var(--body);back
 .plan.feat .plan-hd{background:linear-gradient(150deg,var(--blue),var(--blue-dk));color:#fff;}
 .plan-hd .tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-dk);}
 .plan.feat .plan-hd .tag{color:rgba(255,255,255,.9);}
+/* Reserva espacio para la insignia (position:absolute, arriba a la derecha) —
+   sin esto, un tag largo como "Corporativos y bodegas · 3 años" pasa a dos
+   líneas y la segunda queda debajo de la insignia, tapándola. */
+.plan.pop .plan-hd .tag,.plan.feat .plan-hd .tag{padding-right:118px;}
 .plan-hd h3{font-size:24px;font-weight:800;color:var(--ink);margin-top:4px;letter-spacing:-.01em;}
 .plan.feat .plan-hd h3{color:#fff;}
 .plan-hd .pitch{font-size:14.5px;font-weight:700;color:var(--blue-dk);margin-top:8px;line-height:1.35;min-height:40px;}
