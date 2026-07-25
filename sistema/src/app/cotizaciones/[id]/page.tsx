@@ -211,6 +211,14 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                     <p className="text-[11px] text-gray-500 mb-2">
                       Días de operación/año: {t.diasOperacion} · Costo lavadas ({t.nLavadas}/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)} · Descuento: {(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}
                     </p>
+                    {/* Composición de la cuota: el informe entra PRORRATEADO entre los años del
+                        contrato (corrección 2026-07-24). Por eso el año que entrega el informe
+                        muestra el margen más bajo — cobra 1/3 del informe pero paga su costo
+                        completo. Es la lectura por año que pide Gerencia, no un promedio. */}
+                    <p className="text-[11px] text-gray-500 mb-2">
+                      Cuota anual: lavadas {cop(t.ingresoLavadas)} + informe prorrateado {cop(t.informeAnual)} = <b className="text-gray-300">{cop(t.valorAnual)}</b>
+                      {' '}· informes del contrato completo: {cop(t.informeContratoTotal)} en {t.contratoAnios} años
+                    </p>
                     <div className="grid grid-cols-3 gap-3">
                       {([1, 2, 3] as const).map((anio) => {
                         const a = t.porAnio![anio];

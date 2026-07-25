@@ -365,36 +365,61 @@ export function calcularCare(p: Parametros, args: {
     args.plan === 'BASIC' ? (p.CARE_BASIC_DESC ?? 0.05)
     : args.plan === 'ESSENTIAL' ? (p.CARE_ESSENTIAL_DESC ?? 0.075)
     : (p.CARE_COMPLETE_DESC ?? 0.10);
-  const volDisc = descuentoVolumen(args.m2);
-  // Techo de escalón (hallazgo Gerencia 2026-07-24): en edificios grandes, el
-  // descuento por volumen (hasta 10%) podía alcanzar o superar el compromiso
-  // del plan SIGUIENTE — ej. a >50.000 m² el volumen (10%) igualaba a Basic
-  // (5%) Y a Essential (7,5%), dejando a Basic y Essential con el MISMO precio
-  // (misma cantidad de lavadas, mismo informe DV) — rompía la escalera de
-  // compromiso que exige el spec ("nunca igual al escalón siguiente"). Se
-  // limita el volumen para que nunca alcance el compromiso propio del
-  // siguiente escalón, con un margen mínimo de separación (GAP_ESCALON).
+  // Descuento por volumen — SOLO Essential y Complete, NUNCA Basic
+  // (CORRECCION_DEFINITIVA_care_20260724.md): el objetivo es que un edificio
+  // grande tenga un incentivo real para comprometerse a 3 años en vez de
+  // quedarse en Basic renovando año a año. Si aplicara también a Basic, se
+  // perdería ese incentivo.
+  const volDisc = args.plan === 'BASIC' ? 0 : descuentoVolumen(args.m2);
+  // Techo de escalón (hallazgo Gerencia 2026-07-24): en edificios grandes el
+  // descuento por volumen (hasta 10%) puede alcanzar el compromiso del plan
+  // SIGUIENTE y borrar la diferencia de tarifa por m² entre escalones — a
+  // >50.000 m² el volumen (10%) deja a Essential en la misma tarifa que
+  // Complete (10%). Se limita para que el volumen nunca alcance el compromiso
+  // propio del siguiente escalón, con una separación mínima (GAP_ESCALON).
+  // Basic ya no necesita protección: el volumen no le aplica (volDisc = 0).
   const GAP_ESCALON = 0.005; // medio punto porcentual de separación mínima garantizada
-  const compromisoEssentialRef = p.CARE_ESSENTIAL_DESC ?? 0.075;
   const compromisoCompleteRef = p.CARE_COMPLETE_DESC ?? 0.10;
   const topeSiguienteEscalon =
-    args.plan === 'BASIC' ? compromisoEssentialRef - GAP_ESCALON
-    : args.plan === 'ESSENTIAL' ? compromisoCompleteRef - GAP_ESCALON
-    : null; // Complete es el escalón más alto — sin siguiente que proteger
+    args.plan === 'ESSENTIAL' ? compromisoCompleteRef - GAP_ESCALON
+    : null; // Basic (sin volumen) y Complete (escalón más alto) no tienen siguiente que proteger
   const volDiscLimitado = topeSiguienteEscalon !== null ? Math.min(volDisc, topeSiguienteEscalon) : volDisc;
   const volumenLimitadoPorEscalon = volDiscLimitado < volDisc;
 
   const costoLavadas = costoUnaLavada * nLavadas;
   const diasOperacionLavadas = diasUnaLavada * nLavadas;
 
+  // 🚩 CORRECCIÓN 2026-07-24 (CORRECCION_DEFINITIVA_care_20260724.md) — BUG DE
+  // SOBRECOBRO EN PRODUCCIÓN. Antes se sumaba el informe COMPLETO a `valorAnual`,
+  // y como esa cuota se cobra todos los años del contrato, el cliente pagaba el
+  // informe una vez POR AÑO cuando solo se entrega 1 o 2 veces en los 3 años:
+  //   Essential — cobraba 3 × DV ($10,5M) y entregaba 2 DV ($7M).
+  //   Complete   — cobraba 3 × II ($27M) y entregaba 1 II + 1 DV ($12,5M) →
+  //                sobrecobro de $14,5M, y el paquete terminaba costando MÁS que
+  //                comprar los mismos servicios sueltos (rompía la razón de ser
+  //                de Care; ver Caso 3 en verify-care-20260724.ts).
+  // Ahora el valor de los informes que realmente se entregan en el contrato se
+  // reparte entre los años. El total facturado por informes a lo largo del
+  // contrato es exactamente su precio de lista — no es un descuento sobre el
+  // Informe Internacional (que nunca se descuenta, regla 4B), es la misma plata
+  // distribuida en la cuota, igual que el pago diferido no es descuento.
+  const informeContratoTotal =
+    args.plan === 'BASIC' ? dv                                  // 1 año, 1 DV — sin desfase, ya era correcto
+    : args.plan === 'ESSENTIAL' ? 2 * dv                         // DV en años 1 y 3 (año 2 sin inspección)
+    : (insp.precioInternacional ?? dv) + dv;                     // Complete: II año 1 + DV año 3
+  // Se usa el II del tramo de techo real (insp.precioInternacional), no un valor
+  // de referencia plano: en techos medianos/grandes el II vale más que el piso de
+  // mercado y un plano lo subfacturaría.
+  const informeAnual = informeContratoTotal / contratoAnios;
+
   // Arma el resultado completo del plan para un descuento dado sobre la lista.
   function conDescuento(disc: number) {
     const tarifaLavadaM2 = p.TARIFA_LISTA * (1 - disc) * (1 + recargo);
     const ingresoLavadas = nLavadas * args.m2 * tarifaLavadaM2;
-    // La cuota anual incluye las lavadas del año + el informe (DV en Basic/
-    // Essential; el Informe Internacional del año 1 en Complete — lo que
-    // realmente entrega, aunque sea una vez en los 3 años).
-    const valorAnual = ingresoLavadas + (args.plan === 'COMPLETE' ? (insp.precioInternacional ?? dv) : dv);
+    // La cuota anual incluye las lavadas del año + la parte anual de los
+    // informes del contrato (ver `informeAnual` arriba) — nunca el informe
+    // completo, que solo se entrega 1 o 2 veces en los 3 años.
+    const valorAnual = ingresoLavadas + informeAnual;
     const feeNoruega = valorAnual * p.FEE_NORUEGA;
     const comision = valorAnual * comisionPct;
     const margenPFn = (costo: number) => (valorAnual > 0 ? (valorAnual - costo) / valorAnual : 0);
@@ -405,6 +430,7 @@ export function calcularCare(p: Parametros, args: {
     // `costoInspeccion`/`costoTotal`/`margenD`; los que no aplican van undefined.
     const comun = {
       disc, valorAnual, valorMensual: valorAnual / 12, nLavadas, contratoAnios,
+      ingresoLavadas, informeAnual, informeContratoTotal,
       diasOperacion: diasOperacionLavadas + diasOperacionInsp, costoLavadas, feeNoruega, comision,
       costoInspeccion: undefined as number | undefined,
       costoTotal: undefined as number | undefined,
