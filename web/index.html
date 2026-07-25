@@ -133,9 +133,14 @@ img,video{max-width:100%;}
 .vid-hd{text-align:center;margin-bottom:52px;}
 .vid-hd .bod{margin:0 auto;}
 .gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
-.gi{position:relative;border-radius:var(--r);overflow:hidden;box-shadow:0 8px 32px rgba(102,194,248,.15);transition:transform .25s,box-shadow .25s;aspect-ratio:4/3;background:#000;cursor:pointer;}
+.gi{position:relative;border-radius:var(--r);overflow:hidden;box-shadow:0 8px 32px rgba(102,194,248,.15);transition:transform .25s,box-shadow .25s;aspect-ratio:16/9;background:#000;cursor:pointer;}
 .gi:hover{transform:translateY(-6px);box-shadow:0 20px 48px rgba(102,194,248,.25);}
-.gi img{width:100%;height:100%;object-fit:cover;display:block;}
+.gi img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .3s;}
+.gi:hover img{opacity:.75;}
+.gi-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.gi-play-btn{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s;}
+.gi:hover .gi-play-btn{transform:scale(1.12);background:var(--white);}
+.gi-play-btn svg{width:24px;height:24px;margin-left:3px;}
 .gi-cap{position:absolute;bottom:0;left:0;right:0;padding:14px 18px;background:linear-gradient(0deg,rgba(0,0,0,.65) 0%,transparent 100%);color:var(--white);font-size:12.5px;font-weight:600;}
 .lb{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.92);align-items:center;justify-content:center;padding:24px;}
 .lb.open{display:flex;}
@@ -143,6 +148,10 @@ img,video{max-width:100%;}
 .lb-inner img,.lb-inner video{width:100%;border-radius:12px;display:block;max-height:82vh;background:#000;margin:0 auto;}
 .lb-close{position:absolute;top:-44px;right:0;background:none;border:none;color:var(--white);font-size:32px;cursor:pointer;line-height:1;opacity:.8;transition:opacity .2s;}
 .lb-close:hover{opacity:1;}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:var(--white);font-size:28px;cursor:pointer;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s;}
+.lb-nav:hover{background:rgba(255,255,255,.3);}
+.lb-prev{left:-64px;}
+.lb-next{right:-64px;}
 .cta{background:var(--blue);padding:96px 64px;}
 .cta-in{max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start;}
 .cta-buls{margin-top:24px;display:flex;flex-direction:column;gap:12px;}
@@ -197,6 +206,7 @@ footer{background:var(--ink);padding:48px 64px 32px;}
   .gal-grid{grid-template-columns:1fr 1fr;}
   footer{padding:40px 24px 24px;}.footer-top{grid-template-columns:1fr;gap:32px;}
   .videos{padding:64px 24px;}.cta{padding:64px 24px;}
+  .lb-prev{left:-8px;}.lb-next{right:-8px;}
 }
 @media(max-width:580px){
   .cards{grid-template-columns:1fr;}
@@ -350,20 +360,23 @@ footer{background:var(--ink);padding:48px 64px 32px;}
     <div class="vid-hd rv">
       <div class="lbl">Nuestro trabajo</div>
       <h2 class="ttl">Galería</h2>
-      <p class="bod">El drone KTV en acción, limpiando e inspeccionando fachadas en Colombia.</p>
+      <p class="bod">El drone KTV en acción, limpiando e inspeccionando fachadas — en Colombia y en la red internacional. Haz click para ver el video.</p>
     </div>
     <div class="gal-grid">
-      <div class="gi rv" onclick="openLB('img/vista-aerea-fachada.jpg')">
-        <img src="img/vista-aerea-fachada.jpg" alt="Vista aérea de drone KTV limpiando fachada" loading="lazy">
-        <div class="gi-cap">Vista aérea — limpieza de fachada</div>
-      </div>
-      <div class="gi rv" onclick="openLB('img/drone-limpiando-fachada.jpg')">
+      <div class="gi rv" onclick="openLB(0)">
         <img src="img/drone-limpiando-fachada.jpg" alt="Drone KTV limpiando fachada" loading="lazy">
-        <div class="gi-cap">Drone KTV en operación</div>
+        <div class="gi-play"><div class="gi-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="#66C2F8"/></svg></div></div>
+        <div class="gi-cap">Drone KTV — limpieza de fachada</div>
       </div>
-      <div class="gi rv" onclick="openLB('img/drone-edificio-120m.jpg')">
+      <div class="gi rv" onclick="openLB(1)">
         <img src="img/drone-edificio-120m.jpg" alt="Drone KTV en edificio de 120 metros" loading="lazy">
+        <div class="gi-play"><div class="gi-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="#66C2F8"/></svg></div></div>
         <div class="gi-cap">Edificio de 120 metros</div>
+      </div>
+      <div class="gi rv" onclick="openLB(2)">
+        <img src="img/vista-aerea-fachada.jpg" alt="Vista aérea de drone KTV limpiando fachada" loading="lazy">
+        <div class="gi-play"><div class="gi-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="#66C2F8"/></svg></div></div>
+        <div class="gi-cap">KTV Working Drone — Colombia</div>
       </div>
     </div>
   </div>
@@ -372,7 +385,9 @@ footer{background:var(--ink);padding:48px 64px 32px;}
 <div class="lb" id="lb" onclick="closeLBOutside(event)">
   <div class="lb-inner">
     <button class="lb-close" onclick="closeLB()">&times;</button>
-    <img id="lb-img" src="" alt="">
+    <button class="lb-nav lb-prev" onclick="navLB(-1)">&#8249;</button>
+    <video id="lb-video" controls muted playsinline style="width:100%;border-radius:12px;max-height:82vh;background:#000;display:block;"></video>
+    <button class="lb-nav lb-next" onclick="navLB(1)">&#8250;</button>
   </div>
 </div>
 
@@ -464,17 +479,38 @@ footer{background:var(--ink);padding:48px 64px 32px;}
 </a>
 
 <script>
-function openLB(src) {
-  document.getElementById('lb-img').src = src;
+var GAL_VIDEOS = [
+  'https://landing.ktvworkingdrone.com.co/videos/accion-1.mp4',
+  'https://landing.ktvworkingdrone.com.co/videos/accion-2.mp4',
+  'https://landing.ktvworkingdrone.com.co/videos/hero.mp4',
+];
+var currentVid = 0;
+function openLB(idx) {
+  currentVid = idx;
+  var vid = document.getElementById('lb-video');
+  vid.src = GAL_VIDEOS[idx];
+  vid.load(); vid.play();
   document.getElementById('lb').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 function closeLB() {
+  var vid = document.getElementById('lb-video');
+  vid.pause(); vid.src = '';
   document.getElementById('lb').classList.remove('open');
   document.body.style.overflow = '';
 }
 function closeLBOutside(e) { if (e.target === document.getElementById('lb')) closeLB(); }
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLB(); });
+function navLB(dir) {
+  currentVid = (currentVid + dir + GAL_VIDEOS.length) % GAL_VIDEOS.length;
+  var vid = document.getElementById('lb-video');
+  vid.src = GAL_VIDEOS[currentVid];
+  vid.load(); vid.play();
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeLB();
+  if (e.key === 'ArrowLeft') navLB(-1);
+  if (e.key === 'ArrowRight') navLB(1);
+});
 
 // Envío del formulario de contacto — API pública del sistema comercial
 // (mismo patrón que Alianzas: se guarda siempre en base de datos y, en
