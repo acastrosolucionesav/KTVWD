@@ -120,9 +120,9 @@ for (const tipoEdificio of niveles) for (const dificultad of niveles) {
 
   const ess = calcularCare(P, { plan: 'ESSENTIAL', ...base });
   const com = calcularCare(P, { plan: 'COMPLETE', ...base });
-  // Solo se comparan escenarios que el sistema REALMENTE cotizaría: con el piso
-  // absoluto de 35%, crearCotizacionCare rechaza los demás, así que no existen
-  // como propuesta y no tiene sentido medirles el ahorro.
+  // Solo se comparan escenarios que salen SIN pasar por aprobación de Gerencia:
+  // bajo 35% la cotización queda en PENDIENTE_APROBACION (autorización explícita,
+  // nunca automática) — la prueba de fondo es sobre lo que sale de una sin frenos.
   const cotizable = (r: typeof ess) => Math.min(r.margenP, r.internacionalAparte?.margenP ?? 1) >= P.MARGEN_MINIMO;
   if (!cotizable(ess) || !cotizable(com)) continue;
 
@@ -150,10 +150,10 @@ check(peorEss > 0, 'Essential SIEMPRE más barato que suelto');
 check(peorCom > 0, 'Complete SIEMPRE más barato que suelto');
 
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Barrido de margen con el piso ABSOLUTO de 35%: ningún escenario puede quedar
-// por debajo. Cubre la cuota año por año Y la línea del Informe Internacional.
-console.log(`\n=== Barrido de margen — piso absoluto ${pct(P.MARGEN_MINIMO)}, sin excepciones ===`);
+// Barrido de margen: cuántos escenarios caerían en PENDIENTE_APROBACION (bajo
+// 35%, autorización explícita de Gerencia) vs. cuántos salen directo. Cubre la
+// cuota año por año Y la línea del Informe Internacional.
+console.log(`\n=== Barrido de margen — piso ${pct(P.MARGEN_MINIMO)} (bajo eso, requiere aprobación de Gerencia) ===`);
 {
   let peor = { margen: Infinity, desc: '' };
   let bajoPiso = 0, total = 0, topados = 0;
@@ -175,11 +175,11 @@ console.log(`\n=== Barrido de margen — piso absoluto ${pct(P.MARGEN_MINIMO)}, 
   console.log(`  ${total.toLocaleString('es-CO')} escenarios (3 planes × combinaciones)`);
   console.log(`  Peor margen del rango: ${pct(peor.margen)} — ${peor.desc}`);
   console.log(`  Escenarios donde el tope de $6.000/m² recortó la tarifa de Basic: ${topados.toLocaleString('es-CO')}`);
-  console.log(`  Bajo el piso de ${pct(P.MARGEN_MINIMO)} → crearCotizacionCare los RECHAZA: ${bajoPiso.toLocaleString('es-CO')}`);
+  console.log(`  Bajo el piso de ${pct(P.MARGEN_MINIMO)} → queda PENDIENTE_APROBACION (requiere a Gerencia): ${bajoPiso.toLocaleString('es-CO')}`);
   for (const e of ejemplos) console.log(`    · ${e}`);
   console.log('    (el grid es un producto cartesiano: cruza fachadas de 200 m² con techos de');
-  console.log('     39.000 m², geometrías que no existen. Lo que importa es que el piso los frene,');
-  console.log('     no cuántos son — con el piso absoluto ninguno se puede vender bajo 35%.)');
+  console.log('     39.000 m², geometrías que no existen. Lo que importa es que quede bloqueado');
+  console.log('     hasta que Gerencia lo autorice — nunca que salga solo.)');
 }
 
 // ---------------------------------------------------------------------------
@@ -207,8 +207,9 @@ console.log('\n=== Puntual: tope de $6.000/m² vs. piso de 35% ===');
   for (const c of casos) console.log(`    · ${c}`);
   if (sobreTope > 0) {
     console.log('    (son fachadas chicas donde manda el cargo mínimo de proyecto, o superficie difícil');
-    console.log('     con recargo alto donde el costo de operar no cabe en $6.000/m². El 35% manda:');
-    console.log('     el precio sube y queda sobre la tarifa de lista — avisar antes de ofrecerlo.)');
+    console.log('     con recargo alto donde el costo de operar no cabe en $6.000/m². El 35% manda: el');
+    console.log('     precio sube sobre la tarifa de lista, y `sobreTarifaLista` obliga a que la');
+    console.log('     cotización pase por aprobación de Gerencia antes de poder enviarse.)');
   }
 }
 

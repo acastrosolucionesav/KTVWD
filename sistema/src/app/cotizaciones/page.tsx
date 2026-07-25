@@ -25,7 +25,12 @@ const NOMBRES_PLAN: Record<string, string> = {
 
 export default async function CotizacionesPage() {
   const session = await verifySession();
+  // Visibilidad por rol (decisión Gerencia 2026-07-25): un comercial solo ve las
+  // cotizaciones que ÉL creó — nunca las de otro comercial ni las de Gerencia.
+  // Gerencia sigue viendo el listado completo, como siempre, para poder
+  // aprobar/rechazar y hacer seguimiento de todo el equipo.
   const cotizaciones = await prisma.cotizacion.findMany({
+    where: session.rol === 'GERENCIA' ? undefined : { creadoPorId: session.userId },
     include: { cliente: true, puntual: true, care: true },
     orderBy: { creadoAt: 'desc' },
   });

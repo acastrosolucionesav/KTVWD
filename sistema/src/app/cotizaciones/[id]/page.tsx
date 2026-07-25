@@ -47,8 +47,13 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
     },
   });
   if (!c) notFound();
-
   const esGerencia = session.rol === 'GERENCIA';
+  // Visibilidad por rol (decisión Gerencia 2026-07-25): un comercial solo entra al
+  // detalle de SU PROPIA cotización, aunque adivine o reciba el link de otra — el
+  // filtro del listado no alcanza por sí solo, esta página es la que de verdad
+  // protege el dato. notFound() (no un 403) para no confirmar que el ID existe.
+  if (!esGerencia && c.creadoPorId !== session.userId) notFound();
+
   const esPuntual = c.familia === 'PUNTUAL' && c.puntual;
   const esCare = c.familia === 'CARE' && c.care;
 
