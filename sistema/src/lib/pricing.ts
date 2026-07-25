@@ -153,10 +153,14 @@ export function calcularLavado(p: Parametros, args: {
   // edificio sea diminuto — sin este piso, fachadas chicas daban margen negativo (hasta -377%).
   // (?? 0: snapshots congelados de cotizaciones anteriores a este parámetro no lo traen)
   const precioBase = Math.max(args.m2 * p.TARIFA_LISTA, p.MINIMO_PROYECTO_LAVADO ?? 0);
-  // Corrección Gerencia 2026-07-16: el recargo por edificio/dificultad SIEMPRE se
-  // traslada al precio — antes solo subía el costo interno y KTV absorbía la
-  // diferencia en silencio. Un recargo es, por definición, algo que paga el cliente.
-  const precioConRecargo = precioBase * (1 + recargo);
+  // El recargo por edificio/dificultad se traslada al precio (corrección Gerencia
+  // 2026-07-16) pero TOPADO en la tarifa de lista (decisión Gerencia 2026-07-25):
+  // con recargo máximo el metro llegaba a $7.200 y KTV quedaba fuera de mercado.
+  // Pasado el tope, el recargo sigue subiendo el costo interno y KTV lo absorbe;
+  // el piso de margen de abajo garantiza que eso nunca perfore el 35%.
+  const precioSinTope = precioBase * (1 + recargo);
+  const precioConRecargo = Math.min(precioSinTope, precioBase);
+  const topeM2Aplicado = precioConRecargo < precioSinTope;
   // Piso de margen: los días se redondean a bloques de 0.5 pero el precio escala
   // continuo por m² — justo después de cada salto de medio día, el costo sube más
   // rápido que el precio. Este piso garantiza que ningún lavado salga jamás por
@@ -175,7 +179,7 @@ export function calcularLavado(p: Parametros, args: {
   const costoTotal = costoOperacion + feeNoruega + comision;
   const margenD = precioLavado - costoTotal;
   const margenP = precioLavado > 0 ? margenD / precioLavado : 0;
-  return { dias, costoOpDia, costoOperacion, precioLavado, precioListaSinDescuento, feeNoruega, comision, costoTotal, margenD, margenP };
+  return { dias, costoOpDia, costoOperacion, precioLavado, precioListaSinDescuento, topeM2Aplicado, feeNoruega, comision, costoTotal, margenD, margenP };
 }
 
 // ============================================================================
@@ -216,13 +220,22 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
     const costoOperacion = dias * costoOpDia * (1 + recargo);
     // Sin piso de proyecto ni piso de margen aquí — se aplican una sola vez
     // abajo, sobre la suma de todos los ítems (ver comentario de arriba).
-    const precioConRecargo = m2 * p.TARIFA_LISTA * (1 + recargo);
+    // Tope de mercado (decisión Gerencia 2026-07-25): en el servicio puntual el
+    // recargo por edificio/dificultad no puede llevar el precio por m² sobre la
+    // tarifa de lista ($6.000). Con recargo máximo daba $7.200/m², fuera de
+    // mercado. El recargo sigue subiendo el COSTO interno, así que a partir de
+    // aquí lo absorbe KTV — el piso de margen de abajo es el que garantiza que
+    // eso nunca lleve el trato bajo el 35%.
+    const precioSinTope = m2 * p.TARIFA_LISTA * (1 + recargo);
+    const precioConRecargo = Math.min(precioSinTope, m2 * p.TARIFA_LISTA);
+    const topeM2Aplicado = precioConRecargo < precioSinTope;
     const diasEjecucionSistema = calcularDiasEjecucion(p, { m2Vidrio: it.m2Vidrio, m2Opaca: it.m2Opaca, dificultad: it.dificultad });
-    return { ...it, m2, dias, recargo, costoOperacion, precioConRecargo, diasEjecucionSistema };
+    return { ...it, m2, dias, recargo, costoOperacion, precioConRecargo, topeM2Aplicado, diasEjecucionSistema };
   });
 
   const sumaCostoOperacion = filas.reduce((s, f) => s + f.costoOperacion, 0);
   const sumaPrecioConRecargo = filas.reduce((s, f) => s + f.precioConRecargo, 0);
+  const sumaM2 = filas.reduce((s, f) => s + f.m2, 0);
   const sumaDias = filas.reduce((s, f) => s + f.dias, 0);
   const diasEjecucionSistema = filas.reduce((s, f) => s + f.diasEjecucionSistema, 0);
 
@@ -262,6 +275,18 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
   return {
     dias: sumaDias, costoOpDia, costoOperacion: sumaCostoOperacion, precioLavado, precioListaSinDescuento,
     pisoAplicado, feeNoruega, comision, costoTotal, margenD, margenP, diasEjecucionSistema, items,
+    // Tope de $6.000/m²: `topeM2Aplicado` avisa que el recargo se absorbió para no
+    // pasar la tarifa de lista.
+    topeM2Aplicado: filas.some((f) => f.topeM2Aplicado),
+    // Caso de conflicto entre las dos reglas: el piso de 35% exige cobrar MÁS que
+    // la tarifa de lista. Pasa con superficie difícil y recargo alto (a 600 m²/día
+    // el costo por m² no cabe en $6.000 con 35% de margen) y en fachadas bajo
+    // ~267 m², donde manda el cargo mínimo de proyecto. Manda el 35% —el precio
+    // sube— y esta bandera obliga a que Gerencia lo vea antes de ofrecerlo, porque
+    // el trato quedó por encima del techo de mercado.
+    m2Total: sumaM2,
+    precioM2Efectivo: sumaM2 > 0 ? precioLavado / sumaM2 : 0,
+    sobreTarifaLista: sumaM2 > 0 && precioLavado / sumaM2 > p.TARIFA_LISTA + 0.01,
   };
 }
 
@@ -403,18 +428,44 @@ export function calcularCare(p: Parametros, args: {
   // contrato es exactamente su precio de lista — no es un descuento sobre el
   // Informe Internacional (que nunca se descuenta, regla 4B), es la misma plata
   // distribuida en la cuota, igual que el pago diferido no es descuento.
+  // Complete: el Informe Internacional NO entra en la cuota — se factura APARTE
+  // en el año 1, a su precio normal y a la TRM vigente al momento de entregarlo
+  // (regla 8: "el II dentro de Complete se factura aparte, no prorrateado en la
+  // cuota fija"). Decisión Gerencia 2026-07-25, sobre el hallazgo de que
+  // prorratear el II hundía el margen del año 1 por debajo del 35%: el año que
+  // lo entrega pagaba su costo COMPLETO contra solo un tercio de su ingreso.
+  // Facturarlo aparte alinea ingreso y costo en el mismo año. El cliente paga
+  // exactamente el mismo total por el contrato — solo cambia cuándo.
+  const iiAparte = args.plan === 'COMPLETE' ? (insp.precioInternacional ?? null) : null;
   const informeContratoTotal =
     args.plan === 'BASIC' ? dv                                  // 1 año, 1 DV — sin desfase, ya era correcto
     : args.plan === 'ESSENTIAL' ? 2 * dv                         // DV en años 1 y 3 (año 2 sin inspección)
-    : (insp.precioInternacional ?? dv) + dv;                     // Complete: II año 1 + DV año 3
-  // Se usa el II del tramo de techo real (insp.precioInternacional), no un valor
-  // de referencia plano: en techos medianos/grandes el II vale más que el piso de
-  // mercado y un plano lo subfacturaría.
+    : dv;                                                        // Complete: solo el DV del año 3 (el II va aparte)
   const informeAnual = informeContratoTotal / contratoAnios;
 
   // Arma el resultado completo del plan para un descuento dado sobre la lista.
   function conDescuento(disc: number) {
-    const tarifaLavadaM2 = p.TARIFA_LISTA * (1 - disc) * (1 + recargo);
+    // Tope de mercado (decisión Gerencia 2026-07-25): el recargo por edificio y
+    // dificultad NO puede llevar la tarifa por m² sobre la de lista ($6.000) — a
+    // $6.840/m² (Basic con recargo máximo) KTV queda fuera de mercado justo en el
+    // plan que es la puerta de entrada.
+    //
+    // El tope se aplica limitando el FACTOR de recargo, no cortando cada plan en
+    // $6.000. Cortar cada plano en $6.000 dejaría los 3 planes en la misma tarifa
+    // con recargo alto y borraría la escalera de compromiso. Limitando el factor
+    // al valor que hace que el plan MÁS CARO (Basic) toque exactamente la lista,
+    // los tres bajan en la misma proporción y la escalera queda intacta:
+    // Basic $6.000 · Essential $5.842 · Complete $5.684.
+    //
+    // El tope tiene que cubrir los 3 planes, no solo Basic: el servicio puntual
+    // también quedó topado en $6.000/m², así que un Essential o un Complete sin
+    // tope costaría MÁS por m² que comprar el lavado suelto — exactamente lo
+    // contrario de lo que promete Care (ver Caso 3 en verify-care-20260724.ts).
+    const factorMax = 1 / (1 - (p.CARE_BASIC_DESC ?? 0.05)); // Basic toca $6.000 justo acá
+    const factorRecargo = Math.min(1 + recargo, factorMax);
+    const tarifaSinTope = p.TARIFA_LISTA * (1 - disc) * (1 + recargo);
+    const tarifaLavadaM2 = p.TARIFA_LISTA * (1 - disc) * factorRecargo;
+    const topeM2Aplicado = factorRecargo < 1 + recargo;
     const ingresoLavadas = nLavadas * args.m2 * tarifaLavadaM2;
     // La cuota anual incluye las lavadas del año + la parte anual de los
     // informes del contrato (ver `informeAnual` arriba) — nunca el informe
@@ -431,6 +482,23 @@ export function calcularCare(p: Parametros, args: {
     const comun = {
       disc, valorAnual, valorMensual: valorAnual / 12, nLavadas, contratoAnios,
       ingresoLavadas, informeAnual, informeContratoTotal,
+      tarifaLavadaM2, topeM2Aplicado,
+      // Complete: línea propia del Informe Internacional del año 1 — fuera de la
+      // cuota, con su propio margen (nunca se descuenta, regla 4B). null en los
+      // otros planes, donde el II es solo un valor de referencia opcional.
+      // `costo` es el costo TOTAL de esa línea (fee de Inotek + operación de vuelo
+      // + 7% de royalty sobre su venta), no solo los costos directos.
+      internacionalAparte: iiAparte !== null
+        ? {
+            precio: iiAparte,
+            costo: iiAparte - (insp.intMargenD ?? 0),
+            costoDirecto: costoII ?? 0,
+            margenD: insp.intMargenD,
+            margenP: insp.intMargenP,
+          }
+        : null,
+      // Lo que el cliente paga por TODO el contrato (cuotas + el II aparte si aplica).
+      totalContrato: valorAnual * contratoAnios + (iiAparte ?? 0),
       diasOperacion: diasOperacionLavadas + diasOperacionInsp, costoLavadas, feeNoruega, comision,
       costoInspeccion: undefined as number | undefined,
       costoTotal: undefined as number | undefined,
@@ -445,9 +513,12 @@ export function calcularCare(p: Parametros, args: {
     }
 
     // ESSENTIAL y COMPLETE: 3 años, año 2 sin inspección. Desglose por año.
+    // En Complete el año 1 NO carga el costo del Informe Internacional: ese
+    // informe se factura aparte, así que su costo y su ingreso viven juntos en
+    // su propia línea (`internacionalAparte`), no en la cuota.
     const c1 = args.plan === 'COMPLETE'
-      ? (costoII ?? 0) + costoLavadas + feeNoruega + comision   // Complete año 1: Informe Internacional
-      : costoDV + costoLavadas + feeNoruega + comision;          // Essential año 1: DV
+      ? costoLavadas + feeNoruega + comision                     // Complete año 1: solo lavadas (el II va aparte)
+      : costoDV + costoLavadas + feeNoruega + comision;           // Essential año 1: DV
     const c2 = costoLavadas + feeNoruega + comision;             // año 2: sin inspección
     const c3 = costoDV + costoLavadas + feeNoruega + comision;   // año 3: DV
     const porAnio = {

@@ -196,14 +196,24 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const margenD = totalCliente - costoTotalTrato;
   const margenP = totalCliente > 0 ? margenD / totalCliente : 0;
 
+  // Piso de margen ABSOLUTO del 35% (regla Gerencia reafirmada 2026-07-25): el
+  // margen no baja del 35% por ningún motivo. calcularLavadoMultiItem ya sostiene
+  // el precio del lavado sobre ese piso, pero el margen del TRATO completo puede
+  // caer igual por lo que el lavado no controla — sobre todo absorber el costo de
+  // un Diagnóstico Visual regalado. Ahí no se aprueba: se bloquea.
+  if (margenP < parametros.MARGEN_MINIMO) {
+    return {
+      error: `El margen del trato queda en ${(margenP * 100).toFixed(1)}%, por debajo del piso de ${(parametros.MARGEN_MINIMO * 100).toFixed(0)}%. No se puede generar: revise el descuento, el alcance o el Diagnóstico Visual bonificado antes de continuar.`,
+    };
+  }
   // El descuento por volumen es automático (política) y no dispara aprobación;
-  // solo el descuento MANUAL por encima del de volumen, o recortar días, la
-  // dispara. Un margen general bajo 35% (p. ej. por absorber un DV de regalo)
-  // también la dispara.
+  // solo el descuento MANUAL por encima del de volumen, o recortar días, la dispara.
+  // También la dispara un precio por m² sobre la tarifa de lista: el tope de
+  // $6.000/m² y el piso de 35% son incompatibles en superficie difícil con recargo
+  // alto (y en fachadas muy chicas manda el cargo mínimo de proyecto). Manda el
+  // 35%, pero el trato queda sobre el techo de mercado y Gerencia tiene que verlo.
   const requiereAprobacion =
-    descuentoManualPct > descuentoVolumenPct || requiereAprobacionPorDias
-      ? true
-      : margenP < parametros.MARGEN_MINIMO;
+    descuentoManualPct > descuentoVolumenPct || requiereAprobacionPorDias || !!lavado?.sobreTarifaLista;
 
   // Ítems de lavado a persistir (Cotizacion.itemsLavado) — cada fila conserva
   // su nombre editable y su propio desglose de costo/fee/precio ya repartido
@@ -527,15 +537,23 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const dificultad = String(formData.get('dificultad') || 'BAJO') as NivelRecargo;
 
   const todos = calcularCareTodos(parametros, { m2, techo, superficie, tipoEdificio, dificultad });
-  // Semáforo de margen (spec_calcularCare.md 2026-07-14): bajo 35% requiere aprobación
-  // de Gerencia (igual que Familia 1); bajo 25% es un piso absoluto — ni Gerencia puede
-  // enviarla, hay que ajustar parámetros o alcance primero. Para Complete, el margen de
-  // CADA año de contrato cuenta (el peor de los 3, nunca un promedio que esconda el año 1).
-  const margenesMinimos = Object.values(todos).map((t) => t.margenP);
-  if (margenesMinimos.some((m) => m < 0.25)) {
-    return { error: 'El margen de esta cotización cae por debajo del mínimo absoluto (25%) en al menos un paquete o año de contrato. No se puede generar — ajuste los parámetros o el alcance antes de continuar.' };
+  // Piso de margen ABSOLUTO del 35% (regla Gerencia reafirmada 2026-07-25): el
+  // margen no baja del 35% por ningún motivo — ya no hay banda 25–35% que se
+  // pudiera aprobar. Para Essential y Complete cuenta el margen de CADA año del
+  // contrato (el peor, nunca un promedio que esconda el año más ajustado), y en
+  // Complete cuenta además la línea del Informe Internacional, que se factura
+  // aparte y por lo tanto tiene su propio margen.
+  const margenesMinimos = Object.values(todos).map((t) =>
+    Math.min(t.margenP, t.internacionalAparte?.margenP ?? 1),
+  );
+  const peorMargen = Math.min(...margenesMinimos);
+  if (peorMargen < parametros.MARGEN_MINIMO) {
+    return {
+      error: `El margen cae a ${(peorMargen * 100).toFixed(1)}% en al menos un paquete o año de contrato, por debajo del piso de ${(parametros.MARGEN_MINIMO * 100).toFixed(0)}%. No se puede generar: ajuste el alcance o los parámetros antes de continuar.`,
+    };
   }
-  const requiereAprobacion = margenesMinimos.some((m) => m < parametros.MARGEN_MINIMO);
+  // Con el piso ya garantizado arriba, el margen no puede disparar aprobación.
+  const requiereAprobacion = false;
 
   const careData = {
     planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,

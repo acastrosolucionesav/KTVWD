@@ -183,6 +183,8 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                   <div>
                     <h3 className="text-[11px] font-bold uppercase text-[#66C2F8] mb-1">{NOMBRES_PLAN.BASIC}{c.care!.planRecomendado === 'BASIC' ? ' (recomendado)' : ''} · 1 año</h3>
                     <dl className="grid grid-cols-2 gap-y-1 text-sm">
+                      <dt className="text-gray-400">Tarifa por m²</dt>
+                      <dd>{cop(t.tarifaLavadaM2)}{t.topeM2Aplicado ? ' · topada en la lista de $6.000' : ''}</dd>
                       <dt className="text-gray-400">Días de operación / año</dt><dd>{t.diasOperacion}</dd>
                       <dt className="text-gray-400">Costo lavadas ({t.nLavadas}/año)</dt><dd>{cop(t.costoLavadas)}</dd>
                       <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(t.costoInspeccion)}</dd>
@@ -216,8 +218,22 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                         muestra el margen más bajo — cobra 1/3 del informe pero paga su costo
                         completo. Es la lectura por año que pide Gerencia, no un promedio. */}
                     <p className="text-[11px] text-gray-500 mb-2">
-                      Cuota anual: lavadas {cop(t.ingresoLavadas)} + informe prorrateado {cop(t.informeAnual)} = <b className="text-gray-300">{cop(t.valorAnual)}</b>
-                      {' '}· informes del contrato completo: {cop(t.informeContratoTotal)} en {t.contratoAnios} años
+                      Tarifa {cop(t.tarifaLavadaM2)}/m²{t.topeM2Aplicado ? ' (topada en la lista de $6.000)' : ''}
+                      {' '}· Cuota anual: lavadas {cop(t.ingresoLavadas)} + informe prorrateado {cop(t.informeAnual)} = <b className="text-gray-300">{cop(t.valorAnual)}</b>
+                    </p>
+                    {t.internacionalAparte && (
+                      <p className="text-[11px] text-gray-500 mb-2">
+                        Informe Internacional <b className="text-gray-300">facturado aparte</b> en el año 1: {cop(t.internacionalAparte.precio)}
+                        {' '}· costo {cop(t.internacionalAparte.costo)} · margen{' '}
+                        <b className={(t.internacionalAparte.margenP ?? 0) < 0.35 ? 'text-red-400' : 'text-emerald-400'}>
+                          {((t.internacionalAparte.margenP ?? 0) * 100).toFixed(1)}%
+                        </b>
+                        {' '}— no entra en la cuota, así que el año 1 no carga su costo.
+                      </p>
+                    )}
+                    <p className="text-[11px] text-gray-500 mb-2">
+                      Total del contrato para el cliente: <b className="text-gray-300">{cop(t.totalContrato)}</b>
+                      {' '}({t.contratoAnios} cuotas de {cop(t.valorAnual)}{t.internacionalAparte ? ` + ${cop(t.internacionalAparte.precio)} del informe` : ''})
                     </p>
                     <div className="grid grid-cols-3 gap-3">
                       {([1, 2, 3] as const).map((anio) => {

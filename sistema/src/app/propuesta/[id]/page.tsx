@@ -51,7 +51,7 @@ const DESC_INTERNACIONAL = 'Soporte técnico bajo estándar internacional KTV �
 const CARACTERISTICAS_CARE: Record<string, string[]> = {
   BASIC: ['Contrato de 1 año', '1 lavada de fachada al año', 'Diagnóstico Visual KTV cada año', 'Tarifa preferencial frente al servicio puntual'],
   ESSENTIAL: ['Contrato de 3 años', '1 lavada de fachada al año (3 en total)', 'Diagnóstico Visual KTV en los años 1 y 3', 'Año 2 sin inspección — se mantiene la lavada', 'Prioridad de agenda preferente', 'Mejor tarifa por m² que Basic'],
-  COMPLETE: ['Contrato de 3 años', '2 lavadas de fachada al año (6 en total)', 'Año 1: Informe Internacional Inotek (Noruega)', 'Año 2: sin inspección — se mantienen las 2 lavadas', 'Año 3: Diagnóstico Visual KTV', 'Prioridad máxima + atención de urgencias', 'La mejor tarifa por m² de todos los planes'],
+  COMPLETE: ['Contrato de 3 años', '2 lavadas de fachada al año (6 en total)', 'Año 1: Informe Internacional Inotek (Noruega) incluido — se factura al entregarlo, fuera de la cuota', 'Año 2: sin inspección — se mantienen las 2 lavadas', 'Año 3: Diagnóstico Visual KTV', 'Prioridad máxima + atención de urgencias', 'La mejor tarifa por m² de todos los planes'],
 };
 
 // Destaque visual por plan — mismo tratamiento que el catálogo público
@@ -312,7 +312,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                       </div>
                       <div className="bg-[#EBF8FF] border border-[#66C2F8]/40 rounded-lg px-2.5 py-2 text-[11px] text-gray-700">
                         {paq.plan === 'COMPLETE' ? (
-                          <><b className="text-[#171E27]">Año 1:</b> Informe Internacional Inotek (Noruega) · <b className="text-[#171E27]">Año 2:</b> sin inspección (se mantienen las 2 lavadas) · <b className="text-[#171E27]">Año 3:</b> Diagnóstico Visual KTV (con IA) · 2 lavadas de fachada al año, los 3 años</>
+                          <><b className="text-[#171E27]">Año 1:</b> Informe Internacional Inotek (Noruega), incluido y facturado al entregarlo · <b className="text-[#171E27]">Año 2:</b> sin inspección (se mantienen las 2 lavadas) · <b className="text-[#171E27]">Año 3:</b> Diagnóstico Visual KTV (con IA) · 2 lavadas de fachada al año, los 3 años</>
                         ) : paq.plan === 'ESSENTIAL' ? (
                           <><b className="text-[#171E27]">Diagnóstico Visual KTV</b> (con IA) en los años 1 y 3 (año 2 sin inspección) · 1 lavada de fachada al año · contrato de 3 años</>
                         ) : (
@@ -337,7 +337,11 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                     <span className="font-bold text-[#171E27] shrink-0">{cop(dto.care.informeInternacional.precioTotal)}</span>
                   </div>
                   <p className="px-4 pb-3 text-xs text-gray-400">
-                    En <b>KTV Care Complete</b> ya viene incluido en el año 1 (referencia de lo que recibe sin costo adicional); en <b>Basic</b> y <b>Essential</b> es un servicio independiente, opcional y no incluido en el valor mostrado arriba — se cotiza y factura aparte solo si lo solicita.
+                    <b>Incluido en su programa KTV Care Complete</b> — se entrega en el año 1 y se factura en ese momento,
+                    por fuera de la cuota mensual (por eso la cuota mostrada arriba no lo incluye). No es un servicio
+                    opcional ni un costo añadido: ya forma parte del programa que contrata.
+                    En <b>Basic</b> y <b>Essential</b> sí es un servicio independiente y opcional, no incluido en el valor
+                    mostrado arriba — se cotiza y factura solo si lo solicita.
                   </p>
                 </div>
               )}
