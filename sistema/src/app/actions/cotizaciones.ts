@@ -545,14 +545,17 @@ export async function extenderVigencia(cotizacionId: string) {
   revalidatePath(`/propuesta/${c.linkToken}`);
 }
 
-// Borrado — solo GERENCIA, solo mientras esté en BORRADOR (nunca algo que ya
-// se le mostró o envió a un cliente real, para no perder trazabilidad).
+// Borrado — solo GERENCIA. Permitido en BORRADOR (nunca se mostró a nadie) y
+// en RECHAZADA (Gerencia la rechazó antes de que el link se activara — nunca
+// llegó a un cliente real, ver rechazarCotizacion). Nunca en ENVIADA/APROBADA/
+// PENDIENTE_APROBACION: esas si pudieron llegar a un cliente y no se puede
+// perder esa trazabilidad (decisión Gerencia 2026-07-25).
 export async function eliminarCotizacion(cotizacionId: string) {
   await requireRol('GERENCIA');
   const c = await prisma.cotizacion.findUnique({ where: { id: cotizacionId } });
   if (!c) return { error: 'La cotización ya no existe.' };
-  if (c.estado !== 'BORRADOR') {
-    return { error: 'Solo se pueden borrar cotizaciones en estado Borrador — esta ya fue aprobada, rechazada o enviada.' };
+  if (c.estado !== 'BORRADOR' && c.estado !== 'RECHAZADA') {
+    return { error: 'Solo se pueden borrar cotizaciones en Borrador o Rechazadas — esta ya fue aprobada o enviada a un cliente.' };
   }
   await prisma.cotizacion.delete({ where: { id: cotizacionId } });
   revalidatePath('/cotizaciones');
