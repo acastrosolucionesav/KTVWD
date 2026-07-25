@@ -105,17 +105,6 @@ img,video{max-width:100%;}
 .sc-n{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px;}
 .sc-d{font-size:14.5px;font-weight:400;color:var(--muted);line-height:1.7;margin-bottom:20px;flex:1;}
 .sc-btn{align-self:flex-start;}
-.insp{background:var(--off);}
-.insp-in{max-width:1200px;margin:0 auto;}
-.insp-hd{max-width:720px;margin-bottom:48px;}
-.insp-cards{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
-.ic-card{background:var(--white);border:1px solid #E2E8F0;border-radius:var(--r);padding:36px 32px;}
-.ic-card.feat{background:var(--navy);border-color:transparent;}
-.ic-card h3{font-size:19px;font-weight:800;color:var(--ink);margin-bottom:10px;}
-.ic-card.feat h3{color:var(--white);}
-.ic-card p{font-size:14.5px;color:var(--muted);line-height:1.75;}
-.ic-card.feat p{color:rgba(255,255,255,.9);}
-.insp-cta{margin-top:32px;}
 .why{background:var(--off);}
 .why-in{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:center;}
 .why-cta{margin-top:24px;}
@@ -215,7 +204,6 @@ footer{background:var(--blue);padding:48px 64px 0;}
   .intro{padding:56px 24px;}.sec{padding:64px 24px;}
   .why-in,.cta-in,.al-in,.nosotros-in{grid-template-columns:1fr;gap:40px;}
   .cards{grid-template-columns:1fr 1fr;}
-  .insp-cards{grid-template-columns:1fr;}
   .gal-grid{grid-template-columns:1fr 1fr;}
   footer{padding:40px 24px 0;}.footer-top{grid-template-columns:1fr;gap:32px;}
   .footer-bottom{padding:16px 24px;}
@@ -255,7 +243,6 @@ footer{background:var(--blue);padding:48px 64px 0;}
   <ul class="nav-links">
     <li><a href="#inicio" class="active">Inicio</a></li>
     <li><a href="#servicios">Servicios</a></li>
-    <li><a href="#inspeccion">Inspección</a></li>
     <li><a href="#alianzas">Alianzas</a></li>
     <li><a href="#nosotros">Sobre Nosotros</a></li>
     <li><a href="#galeria">Galería</a></li>
@@ -299,7 +286,7 @@ footer{background:var(--blue);padding:48px 64px 0;}
       <div class="sc rv"><img class="sc-img" src="img/lavado-ventanas.jpg" alt="Drone KTV lavando ventanas"><div class="sc-body"><div class="sc-n">Lavado de Ventanas</div><p class="sc-d">Incorporar drones a nuestros servicios de limpieza de ventanas no es solo una cuestión de seguridad; es un paso hacia un mantenimiento más frecuente y proactivo. La eficiencia de nuestra tecnología de drones permite tiempos de respuesta más rápidos, su propiedad lucirá lo mejor posible sin interrumpir las operaciones de su negocio.</p><a href="#contacto" class="btn btn-blue sc-btn">Obtener una cotización</a></div></div>
       <div class="sc rv"><img class="sc-img" src="img/paneles-solares.jpg" alt="Drone KTV lavando páneles solares"><div class="sc-body"><div class="sc-n">Lavado de Páneles Solares</div><p class="sc-d">Este método no daña la superficie del panel. Nuestros métodos se centran en la limpieza sin escobillas que no daña mecánicamente las superficies. El trabajo se realiza sin los desafíos de salud y seguridad tradicionales relacionados con el trabajo en altura, lo que lo hace más seguro tanto para los trabajadores como para el entorno circundante.</p><a href="#contacto" class="btn btn-blue sc-btn">Obtener una cotización</a></div></div>
       <div class="sc rv"><img class="sc-img" src="img/video-con-drone.jpg" alt="Vista aérea de Bogotá capturada con drone"><div class="sc-body"><div class="sc-n">Video con Drone</div><p class="sc-d">Llegamos a esas zonas difíciles de grabar, capturando tomas aéreas en alta resolución, con una buena calidad visual. De esta forma creamos tomas memorables con propósitos comunicacionales y/o informativos. Una escena aérea pone en contexto la narrativa de tu video de tipo documental o entretenimiento.</p><a href="#contacto" class="btn btn-blue sc-btn">Obtener una cotización</a></div></div>
-      <div class="sc rv"><img class="sc-img" src="img/fotogrametria.jpg" alt="Mapa térmico aéreo de fachada, análisis por fotogrametría"><div class="sc-body"><div class="sc-n">Fotogrametría</div><p class="sc-d">Modelado y levantamiento aéreo de precisión para proyectos de construcción, topografía e inventario de activos.</p><a href="#contacto" class="btn btn-blue sc-btn">Obtener una cotización</a></div></div>
+      <div class="sc rv"><img class="sc-img" src="img/fotogrametria.jpg" alt="Mapa térmico aéreo de fachada, inspección con drone"><div class="sc-body"><div class="sc-n">Inspección de Fachadas</div><p class="sc-d">Conozca el estado real de su fachada antes de que un problema visible se vuelva un problema costoso. Registro fotográfico y de video en alta resolución, con análisis térmico disponible, para hallazgos y recomendaciones de mantenimiento priorizadas por nivel de urgencia.</p><a href="#contacto" class="btn btn-blue sc-btn">Obtener una cotización</a></div></div>
       <div class="sc rv"><img class="sc-img" src="img/impermeabilizacion.jpg" alt="Drone KTV aplicando impermeabilización en fachada"><div class="sc-body"><div class="sc-n">Impermeabilización</div><p class="sc-d">Aplicación de recubrimiento protector sin contacto que extiende la vida útil de la fachada.</p><a href="#contacto" class="btn btn-blue sc-btn">Obtener una cotización</a></div></div>
     </div>
   </div>
@@ -311,28 +298,6 @@ footer{background:var(--blue);padding:48px 64px 0;}
     Contáctanos vía WhatsApp
   </a>
 </div>
-
-<!-- 3. INSPECCIÓN — SECCIÓN NUEVA -->
-<section class="sec insp" id="inspeccion">
-  <div class="insp-in">
-    <div class="insp-hd rv">
-      <div class="lbl">Diagnóstico técnico</div>
-      <h2 class="ttl">Inspección de Fachadas con Drone</h2>
-      <p class="bod">Conozca el estado real de su fachada antes de que un problema visible se vuelva un problema costoso. KTV Working Drone Colombia ofrece dos niveles de inspección, según lo que su edificio necesite.</p>
-    </div>
-    <div class="insp-cards">
-      <div class="ic-card rv">
-        <h3>Diagnóstico Visual KTV</h3>
-        <p>Análisis asistido por IA, validado por nuestro equipo técnico. Registro fotográfico y de video en alta resolución, hallazgos y recomendaciones de mantenimiento priorizadas por nivel de urgencia.</p>
-      </div>
-      <div class="ic-card feat rv">
-        <h3>Informe Internacional KTV</h3>
-        <p>Soporte técnico bajo estándar internacional, elaborado con respaldo de ingeniería de Inotek (Noruega). Incluye análisis térmico y cuantificación de pérdida energética, para edificios que requieren el máximo nivel de respaldo técnico ante due diligence, auditorías o interventoría.</p>
-      </div>
-    </div>
-    <div class="insp-cta rv"><a href="#contacto" class="btn btn-blue">Solicitar propuesta</a></div>
-  </div>
-</section>
 
 <!-- 4. VENTAJAS -->
 <section class="sec why" id="ventajas">
