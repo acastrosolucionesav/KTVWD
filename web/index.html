@@ -435,7 +435,7 @@ footer{background:var(--blue);padding:48px 64px 0;}
         <div class="form-ok" id="form-ok">
           <div class="oi">✅</div>
           <h4>¡Solicitud enviada!</h4>
-          <p>Le contactaremos en menos de 24 horas a su correo y WhatsApp.</p>
+          <p>Su solicitud llegó a nuestro equipo comercial. Le contactaremos en menos de 24 horas.</p>
           <a href="https://wa.me/573142358441?text=Hola%2C%20acabo%20de%20enviar%20una%20solicitud%20de%20cotizaci%C3%B3n%20desde%20su%20p%C3%A1gina%20web." target="_blank" class="wa-btn">También escribir por WhatsApp →</a>
         </div>
       </div>
@@ -530,11 +530,11 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'ArrowRight') navLB(1);
 });
 
-// Envío del formulario de contacto — API pública del sistema comercial
-// (mismo patrón que Alianzas: se guarda siempre en base de datos y, en
-// segundo plano, se crea un lead en Pipedrive). CORS abierto en ese endpoint
-// porque este sitio corre en un dominio distinto (ktvworkingdrone.com.co).
-const CONTACTO_API = 'https://propuestas.ktvworkingdrone.com.co/api/contacto-web';
+// Envío del formulario de contacto — contacto.php, en este mismo sitio.
+// Decisión de Gerencia: las solicitudes van solo al correo, no al sistema de
+// cotizaciones; ahí se les da manejo manualmente. Por eso no depende de la
+// base de datos ni de Pipedrive, solo del PHP del propio Hostinger.
+const CONTACTO_API = 'contacto.php';
 
 function sendForm() {
   var n = document.getElementById('fn').value.trim();
