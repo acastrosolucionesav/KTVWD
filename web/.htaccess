@@ -1,0 +1,54 @@
+# Configuración del sitio estático en Hostinger (servidor LiteSpeed/Apache).
+
+DirectoryIndex index.html
+
+# --- Direcciones que existían en el WordPress anterior -----------------------
+# Ya están compartidas e indexadas en Google, así que se redirigen en vez de
+# dejarlas dar error. Redirección 301 (permanente) para que los buscadores
+# trasladen el posicionamiento a la dirección nueva.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Forzar HTTPS. El .htaccess del WordPress anterior ya lo hacía; al moverlo se
+  # perdió, y quien entraba por http:// podía ver un error antes del sitio.
+  # Se consulta también X-Forwarded-Proto: sin esa segunda condición, detrás de
+  # un proxy/CDN la regla no se daría por satisfecha nunca y entraría en un
+  # bucle infinito de redirecciones.
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+  # /galeria era una página propia; ahora es una sección del home.
+  # NE (noescape) es obligatorio aquí: sin él Apache convierte el # en %23 y la
+  # redirección termina en una ruta literal inválida en vez de en el ancla.
+  RewriteRule ^galeria/?$ /#galeria [R=301,NE,L]
+
+  # Restos de WordPress que ya no existen: feeds, API, panel de administración.
+  RewriteRule ^(feed|comments/feed)/?$ / [R=301,L]
+  RewriteRule ^wp-(admin|login|json|content|includes)(/.*)?$ / [R=301,L]
+  RewriteRule ^(xmlrpc|wp-login|wp-signup)\.php$ / [R=301,L]
+</IfModule>
+
+# Cualquier otra dirección que no exista muestra la portada en vez de un error.
+ErrorDocument 404 /index.html
+
+# --- Caché ------------------------------------------------------------------
+<IfModule mod_headers.c>
+  # El HTML no se guarda en caché: así cualquier cambio que subamos se ve de
+  # inmediato al recargar, sin tener que forzar la recarga con Cmd+Shift+R.
+  <FilesMatch "\.(html|php)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+
+  # Las imágenes y videos sí se guardan un año: no cambian y así el sitio carga
+  # mucho más rápido en visitas siguientes.
+  <FilesMatch "\.(jpg|jpeg|png|webp|gif|ico|mp4|webm|svg)$">
+    Header set Cache-Control "public, max-age=31536000"
+  </FilesMatch>
+</IfModule>
+
+# --- Compresión -------------------------------------------------------------
+# El HTML pesa ~40KB; comprimido baja a una fracción de eso.
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript image/svg+xml
+</IfModule>
