@@ -87,11 +87,11 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: 
   return (
     <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
       <h1 className="text-lg font-extrabold text-[#171E27]">
-        {esCorreccion ? 'Corregir cotización enviada — Familia 1 (servicio puntual)' : existente ? 'Editar cotización — Familia 1 (servicio puntual)' : 'Cotización sencilla — Familia 1 (servicio puntual)'}
+        {esCorreccion ? 'Corregir cotización aceptada — Familia 1 (servicio puntual)' : existente ? 'Editar cotización — Familia 1 (servicio puntual)' : 'Cotización sencilla — Familia 1 (servicio puntual)'}
       </h1>
       {esCorreccion && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Esta cotización ya se envió/aprobó — no se edita directamente. Al guardar se creará una <b>versión nueva</b> con estos datos corregidos, y el link de la propuesta original se desactivará automáticamente.
+          El cliente ya aceptó esta cotización — no se edita directamente. Al guardar se creará una <b>versión nueva</b> con estos datos corregidos, y el link de la propuesta original se desactivará automáticamente.
         </p>
       )}
       {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}

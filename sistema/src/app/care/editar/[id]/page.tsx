@@ -11,12 +11,12 @@ export default async function EditarCotizacionCarePage({ params }: { params: Pro
     include: { cliente: true, care: true, versionNueva: { select: { id: true } } },
   });
   if (!c || c.familia !== 'CARE' || !c.care) notFound();
-  if (c.estado !== 'BORRADOR' && c.versionNueva) redirect(`/cotizaciones/${c.versionNueva.id}`);
+  if (c.versionNueva) redirect(`/cotizaciones/${c.versionNueva.id}`);
 
   const care = c.care;
   return (
     <CareForm
-      esCorreccion={c.estado !== 'BORRADOR'}
+      esCorreccion={c.aceptadaPorCliente}
       existente={{
         id: c.id,
         clienteNombre: c.cliente.nombre,

@@ -324,7 +324,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         )}
         {!c.versionNueva && (esPuntual || esCare) && (
           <a href={esPuntual ? `/cotizador/editar/${c.id}` : `/care/editar/${c.id}`} className="bg-white border border-[#66C2F8] text-[#171E27] text-sm font-bold rounded-full px-5 py-2">
-            {c.estado === 'BORRADOR' ? 'Editar' : 'Corregir (crea versión nueva)'}
+            {c.aceptadaPorCliente ? 'Corregir (crea versión nueva)' : 'Editar'}
           </a>
         )}
         <a href={`/propuesta/${c.linkToken}`} target="_blank" className="text-sm text-[#171E27] underline self-center">Ver propuesta pública (lo que abre el cliente) →</a>

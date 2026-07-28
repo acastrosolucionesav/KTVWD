@@ -293,12 +293,17 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       include: { versionNueva: { select: { idTrazabilidad: true } } },
     });
     if (!c) return { error: 'La cotización ya no existe.' };
-    if (c.estado === 'BORRADOR') {
-      existente = c;
-    } else if (c.versionNueva) {
+    if (c.versionNueva) {
       return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
+    } else if (!c.aceptadaPorCliente) {
+      // Editable en el mismo registro mientras el cliente no la haya aceptado
+      // (decisión Gerencia 2026-07-28): antes de eso todo es negociación — el
+      // estado se recalcula solo (vuelve a Borrador/Pendiente de aprobación) para
+      // que el comercial tenga que volver a marcarla como enviada a propósito,
+      // nunca quede diciendo "Enviada" con números que el cliente no vio.
+      existente = c;
     } else {
-      // No editable en el mismo registro (ya enviada/aprobada/rechazada): se
+      // Ya aceptada por el cliente: no se edita en el mismo registro — se
       // corrige creando una versión nueva, ver bloque de corrección más abajo.
       anterior = c;
     }
@@ -676,10 +681,12 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       include: { versionNueva: { select: { idTrazabilidad: true } } },
     });
     if (!c) return { error: 'La cotización ya no existe.' };
-    if (c.estado === 'BORRADOR') {
-      existente = c;
-    } else if (c.versionNueva) {
+    if (c.versionNueva) {
       return { error: `Esta cotización ya fue corregida — edite la versión nueva (${c.versionNueva.idTrazabilidad}).` };
+    } else if (!c.aceptadaPorCliente) {
+      // Editable en el mismo registro mientras el cliente no la haya aceptado
+      // (decisión Gerencia 2026-07-28) — ver el mismo mecanismo en crearCotizacionPuntual.
+      existente = c;
     } else {
       anterior = c;
     }

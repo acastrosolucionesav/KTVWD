@@ -12,7 +12,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
   });
   if (!c || c.familia !== 'PUNTUAL' || !c.puntual) notFound();
   // Ya se corrigió una vez — siempre se edita/corrige la versión más reciente.
-  if (c.estado !== 'BORRADOR' && c.versionNueva) redirect(`/cotizaciones/${c.versionNueva.id}`);
+  if (c.versionNueva) redirect(`/cotizaciones/${c.versionNueva.id}`);
 
   const p = c.puntual;
   // itemsLavado es lo nuevo (spec_multi_item_lavado_20260722.md). Una cotización
@@ -32,7 +32,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
       : [];
   return (
     <CotizadorForm
-      esCorreccion={c.estado !== 'BORRADOR'}
+      esCorreccion={c.aceptadaPorCliente}
       existente={{
         id: c.id,
         clienteNombre: c.cliente.nombre,
