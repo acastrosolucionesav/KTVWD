@@ -54,7 +54,7 @@ export default async function CotizacionesPage({ searchParams }: { searchParams:
       ...(estadoFiltro ? { estado: estadoFiltro } : {}),
       ...(q?.trim() ? { cliente: { nombre: { contains: q.trim(), mode: 'insensitive' } } } : {}),
     },
-    include: { cliente: true, puntual: true, care: true },
+    include: { cliente: true, puntual: true, care: true, versionNueva: { select: { idTrazabilidad: true } } },
     orderBy: { creadoAt: 'desc' },
   });
 
@@ -94,13 +94,23 @@ export default async function CotizacionesPage({ searchParams }: { searchParams:
       </form>
 
       <div className="space-y-6">
-        {Array.from(grupos.entries()).map(([clienteNombre, items]) => (
+        {Array.from(grupos.entries()).map(([clienteNombre, items]) => {
+          // Una corrección no reemplaza el registro anterior — crea uno nuevo y
+          // deja el viejo con versionNuevaId apuntando a él (ver crearCotizacion*
+          // en actions/cotizaciones.ts). Sin esta separación, un cliente con
+          // varias rondas de "el cliente pidió otro descuento" acumula una fila
+          // por cada intento y ya no se distingue cuál es la vigente — así que
+          // acá solo se muestran de entrada las que NADIE reemplazó; el resto
+          // queda colapsado como historial.
+          const vigentes = items.filter((c) => !c.versionNueva);
+          const historicas = items.filter((c) => c.versionNueva);
+          return (
           <div key={clienteNombre}>
             <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
               {clienteNombre} {items.length > 1 && <span className="text-gray-300 font-normal normal-case">· {items.length} cotizaciones</span>}
             </h2>
             <div className="space-y-3">
-              {items.map((c) => (
+              {vigentes.map((c) => (
                 <Link key={c.id} href={`/cotizaciones/${c.id}`}
                   className="block bg-white rounded-xl border border-gray-200 hover:border-[#66C2F8] p-4 flex items-center justify-between">
                   <div>
@@ -118,9 +128,35 @@ export default async function CotizacionesPage({ searchParams }: { searchParams:
                   </div>
                 </Link>
               ))}
+              {vigentes.length === 0 && historicas.length > 0 && (
+                <p className="text-xs text-gray-400 italic">Todas las cotizaciones de este cliente fueron reemplazadas por una corrección — ábralas desde el historial de abajo.</p>
+              )}
+              {historicas.length > 0 && (
+                <details className="group">
+                  <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 select-none list-none flex items-center gap-1">
+                    <span className="group-open:rotate-90 transition-transform inline-block">▸</span>
+                    Ver historial de correcciones ({historicas.length})
+                  </summary>
+                  <div className="space-y-2 mt-2">
+                    {historicas.map((c) => (
+                      <Link key={c.id} href={`/cotizaciones/${c.id}`}
+                        className="block bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 p-3 flex items-center justify-between opacity-70">
+                        <div>
+                          <div className="text-sm text-gray-500">{c.cliente.nombre}</div>
+                          <div className="text-xs text-gray-400">
+                            {c.idTrazabilidad} · reemplazada por <b>{c.versionNueva?.idTrazabilidad}</b>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${ESTADO_COLOR[c.estado]}`}>{NOMBRES_ESTADO[c.estado] ?? c.estado}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           </div>
-        ))}
+          );
+        })}
         {cotizaciones.length === 0 && (
           <p className="text-gray-400">{q || estadoFiltro ? 'Ninguna cotización coincide con el filtro.' : 'Aún no hay cotizaciones.'}</p>
         )}
