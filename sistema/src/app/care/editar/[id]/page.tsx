@@ -30,6 +30,7 @@ export default async function EditarCotizacionCarePage({ params }: { params: Pro
         dificultad: care.dificultad ?? 'BAJO',
         formaPago: care.formaPago,
         observaciones: c.observaciones ?? '',
+        descuentoPct: care.descuentoManualPct,
       }}
     />
   );

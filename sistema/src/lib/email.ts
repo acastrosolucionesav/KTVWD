@@ -66,6 +66,15 @@ export async function enviarCorreoAprobacionPendiente(args: { idTrazabilidad: st
   `));
 }
 
+export async function enviarCorreoPropuestaAbierta(args: {
+  destinatario: string; comercialNombre: string; idTrazabilidad: string; clienteNombre: string; urlDetalle: string;
+}) {
+  await enviar(args.destinatario, `${args.clienteNombre} abrió su propuesta — ${args.idTrazabilidad}`, envoltura('El cliente abrió su propuesta', `
+    <p style="color:#374151;font-size:14px">Hola ${args.comercialNombre}, <b>${args.clienteNombre}</b> acaba de abrir por primera vez el enlace de su propuesta <b>${args.idTrazabilidad}</b>.</p>
+    ${boton(args.urlDetalle, 'Ver cotización')}
+  `));
+}
+
 export async function enviarCorreoBienvenida(destinatario: string, nombre: string, urlActivar: string) {
   await enviar(destinatario, 'Bienvenido al Sistema Comercial KTV', envoltura(`Bienvenido, ${nombre}`, `
     <p style="color:#374151;font-size:14px">Se creó su cuenta en el Sistema Comercial KTV con el correo <b>${destinatario}</b>. Cree su contraseña para activarla y empezar a usarla.</p>

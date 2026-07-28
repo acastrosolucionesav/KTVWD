@@ -67,6 +67,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
         superficie: c.care!.superficie ?? 'MIXTA',
         tipoEdificio: c.care!.tipoEdificio ?? 'BAJO',
         dificultad: c.care!.dificultad ?? 'BAJO',
+        descuentoManualPct: c.care!.descuentoManualPct ?? 0,
       })
     : null;
 
@@ -180,6 +181,9 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
           ) : careTodos ? (
             <div className="space-y-4">
               <p className="text-xs text-gray-400">El cliente puede elegir cualquiera de los 3 — el margen se evalúa para cada uno. El descuento por volumen nunca baja el margen del 35%.</p>
+              {c.care!.descuentoManualPct != null && (
+                <p className="text-xs text-amber-400">🔒 Descuento manual del comercial: <b>{c.care!.descuentoManualPct.toFixed(1)}%</b> — solo se aplica al plan donde supera al de compromiso/volumen (ver "Descuento" de cada plan abajo).</p>
+              )}
 
               {/* Basic: 1 año, DV entregado. Margen único. */}
               {(() => {
@@ -195,7 +199,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                       <dt className="text-gray-400">Costo inspección (DV)</dt><dd>{cop(t.costoInspeccion)}</dd>
                       <dt className="text-gray-400">Fee Noruega (confidencial)</dt><dd>{cop(t.feeNoruega)}</dd>
                       <dt className="text-gray-400">Comisión comercial (año 1)</dt><dd>{cop(t.comision)}</dd>
-                      <dt className="text-gray-400">Descuento aplicado</dt><dd>{(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}</dd>
+                      <dt className="text-gray-400">Descuento aplicado</dt><dd>{(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}% / manual {(t.manualDisc * 100).toFixed(1)}%){t.descuentoLimitadoPorMargen ? ' · recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}</dd>
                       <dt className="text-gray-400">Costo total / año</dt><dd>{cop(t.costoTotal)}</dd>
                       <dt className="text-gray-400">Margen</dt>
                       <dd className={t.margenP < 0.35 ? 'text-red-400 font-bold' : t.margenP < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
@@ -216,7 +220,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                       {NOMBRES_PLAN[plan]}{c.care!.planRecomendado === plan ? ' (recomendado)' : ''} · 3 años
                     </h3>
                     <p className="text-[11px] text-gray-500 mb-2">
-                      Días de operación/año: {t.diasOperacion} · Costo lavadas ({t.nLavadas}/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)} · Descuento: {(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}%){t.descuentoLimitadoPorMargen ? ' · volumen recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}
+                      Días de operación/año: {t.diasOperacion} · Costo lavadas ({t.nLavadas}/año): {cop(t.costoLavadas)} · Fee Noruega: {cop(t.feeNoruega)} · Comisión: {cop(t.comision)} · Descuento: {(t.descuentoAplicado * 100).toFixed(1)}% (compromiso {(t.compromisoDisc * 100).toFixed(1)}% / volumen {(t.volDisc * 100).toFixed(0)}% / manual {(t.manualDisc * 100).toFixed(1)}%){t.descuentoLimitadoPorMargen ? ' · recortado por piso 35%' : ''}{t.volumenLimitadoPorEscalon ? ' · volumen recortado por escalón (no alcanza al siguiente plan)' : ''}
                     </p>
                     {/* Composición de la cuota: el informe entra PRORRATEADO entre los años del
                         contrato (corrección 2026-07-24). Por eso el año que entrega el informe

@@ -365,6 +365,12 @@ export function calcularInspeccion(p: Parametros, techo: number) {
 export function calcularCare(p: Parametros, args: {
   plan: 'BASIC' | 'ESSENTIAL' | 'COMPLETE'; m2: number; techo: number; comisionPct?: number;
   superficie?: Superficie; tipoEdificio?: NivelRecargo; dificultad?: NivelRecargo;
+  // Descuento manual del comercial sobre la tarifa de lista (Gerencia 2026-07-28)
+  // — mismo mecanismo que el descuento manual de Familia 1: nunca se SUMA a los
+  // demás descuentos, se toma el MAYOR entre compromiso/volumen/manual, y el
+  // piso de margen de 35% (más abajo) sigue aplicando sobre ese mayor igual que
+  // ya aplicaba para el de volumen. Se recibe en % (0-99), no en fracción.
+  descuentoManualPct?: number;
 }) {
   const superficie = args.superficie ?? 'MIXTA';
   const recargo = RECARGO_PCT[args.tipoEdificio ?? 'BAJO'] + RECARGO_PCT[args.dificultad ?? 'BAJO'];
@@ -529,9 +535,11 @@ export function calcularCare(p: Parametros, args: {
     return { ...comun, porAnio, margenP: Math.min(porAnio[1].margenP, porAnio[2].margenP, porAnio[3].margenP) };
   }
 
-  // Mayor de los dos descuentos (volumen ya limitado por escalón arriba), con
-  // piso de margen de 35% para el de volumen.
-  const efectivo = Math.max(compromisoDisc, volDiscLimitado);
+  // Mayor de los tres descuentos (compromiso de plan, volumen ya limitado por
+  // escalón, y manual del comercial — nunca se suman), con piso de margen de
+  // 35% para el que gane si no es el de compromiso (que por diseño ya cumple).
+  const manualDisc = (args.descuentoManualPct ?? 0) / 100;
+  const efectivo = Math.max(compromisoDisc, volDiscLimitado, manualDisc);
   let resultado = conDescuento(efectivo);
   let descuentoLimitadoPorMargen = false;
   if (efectivo > compromisoDisc && resultado.margenP < p.MARGEN_MINIMO) {
@@ -539,7 +547,7 @@ export function calcularCare(p: Parametros, args: {
     descuentoLimitadoPorMargen = true;
   }
   return {
-    ...resultado, compromisoDisc, volDisc, volumenLimitadoPorEscalon,
+    ...resultado, compromisoDisc, volDisc, volumenLimitadoPorEscalon, manualDisc,
     descuentoAplicado: resultado.disc, descuentoLimitadoPorMargen,
   };
 }
@@ -550,6 +558,7 @@ export function calcularCare(p: Parametros, args: {
 export function calcularCareTodos(p: Parametros, args: {
   m2: number; techo: number; comisionPct?: number;
   superficie?: Superficie; tipoEdificio?: NivelRecargo; dificultad?: NivelRecargo;
+  descuentoManualPct?: number;
 }) {
   return {
     BASIC: calcularCare(p, { plan: 'BASIC', ...args }),

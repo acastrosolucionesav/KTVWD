@@ -26,6 +26,7 @@ export type CotizacionCareExistente = {
   dificultad: string;
   formaPago: string;
   observaciones: string;
+  descuentoPct: number | null;
 };
 
 export default function CareForm({ existente, esCorreccion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean }) {
@@ -144,6 +145,16 @@ export default function CareForm({ existente, esCorreccion }: { existente?: Coti
         <label className={label}>Observaciones (se muestran al cliente)</label>
         <textarea name="observaciones" rows={3} className={input} placeholder="Aclaraciones de alcance, condiciones especiales…"
           defaultValue={existente?.observaciones ?? ''} />
+      </div>
+
+      <div>
+        <label className={label}>Descuento manual (%) — opcional, aplica por igual a los 3 planes</label>
+        <input name="descuentoPct" type="number" min="0" max="99" step="0.1" className={input}
+          placeholder="0" defaultValue={existente?.descuentoPct ?? ''} />
+        <p className="text-[11px] text-amber-700 mt-1">
+          Nunca se suma al descuento de compromiso/volumen de cada plan — se toma el mayor entre los dos, y no puede
+          bajar el margen de 35%. Solo dispara aprobación de Gerencia si de verdad mejora lo que el edificio ya recibía.
+        </p>
       </div>
 
       {preview?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{preview.error}</p>}

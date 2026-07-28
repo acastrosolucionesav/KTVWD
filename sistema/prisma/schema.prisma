@@ -294,6 +294,14 @@ model CotizacionCare {
   valorMensualEssential Float
   valorAnualComplete    Float
   valorMensualComplete  Float
+
+  // Descuento manual del comercial sobre la tarifa de lista (Gerencia 2026-07-28)
+  // — mismo mecanismo que CotizacionPuntual.descuentoPct: se aplica por igual a
+  // los 3 planes, se toma el MAYOR frente al descuento de compromiso/volumen de
+  // cada plan (nunca se suman), y jamás baja el margen de ese plan de 35% — ver
+  // calcularCare. No se guarda un "precio sin descuento" aparte porque el panel
+  // interno recalcula los 3 planes en vivo desde snapshotParametros + este campo.
+  descuentoManualPct Float?
 }
 
 // Ítem de Tercero (spec_items_terceros_20260716_2.md): producto o servicio

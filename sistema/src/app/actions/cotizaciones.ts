@@ -576,6 +576,7 @@ type CareData = {
   valorAnualBasic: number; valorMensualBasic: number;
   valorAnualEssential: number; valorMensualEssential: number;
   valorAnualComplete: number; valorMensualComplete: number;
+  descuentoManualPct: number | null;
 };
 type ResultadoCare =
   | { error: string }
@@ -618,7 +619,14 @@ function computarCare(formData: FormData, parametros: Parametros): ResultadoCare
   const tipoEdificio = String(formData.get('tipoEdificio') || 'BAJO') as NivelRecargo;
   const dificultad = String(formData.get('dificultad') || 'BAJO') as NivelRecargo;
 
-  const todos = calcularCareTodos(parametros, { m2, techo, superficie, tipoEdificio, dificultad });
+  // Descuento manual sobre los 3 paquetes (Gerencia 2026-07-28) — mismo
+  // mecanismo que el descuento manual de Familia 1: se aplica por igual a los
+  // 3 planes, NUNCA se suma al de compromiso/volumen (se toma el mayor, ver
+  // calcularCare), y el piso de margen de 35% se protege ahí mismo.
+  const descuentoManualPct = Number(formData.get('descuentoPct') || 0);
+  if (descuentoManualPct < 0 || descuentoManualPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
+
+  const todos = calcularCareTodos(parametros, { m2, techo, superficie, tipoEdificio, dificultad, descuentoManualPct });
   // Piso de margen del 35% (decisión Gerencia 2026-07-25): baja de 35% SOLO con
   // autorización explícita de Gerencia — igual mecanismo que Familia 1, nunca un
   // bloqueo ciego. Para Essential y Complete cuenta el margen de CADA año del
@@ -629,7 +637,16 @@ function computarCare(formData: FormData, parametros: Parametros): ResultadoCare
     Math.min(t.margenP, t.internacionalAparte?.margenP ?? 1),
   );
   const peorMargen = Math.min(...margenesMinimos);
-  const requiereAprobacion = peorMargen < parametros.MARGEN_MINIMO;
+
+  // El descuento manual solo dispara aprobación de Gerencia cuando de verdad
+  // cambia el precio de algún plan frente a lo que ya aplicaría por política
+  // (compromiso del plan + volumen) — igual criterio que Familia 1: si el
+  // manual queda por debajo de lo que el edificio ya recibía automáticamente,
+  // no hay nada que aprobar.
+  const todosSinManual = calcularCareTodos(parametros, { m2, techo, superficie, tipoEdificio, dificultad });
+  const requiereAprobacionPorDescuentoManual = descuentoManualPct > 0 && (['BASIC', 'ESSENTIAL', 'COMPLETE'] as const)
+    .some((plan) => todos[plan].descuentoAplicado > todosSinManual[plan].descuentoAplicado);
+  const requiereAprobacion = peorMargen < parametros.MARGEN_MINIMO || requiereAprobacionPorDescuentoManual;
 
   const careData: CareData = {
     planRecomendado, contratoAnios, formaPago, m2Fachada: m2, rangoTecho: techo || null,
@@ -637,6 +654,7 @@ function computarCare(formData: FormData, parametros: Parametros): ResultadoCare
     valorAnualBasic: todos.BASIC.valorAnual, valorMensualBasic: todos.BASIC.valorMensual,
     valorAnualEssential: todos.ESSENTIAL.valorAnual, valorMensualEssential: todos.ESSENTIAL.valorMensual,
     valorAnualComplete: todos.COMPLETE.valorAnual, valorMensualComplete: todos.COMPLETE.valorMensual,
+    descuentoManualPct: descuentoManualPct > 0 ? descuentoManualPct : null,
   };
 
   return {
