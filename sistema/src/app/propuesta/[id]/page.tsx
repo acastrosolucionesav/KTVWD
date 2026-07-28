@@ -112,9 +112,10 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
   }
 
   // Tracking de apertura: solo cuentan los visitantes SIN sesión (el cliente);
-  // las vistas internas del equipo no se registran. La PRIMERA apertura de cada
-  // cotización notifica por correo al comercial que la creó (Gerencia
-  // 2026-07-28) — las reaperturas del mismo cliente no vuelven a avisar.
+  // las vistas internas del equipo (con sesión) no se registran ni notifican.
+  // Cada apertura del cliente notifica por correo al comercial que creó la
+  // propuesta (decisión Gerencia 2026-07-28: se prefiere saber de cada visita,
+  // no solo la primera).
   const session = await getSession();
   if (!session) {
     const ua = (await headers()).get('user-agent');
@@ -124,22 +125,19 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
         id: true, idTrazabilidad: true,
         creadoPor: { select: { email: true, nombre: true } },
         cliente: { select: { nombre: true } },
-        _count: { select: { aperturas: true } },
       },
     });
     if (cotizacionBase) {
       await prisma.apertura.create({
         data: { cotizacionId: cotizacionBase.id, userAgent: ua?.slice(0, 250) ?? null },
       }).catch(() => {});
-      if (cotizacionBase._count.aperturas === 0) {
-        await enviarCorreoPropuestaAbierta({
-          destinatario: cotizacionBase.creadoPor.email,
-          comercialNombre: cotizacionBase.creadoPor.nombre,
-          idTrazabilidad: cotizacionBase.idTrazabilidad,
-          clienteNombre: cotizacionBase.cliente.nombre,
-          urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacionBase.id}`,
-        }).catch((e) => console.error('Error enviando notificación de apertura', e));
-      }
+      await enviarCorreoPropuestaAbierta({
+        destinatario: cotizacionBase.creadoPor.email,
+        comercialNombre: cotizacionBase.creadoPor.nombre,
+        idTrazabilidad: cotizacionBase.idTrazabilidad,
+        clienteNombre: cotizacionBase.cliente.nombre,
+        urlDetalle: `${process.env.NEXT_PUBLIC_APP_URL || ''}/cotizaciones/${cotizacionBase.id}`,
+      }).catch((e) => console.error('Error enviando notificación de apertura', e));
     }
   }
 
