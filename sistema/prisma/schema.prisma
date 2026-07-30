@@ -100,6 +100,7 @@ model Usuario {
   cotizacionesCreadas  Cotizacion[] @relation("CreadoPor")
   cotizacionesAprobadas Cotizacion[] @relation("AprobadoPor")
   auditorias           Auditoria[]
+  versionesCotizacion  VersionCotizacion[]
 }
 
 // Parámetros editables por Gerencia — nunca hardcodeados en el motor.
@@ -169,6 +170,26 @@ model Cotizacion {
   ordenServicio  OrdenServicio?
   itemsTerceros  ItemTercero[]
   itemsLavado    ItemLavado[]
+  versiones      VersionCotizacion[]
+}
+
+// Foto de los datos de la familia (Puntual o Care) justo ANTES de sobreescribirlos
+// por una edición en el mismo registro (decisión Gerencia 2026-07-28: mientras el
+// cliente no ha aceptado, editar ya no crea una cotización nueva — ver el bloque
+// `if (cotizacionExistenteId)` en actions/cotizaciones.ts). Sin esto se perdía todo
+// rastro de lo que se le había enviado antes al cliente (caso real: Pfizer pidió ver
+// la propuesta anterior después de que se le mandó una corregida, y no había cómo).
+// `snapshot` es JSON de forma libre (distinta para PUNTUAL y CARE, ver `familia`
+// dentro del JSON) — se arma en el momento de guardar, no tiene su propio modelo
+// porque es de solo lectura para consulta interna, nunca se vuelve a escribir.
+model VersionCotizacion {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  snapshot     String
+  editadoPorId String
+  editadoPor   Usuario    @relation(fields: [editadoPorId], references: [id])
+  creadoAt     DateTime   @default(now())
 }
 
 // ============ FAMILIA 1 — Servicios puntuales (no recurrentes) ============

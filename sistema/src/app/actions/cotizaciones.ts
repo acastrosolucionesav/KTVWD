@@ -287,10 +287,18 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
   let existente: { clienteId: string; idTrazabilidad: string } | null = null;
   let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
+  // Foto de cómo estaba ANTES de esta edición — se guarda como VersionCotizacion
+  // (decisión Gerencia 2026-07-30, caso Pfizer: al editar en el mismo registro se
+  // perdió lo que ya se le había enviado al cliente y no había forma de volver a
+  // verlo). Null cuando esto es una creación nueva, no una edición.
+  let snapshotAnterior: string | null = null;
   if (cotizacionExistenteId) {
     const c = await prisma.cotizacion.findUnique({
       where: { id: cotizacionExistenteId },
-      include: { versionNueva: { select: { idTrazabilidad: true } } },
+      include: {
+        versionNueva: { select: { idTrazabilidad: true } },
+        cliente: true, puntual: true, itemsLavado: { orderBy: { orden: 'asc' } },
+      },
     });
     if (!c) return { error: 'La cotización ya no existe.' };
     if (c.versionNueva) {
@@ -302,6 +310,12 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       // que el comercial tenga que volver a marcarla como enviada a propósito,
       // nunca quede diciendo "Enviada" con números que el cliente no vio.
       existente = c;
+      snapshotAnterior = JSON.stringify({
+        familia: 'PUNTUAL',
+        totalCliente: c.totalCliente, observaciones: c.observaciones, estado: c.estado,
+        clienteNombre: c.cliente.nombre, clienteContacto: c.cliente.contacto,
+        puntual: c.puntual, itemsLavado: c.itemsLavado,
+      });
     } else {
       // Ya aceptada por el cliente: no se edita en el mismo registro — se
       // corrige creando una versión nueva, ver bloque de corrección más abajo.
@@ -330,6 +344,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
         // Se reemplazan por completo — más simple y seguro que diffear filas
         // (una edición en Borrador puede agregar/quitar/reordenar ítems libremente).
         itemsLavado: { deleteMany: {}, create: itemsLavadoData },
+        ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: session.userId } } } : {}),
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
@@ -675,10 +690,12 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
   let existente: { clienteId: string; idTrazabilidad: string } | null = null;
   let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
+  // Ver el mismo mecanismo en crearCotizacionPuntual (decisión Gerencia 2026-07-30).
+  let snapshotAnterior: string | null = null;
   if (cotizacionExistenteId) {
     const c = await prisma.cotizacion.findUnique({
       where: { id: cotizacionExistenteId },
-      include: { versionNueva: { select: { idTrazabilidad: true } } },
+      include: { versionNueva: { select: { idTrazabilidad: true } }, cliente: true, care: true },
     });
     if (!c) return { error: 'La cotización ya no existe.' };
     if (c.versionNueva) {
@@ -687,6 +704,12 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       // Editable en el mismo registro mientras el cliente no la haya aceptado
       // (decisión Gerencia 2026-07-28) — ver el mismo mecanismo en crearCotizacionPuntual.
       existente = c;
+      snapshotAnterior = JSON.stringify({
+        familia: 'CARE',
+        totalCliente: c.totalCliente, observaciones: c.observaciones, estado: c.estado,
+        clienteNombre: c.cliente.nombre, clienteContacto: c.cliente.contacto,
+        care: c.care,
+      });
     } else {
       anterior = c;
     }
@@ -710,6 +733,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
         totalCliente: todos[planRecomendado].valorAnual,
         observaciones,
         care: { update: careData },
+        ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: session.userId } } } : {}),
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });

@@ -42,6 +42,7 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
       aperturas: { orderBy: { timestamp: 'desc' } },
       versionAnterior: { select: { id: true, idTrazabilidad: true } },
       versionNueva: { select: { id: true, idTrazabilidad: true } },
+      versiones: { include: { editadoPor: { select: { nombre: true } } }, orderBy: { creadoAt: 'desc' } },
       itemsTerceros: { orderBy: { creadoAt: 'asc' } },
       itemsLavado: { orderBy: { orden: 'asc' } },
     },
@@ -391,6 +392,59 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
           )}
         </div>
       </div>
+
+      {/* ---- Versiones anteriores (foto antes de cada edición en el mismo registro) ---- */}
+      {c.versiones.length > 0 && (
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Versiones anteriores ({c.versiones.length})</h2>
+          <p className="text-xs text-gray-400 mb-2">Foto de los datos justo antes de cada edición — útil para ver qué se le había enviado al cliente antes de un cambio.</p>
+          <div className="space-y-2">
+            {c.versiones.map((v) => {
+              const snap = JSON.parse(v.snapshot) as {
+                familia: 'PUNTUAL' | 'CARE'; totalCliente: number; observaciones: string | null; estado: string;
+                clienteNombre: string; clienteContacto: string | null;
+                puntual?: { servicio: string; descuentoPct: number | null; margenPct: number | null } | null;
+                itemsLavado?: { nombre: string }[];
+                care?: { planRecomendado: 'BASIC' | 'ESSENTIAL' | 'COMPLETE'; valorMensualBasic: number; valorMensualEssential: number; valorMensualComplete: number; descuentoManualPct: number | null } | null;
+              };
+              return (
+                <details key={v.id} className="bg-gray-50 rounded-xl border border-gray-200 p-3 group">
+                  <summary className="text-sm cursor-pointer select-none flex items-center justify-between gap-2">
+                    <span><b>{v.creadoAt.toLocaleString('es-CO')}</b> — editado por {v.editadoPor.nombre}</span>
+                    <span className="text-xs text-[#66C2F8] group-open:hidden">Ver detalle ▸</span>
+                  </summary>
+                  <div className="mt-3 text-xs text-gray-600 space-y-1 border-t border-gray-200 pt-3">
+                    <p><span className="text-gray-400">Cliente:</span> {snap.clienteNombre}{snap.clienteContacto ? ` (${snap.clienteContacto})` : ''}</p>
+                    <p><span className="text-gray-400">Estado en ese momento:</span> {snap.estado.replace('_', ' ')}</p>
+                    <p><span className="text-gray-400">Total cliente:</span> {cop(snap.totalCliente)}</p>
+                    {snap.familia === 'PUNTUAL' ? (
+                      <>
+                        <p><span className="text-gray-400">Servicio:</span> {snap.puntual ? NOMBRES_SERVICIO[snap.puntual.servicio] ?? snap.puntual.servicio : '—'}</p>
+                        {snap.puntual?.descuentoPct != null && <p><span className="text-gray-400">Descuento manual:</span> {snap.puntual.descuentoPct}%</p>}
+                        {snap.itemsLavado && snap.itemsLavado.length > 0 && (
+                          <p><span className="text-gray-400">Ítems de lavado:</span> {snap.itemsLavado.map((it) => it.nombre).join(', ')}</p>
+                        )}
+                        {esGerencia && snap.puntual?.margenPct != null && (
+                          <p><span className="text-gray-400">Margen (solo Gerencia):</span> {(snap.puntual.margenPct * 100).toFixed(1)}%</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p><span className="text-gray-400">Plan recomendado:</span> {snap.care ? NOMBRES_PLAN[snap.care.planRecomendado] : '—'}</p>
+                        {snap.care && (
+                          <p><span className="text-gray-400">Basic:</span> {cop(snap.care.valorMensualBasic)}/mes · <span className="text-gray-400">Essential:</span> {cop(snap.care.valorMensualEssential)}/mes · <span className="text-gray-400">Complete:</span> {cop(snap.care.valorMensualComplete)}/mes</p>
+                        )}
+                        {snap.care?.descuentoManualPct != null && <p><span className="text-gray-400">Descuento manual:</span> {snap.care.descuentoManualPct}%</p>}
+                      </>
+                    )}
+                    {snap.observaciones && <p><span className="text-gray-400">Observaciones:</span> {snap.observaciones}</p>}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ---- Auditoría ---- */}
       <div>
