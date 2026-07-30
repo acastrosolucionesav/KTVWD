@@ -73,6 +73,8 @@ mezclan los datos de una familia con la otra (regla KWD-SIS-PROMPT-001 v2):
 - **`ItemTercero`**: productos/servicios subcontratados, margen neto fijo (15% producto /
   25% servicio), nunca se absorben al costo.
 - **`Apertura`**: una fila por visita del cliente (sin sesión) al link público.
+- **`VersionCotizacion`**: foto (JSON) de los datos justo antes de cada edición en el
+  mismo registro — ver §5, es el historial de consulta, no genera cotizaciones nuevas.
 
 ## 4. Motor de precios (`src/lib/pricing.ts`) — reglas que no se deben romper
 
@@ -120,6 +122,19 @@ Esta lógica vive en `src/app/actions/cotizaciones.ts`, al principio de
 El listado (`src/app/cotizaciones/page.tsx`) oculta por defecto las cotizaciones con
 `versionNueva` no nulo bajo un desplegable "Ver historial de correcciones", para que un
 cliente con varias rondas no sature la vista de cuál es la vigente.
+
+**Efecto secundario ya encontrado en producción (caso Pfizer, 2026-07-30):** al editar en
+el mismo registro se sobreescribe todo — sin nada más, se pierde para siempre lo que ya se
+le había enviado al cliente antes del cambio. Se corrigió con el modelo
+`VersionCotizacion`: cada edición de una cotización existente guarda ANTES de sobreescribir
+una foto en JSON (`snapshot`) de los datos de la familia (puntual o care) + cliente/total/
+estado/observaciones, con quién editó y cuándo. Se arma en el mismo bloque
+`if (cotizacionExistenteId)` (variable `snapshotAnterior`) y se persiste dentro del mismo
+`prisma.cotizacion.update(...)` vía `versiones: { create: { snapshot, editadoPorId } }`. El
+detalle interno (`cotizaciones/[id]/page.tsx`) las lista en una sección colapsable
+"Versiones anteriores", con el margen visible solo para `GERENCIA` (misma Regla A del resto
+del panel). Si se agrega un campo nuevo a `CotizacionPuntual`/`CotizacionCare`, no hace
+falta tocar el snapshot — se guarda el objeto completo tal cual venía de la base.
 
 ## 6. Notificaciones por correo (`src/lib/email.ts`)
 
