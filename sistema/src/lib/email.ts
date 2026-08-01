@@ -66,11 +66,14 @@ export async function enviarCorreoAprobacionPendiente(args: { idTrazabilidad: st
   `));
 }
 
+// Decisión Gerencia 2026-07-30: llega siempre a Gerencia (GERENCIA_ALERTA), nunca al
+// comercial que creó la cotización — así se supervisan las aperturas de todo el
+// equipo desde un solo correo, sin importar quién sea el dueño de cada trato.
 export async function enviarCorreoPropuestaAbierta(args: {
-  destinatario: string; comercialNombre: string; idTrazabilidad: string; clienteNombre: string; urlDetalle: string;
+  comercialNombre: string; idTrazabilidad: string; clienteNombre: string; urlDetalle: string;
 }) {
-  await enviar(args.destinatario, `${args.clienteNombre} abrió su propuesta — ${args.idTrazabilidad}`, envoltura('El cliente abrió su propuesta', `
-    <p style="color:#374151;font-size:14px">Hola ${args.comercialNombre}, <b>${args.clienteNombre}</b> acaba de abrir por primera vez el enlace de su propuesta <b>${args.idTrazabilidad}</b>.</p>
+  await enviar(GERENCIA_ALERTA, `${args.clienteNombre} abrió su propuesta — ${args.idTrazabilidad}`, envoltura('El cliente abrió su propuesta', `
+    <p style="color:#374151;font-size:14px"><b>${args.clienteNombre}</b> acaba de abrir el enlace de su propuesta <b>${args.idTrazabilidad}</b> (cotización de ${args.comercialNombre}).</p>
     ${boton(args.urlDetalle, 'Ver cotización')}
   `));
 }

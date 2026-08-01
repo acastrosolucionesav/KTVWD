@@ -113,9 +113,10 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
   // Tracking de apertura: solo cuentan los visitantes SIN sesión (el cliente);
   // las vistas internas del equipo (con sesión) no se registran ni notifican.
-  // Cada apertura del cliente notifica por correo al comercial que creó la
-  // propuesta (decisión Gerencia 2026-07-28: se prefiere saber de cada visita,
-  // no solo la primera).
+  // Cada apertura del cliente notifica por correo a Gerencia (decisión
+  // 2026-07-30: siempre a Gerencia, sin importar qué comercial creó la
+  // cotización, para supervisar las aperturas de todo el equipo desde un
+  // solo correo) — se avisa de cada visita, no solo la primera.
   const session = await getSession();
   if (!session) {
     const ua = (await headers()).get('user-agent');
@@ -123,7 +124,7 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
       where: { linkToken: id },
       select: {
         id: true, idTrazabilidad: true,
-        creadoPor: { select: { email: true, nombre: true } },
+        creadoPor: { select: { nombre: true } },
         cliente: { select: { nombre: true } },
       },
     });
@@ -132,7 +133,6 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
         data: { cotizacionId: cotizacionBase.id, userAgent: ua?.slice(0, 250) ?? null },
       }).catch(() => {});
       await enviarCorreoPropuestaAbierta({
-        destinatario: cotizacionBase.creadoPor.email,
         comercialNombre: cotizacionBase.creadoPor.nombre,
         idTrazabilidad: cotizacionBase.idTrazabilidad,
         clienteNombre: cotizacionBase.cliente.nombre,
