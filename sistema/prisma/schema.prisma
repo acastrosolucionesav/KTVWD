@@ -136,6 +136,14 @@ model Cotizacion {
   familia            Familia
   clienteId          String
   cliente            ClienteProspecto  @relation(fields: [clienteId], references: [id])
+  // Trato de Pipedrive que originó esta cotización, cuando se creó/editó desde
+  // el modal embebido en Pipedrive (ruta /pipedrive, no el login normal de KTV)
+  // — ver skill ktv-cotizador. Distinto de ClienteProspecto.pipedriveDealId: un
+  // mismo cliente puede tener cotizaciones Puntual y Care ligadas a TRATOS
+  // distintos, así que la búsqueda por dealId tiene que ser inequívoca acá, en
+  // la cotización misma, no en el cliente. Se usa para reabrir/editar la MISMA
+  // cotización cuando el comercial vuelve a abrir el modal (nunca duplicar).
+  pipedriveDealId    String?
   creadoPorId        String
   creadoPor          Usuario           @relation("CreadoPor", fields: [creadoPorId], references: [id])
   estado             EstadoCotizacion  @default(BORRADOR)
@@ -171,6 +179,8 @@ model Cotizacion {
   itemsTerceros  ItemTercero[]
   itemsLavado    ItemLavado[]
   versiones      VersionCotizacion[]
+
+  @@index([pipedriveDealId])
 }
 
 // Foto de los datos de la familia (Puntual o Care) justo ANTES de sobreescribirlos

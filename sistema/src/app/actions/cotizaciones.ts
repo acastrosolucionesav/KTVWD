@@ -8,6 +8,7 @@ import { getParametrosVigentes } from '@/lib/parametros';
 import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
+import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
 import { enviarCorreoAprobacionPendiente } from '@/lib/email';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
@@ -280,8 +281,25 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   };
 }
 
-export async function crearCotizacionPuntual(_state: CrearPuntualState, formData: FormData): Promise<CrearPuntualState> {
-  const session = await verifySession();
+// Núcleo que persiste (crear o editar) una cotización puntual — recibe el
+// usuarioId ya resuelto en vez de leer la sesión de cookie de KTV, para poder
+// reusarse tanto desde el formulario normal (crearCotizacionPuntual, sesión
+// por cookie) como desde el modal embebido en Pipedrive
+// (crearCotizacionPuntualPipedrive, sesión por el JWT de Pipedrive — ver
+// src/lib/pipedriveModalAuth.ts, la cookie de KTV no llega dentro del iframe).
+// Nunca hace redirect() ni toca cookies: el que redirige es cada wrapper,
+// porque el modal de Pipedrive no puede navegar a páginas que requieren el
+// login normal de KTV.
+type ResultadoGuardarPuntual = { error: string } | { error?: undefined; cotizacionId: string };
+
+async function guardarCotizacionPuntual(
+  usuarioId: string, formData: FormData,
+  // dealIdModal: el trato de Pipedrive cuando esto se llama desde el modal
+  // embebido (/pipedrive) — distinto del pipedriveDealId de más abajo, que es
+  // el que ya existía en ClienteProspecto (viene del buscador manual del
+  // formulario normal). undefined en el flujo normal: no toca esa columna.
+  dealIdModal?: string,
+): Promise<ResultadoGuardarPuntual> {
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
@@ -344,10 +362,11 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
         // Se reemplazan por completo — más simple y seguro que diffear filas
         // (una edición en Borrador puede agregar/quitar/reordenar ítems libremente).
         itemsLavado: { deleteMany: {}, create: itemsLavadoData },
-        ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: session.userId } } } : {}),
+        ...(dealIdModal ? { pipedriveDealId: dealIdModal } : {}),
+        ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: usuarioId } } } : {}),
       },
     });
-    await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
+    await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId, accion: 'edito' } });
     if (requiereAprobacion) {
       await enviarCorreoAprobacionPendiente({
         idTrazabilidad: existente.idTrazabilidad,
@@ -358,7 +377,7 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
     }
     revalidatePath('/cotizaciones');
     revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
-    redirect(`/cotizaciones/${cotizacionExistenteId}`);
+    return { cotizacionId: cotizacionExistenteId! };
   }
 
   // Corrección de una cotización ya enviada/aprobada/rechazada: se reutiliza
@@ -382,7 +401,8 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       idTrazabilidad: generarIdTrazabilidad(),
       familia: 'PUNTUAL',
       clienteId,
-      creadoPorId: session.userId,
+      creadoPorId: usuarioId,
+      pipedriveDealId: dealIdModal ?? null,
       estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
       requiereAprobacion,
       vigenteHasta,
@@ -392,14 +412,14 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
       versionAnteriorId: anterior?.id,
       puntual: { create: puntualData },
       itemsLavado: { create: itemsLavadoData },
-      auditorias: { create: { usuarioId: session.userId, accion: anterior ? 'creo_correccion' : 'creo' } },
+      auditorias: { create: { usuarioId, accion: anterior ? 'creo_correccion' : 'creo' } },
     },
   });
 
   if (anterior) {
     await prisma.cotizacion.update({ where: { id: anterior.id }, data: { linkActivo: false } });
     await prisma.auditoria.create({
-      data: { cotizacionId: anterior.id, usuarioId: session.userId, accion: 'corrigio', detalle: cotizacion.idTrazabilidad },
+      data: { cotizacionId: anterior.id, usuarioId, accion: 'corrigio', detalle: cotizacion.idTrazabilidad },
     });
     revalidatePath(`/cotizaciones/${anterior.id}`);
   }
@@ -426,7 +446,36 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
   }
 
   revalidatePath('/cotizaciones');
-  redirect(`/cotizaciones/${cotizacion.id}`);
+  return { cotizacionId: cotizacion.id };
+}
+
+// Entrada normal (formulario del cotizador, sesión por cookie de KTV) — igual
+// comportamiento de siempre: si falla, el formulario ve el error; si funciona,
+// navega al detalle. El guardado en sí vive en guardarCotizacionPuntual.
+export async function crearCotizacionPuntual(_state: CrearPuntualState, formData: FormData): Promise<CrearPuntualState> {
+  const session = await verifySession();
+  const r = await guardarCotizacionPuntual(session.userId, formData);
+  if (r.error !== undefined) return { error: r.error };
+  redirect(`/cotizaciones/${r.cotizacionId}`);
+}
+
+// Entrada desde el modal embebido en Pipedrive (App Extension, ver skill
+// ktv-cotizador y src/lib/pipedriveModalAuth.ts) — sin cookie de sesión de
+// KTV: la identidad se revalida AQUÍ MISMO con el JWT de Pipedrive (nunca se
+// confía en un usuarioId que mande el llamador — una Server Action es un
+// endpoint invocable directo, no solo un botón del modal) y se resuelve
+// contra los Usuario de KTV por correo (resolverUsuarioPipedrive). No hace
+// redirect (el modal no puede navegar a páginas que exigen el login normal
+// de KTV) — el llamador decide qué mostrar dentro del propio iframe.
+export type GuardarPipedriveState = { error?: string; cotizacionId?: string };
+export async function crearCotizacionPuntualPipedrive(
+  token: string, dealIdParam: string, userIdParam: string, formData: FormData,
+): Promise<GuardarPipedriveState> {
+  const sesion = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!sesion) return { error: 'Sesión de Pipedrive inválida o vencida — cierra este modal y vuelve a abrirlo desde el trato.' };
+  const usuario = await resolverUsuarioPipedrive(sesion.userId);
+  if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV — pide a Gerencia que te cree una con el mismo correo.' };
+  return guardarCotizacionPuntual(usuario.id, formData, String(sesion.dealId));
 }
 
 // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25): antes, el único botón
@@ -683,8 +732,12 @@ function computarCare(formData: FormData, parametros: Parametros): ResultadoCare
   };
 }
 
-export async function crearCotizacionCare(_state: CrearCareState, formData: FormData): Promise<CrearCareState> {
-  const session = await verifySession();
+// Mismo mecanismo que guardarCotizacionPuntual (ver comentario ahí): núcleo
+// reusado por el formulario normal (sesión por cookie) y por el modal de
+// Pipedrive (sesión por JWT) — nunca redirige, el llamador decide.
+type ResultadoGuardarCare = { error: string } | { error?: undefined; cotizacionId: string };
+
+async function guardarCotizacionCare(usuarioId: string, formData: FormData, dealIdModal?: string): Promise<ResultadoGuardarCare> {
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
@@ -733,10 +786,11 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
         totalCliente: todos[planRecomendado].valorAnual,
         observaciones,
         care: { update: careData },
-        ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: session.userId } } } : {}),
+        ...(dealIdModal ? { pipedriveDealId: dealIdModal } : {}),
+        ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: usuarioId } } } : {}),
       },
     });
-    await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId: session.userId, accion: 'edito' } });
+    await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId, accion: 'edito' } });
     if (requiereAprobacion) {
       await enviarCorreoAprobacionPendiente({
         idTrazabilidad: existente.idTrazabilidad,
@@ -747,7 +801,7 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
     }
     revalidatePath('/cotizaciones');
     revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
-    redirect(`/cotizaciones/${cotizacionExistenteId}`);
+    return { cotizacionId: cotizacionExistenteId! };
   }
 
   // Corrección — mismo mecanismo que Familia 1: se reutiliza el cliente, se
@@ -766,7 +820,8 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       idTrazabilidad: generarIdTrazabilidad(),
       familia: 'CARE',
       clienteId,
-      creadoPorId: session.userId,
+      creadoPorId: usuarioId,
+      pipedriveDealId: dealIdModal ?? null,
       estado: requiereAprobacion ? 'PENDIENTE_APROBACION' : 'BORRADOR',
       requiereAprobacion,
       vigenteHasta,
@@ -775,14 +830,14 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
       observaciones,
       versionAnteriorId: anterior?.id,
       care: { create: careData },
-      auditorias: { create: { usuarioId: session.userId, accion: anterior ? 'creo_correccion' : 'creo' } },
+      auditorias: { create: { usuarioId, accion: anterior ? 'creo_correccion' : 'creo' } },
     },
   });
 
   if (anterior) {
     await prisma.cotizacion.update({ where: { id: anterior.id }, data: { linkActivo: false } });
     await prisma.auditoria.create({
-      data: { cotizacionId: anterior.id, usuarioId: session.userId, accion: 'corrigio', detalle: cotizacion.idTrazabilidad },
+      data: { cotizacionId: anterior.id, usuarioId, accion: 'corrigio', detalle: cotizacion.idTrazabilidad },
     });
     revalidatePath(`/cotizaciones/${anterior.id}`);
   }
@@ -808,7 +863,26 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
   }
 
   revalidatePath('/cotizaciones');
-  redirect(`/cotizaciones/${cotizacion.id}`);
+  return { cotizacionId: cotizacion.id };
+}
+
+// Entrada normal (formulario Care, sesión por cookie de KTV).
+export async function crearCotizacionCare(_state: CrearCareState, formData: FormData): Promise<CrearCareState> {
+  const session = await verifySession();
+  const r = await guardarCotizacionCare(session.userId, formData);
+  if (r.error !== undefined) return { error: r.error };
+  redirect(`/cotizaciones/${r.cotizacionId}`);
+}
+
+// Entrada desde el modal embebido en Pipedrive — ver crearCotizacionPuntualPipedrive.
+export async function crearCotizacionCarePipedrive(
+  token: string, dealIdParam: string, userIdParam: string, formData: FormData,
+): Promise<GuardarPipedriveState> {
+  const sesion = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!sesion) return { error: 'Sesión de Pipedrive inválida o vencida — cierra este modal y vuelve a abrirlo desde el trato.' };
+  const usuario = await resolverUsuarioPipedrive(sesion.userId);
+  if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV — pide a Gerencia que te cree una con el mismo correo.' };
+  return guardarCotizacionCare(usuario.id, formData, String(sesion.dealId));
 }
 
 // Vista previa SIN GUARDAR — mismo mecanismo que previsualizarPuntual: calcula

@@ -58,6 +58,19 @@ export async function obtenerTrato(dealId: number): Promise<PipedriveDealResumen
   };
 }
 
+// Correo del usuario de Pipedrive que abrió el modal (App Extension) — se usa
+// para encontrar al Usuario correspondiente en KTV (ver resolverUsuarioPipedrive
+// en actions/cotizaciones.ts), porque el JWT del modal solo trae el user_id de
+// PIPEDRIVE, que no es el id de nuestro propio Usuario.
+export async function obtenerCorreoUsuarioPipedrive(userId: number): Promise<string | null> {
+  if (!habilitado() || !userId) return null;
+  const res = await fetch(`${BASE}/users/${userId}?api_token=${TOKEN}`, { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const json = await res.json();
+  const email = json?.data?.email;
+  return typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
+}
+
 let etapaEnviadaIdCache: number | null = null;
 async function obtenerEtapaPropuestaEnviada(): Promise<number | null> {
   if (etapaEnviadaIdCache !== null) return etapaEnviadaIdCache;
