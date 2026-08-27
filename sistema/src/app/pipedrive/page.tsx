@@ -26,11 +26,18 @@ export default async function PipedriveModalPage({
 }) {
   const params = await searchParams;
   const leer = (k: string) => (Array.isArray(params[k]) ? params[k][0] : params[k]) as string | undefined;
-  const id = leer('id');
+  // Parámetros reales que manda Pipedrive al abrir el modal (confirmado en
+  // vivo, 2026-08-27): resource, view, userId, companyId, selectedIds, id,
+  // theme, token.
+  //
+  // ⚠️ `id` NO es el trato — es el identificador del propio modal (algo como
+  // "11VdUlYxof"). El trato viene en `selectedIds`, que puede traer varios
+  // separados por coma; en la vista de detalle de un trato siempre es uno.
   const token = leer('token');
   const userId = leer('userId');
+  const dealIdParam = leer('selectedIds')?.split(',')[0]?.trim() || undefined;
 
-  const r = await verificarTokenModal(token, id, userId);
+  const r = await verificarTokenModal(token, dealIdParam, userId);
   if (!r.ok) {
     // Se listan los nombres de los parámetros que sí llegaron (no sus valores:
     // el token es sensible) — si Pipedrive los manda con otro nombre, esto lo

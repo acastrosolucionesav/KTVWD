@@ -38,7 +38,7 @@ export async function verificarTokenModal(
 
   const faltantes = [
     !token && 'token',
-    !dealIdParam && 'id (trato)',
+    !dealIdParam && 'selectedIds (el trato)',
     !userIdParam && 'userId',
   ].filter(Boolean);
   if (faltantes.length > 0) {
@@ -48,7 +48,7 @@ export async function verificarTokenModal(
   const dealId = Number(dealIdParam);
   const userId = Number(userIdParam);
   if (!Number.isFinite(dealId) || !Number.isFinite(userId)) {
-    return { ok: false, motivo: `El trato o el usuario no son numéricos (id="${dealIdParam}", userId="${userIdParam}").` };
+    return { ok: false, motivo: `El trato o el usuario no son numéricos (trato="${dealIdParam}", userId="${userIdParam}").` };
   }
 
   try {
