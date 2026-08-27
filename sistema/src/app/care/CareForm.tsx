@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { crearCotizacionCare, previsualizarCare, type CrearCareState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
+import { crearCotizacionCare, previsualizarCare, type CrearCareState, type PreviewCareState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
@@ -31,16 +31,17 @@ export type CotizacionCareExistente = {
 
 export type DealPrefillCare = { id: string; clienteNombre: string; clienteContacto: string };
 
-// accion: override para el modal embebido en Pipedrive — ver el mismo
-// mecanismo en CotizadorForm.tsx.
+// accion / accionPreview: overrides para el modal embebido en Pipedrive — ver
+// el mismo mecanismo en CotizadorForm.tsx.
 type AccionCare = (prevState: CrearCareState | GuardarPipedriveState, formData: FormData) => Promise<CrearCareState | GuardarPipedriveState>;
+type AccionPreviewCare = (prevState: PreviewCareState, formData: FormData) => Promise<PreviewCareState>;
 
-export default function CareForm({ existente, esCorreccion, dealPrefill, accion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean; dealPrefill?: DealPrefillCare; accion?: AccionCare }) {
+export default function CareForm({ existente, esCorreccion, dealPrefill, accion, accionPreview }: { existente?: CotizacionCareExistente; esCorreccion?: boolean; dealPrefill?: DealPrefillCare; accion?: AccionCare; accionPreview?: AccionPreviewCare }) {
   const [state, action, pending] = useActionState(accion ?? crearCotizacionCare, undefined);
   // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25) — mismo mecanismo que
   // el cotizador de Familia 1: "Calcular" no toca la base, solo "Crear
   // cotización"/"Guardar cambios" persiste.
-  const [preview, previewAction, previewPending] = useActionState(previsualizarCare, undefined);
+  const [preview, previewAction, previewPending] = useActionState(accionPreview ?? previsualizarCare, undefined);
   const [plan, setPlan] = useState<'BASIC' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');

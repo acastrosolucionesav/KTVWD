@@ -2,6 +2,7 @@ import 'server-only';
 import { jwtVerify } from 'jose';
 import { prisma } from '@/lib/prisma';
 import { obtenerCorreoUsuarioPipedrive } from '@/lib/pipedrive';
+import type { Rol } from '@/lib/session';
 
 // Verificación del JWT que Pipedrive manda al abrir el Custom Modal embebido
 // en el trato (App Extension del Developer Hub, ver skill ktv-cotizador). Es
@@ -87,10 +88,12 @@ export async function verificarTokenModal(
 // eso no es el id de nuestro Usuario ni prueba nada sobre permisos dentro de
 // KTV. Si no hay una cuenta KTV activa con ese correo, no se resuelve
 // identidad — nunca se crea un Usuario solo ni se asume un rol por defecto.
-export async function resolverUsuarioPipedrive(pipedriveUserId: number): Promise<{ id: string; nombre: string } | null> {
+export async function resolverUsuarioPipedrive(pipedriveUserId: number): Promise<{ id: string; nombre: string; rol: Rol } | null> {
   const email = await obtenerCorreoUsuarioPipedrive(pipedriveUserId);
   if (!email) return null;
-  const usuario = await prisma.usuario.findUnique({ where: { email }, select: { id: true, nombre: true, activo: true } });
+  const usuario = await prisma.usuario.findUnique({ where: { email }, select: { id: true, nombre: true, rol: true, activo: true } });
   if (!usuario || !usuario.activo) return null;
-  return { id: usuario.id, nombre: usuario.nombre };
+  // El rol sale de la cuenta de KTV, nunca de Pipedrive — es lo que decide si
+  // esta persona puede ver margen/costo (Regla A) dentro del modal.
+  return { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol };
 }

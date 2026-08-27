@@ -494,18 +494,38 @@ export type PreviewPuntualState = {
   margenPct?: number;
 } | undefined;
 
-export async function previsualizarPuntual(_state: PreviewPuntualState, formData: FormData): Promise<PreviewPuntualState> {
-  const session = await verifySession();
+// Núcleo del cálculo — recibe el rol ya resuelto (Regla A: el margen solo se
+// devuelve si es GERENCIA), para servir tanto a la sesión normal por cookie
+// como al modal de Pipedrive, que se autentica con el JWT.
+async function calcularPreviewPuntual(rol: string, formData: FormData): Promise<PreviewPuntualState> {
   const { parametros } = await getParametrosVigentes();
   const r = computarPuntual(formData, parametros);
   if (r.error !== undefined) return { error: r.error };
-  const esGerencia = session.rol === 'GERENCIA';
   return {
     ok: true,
     totalCliente: r.totalCliente,
     requiereAprobacion: r.requiereAprobacion,
-    ...(esGerencia ? { margenPct: r.margenP } : {}),
+    ...(rol === 'GERENCIA' ? { margenPct: r.margenP } : {}),
   };
+}
+
+export async function previsualizarPuntual(_state: PreviewPuntualState, formData: FormData): Promise<PreviewPuntualState> {
+  const session = await verifySession();
+  return calcularPreviewPuntual(session.rol, formData);
+}
+
+// Misma vista previa, pero desde el modal embebido en Pipedrive: no hay cookie
+// de KTV, así que la identidad se revalida con el JWT en cada llamada (una
+// Server Action es un endpoint invocable directo, no solo un botón del modal).
+export async function previsualizarPuntualPipedrive(
+  token: string, dealIdParam: string, userIdParam: string,
+  _state: PreviewPuntualState, formData: FormData,
+): Promise<PreviewPuntualState> {
+  const r = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!r.ok) return { error: `Sesión de Pipedrive inválida — cierra este modal y vuelve a abrirlo desde el trato. (${r.motivo})` };
+  const usuario = await resolverUsuarioPipedrive(r.sesion.userId);
+  if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV.' };
+  return calcularPreviewPuntual(usuario.rol, formData);
 }
 
 export async function aprobarCotizacion(cotizacionId: string) {
@@ -897,12 +917,11 @@ export type PreviewCareState = {
   peorMargen?: number;
 } | undefined;
 
-export async function previsualizarCare(_state: PreviewCareState, formData: FormData): Promise<PreviewCareState> {
-  const session = await verifySession();
+// Núcleo compartido — ver calcularPreviewPuntual.
+async function calcularPreviewCare(rol: string, formData: FormData): Promise<PreviewCareState> {
   const { parametros } = await getParametrosVigentes();
   const r = computarCare(formData, parametros);
   if (r.error !== undefined) return { error: r.error };
-  const esGerencia = session.rol === 'GERENCIA';
   return {
     ok: true,
     valorAnualBasic: r.todos.BASIC.valorAnual, valorMensualBasic: r.todos.BASIC.valorMensual,
@@ -910,6 +929,23 @@ export async function previsualizarCare(_state: PreviewCareState, formData: Form
     valorAnualComplete: r.todos.COMPLETE.valorAnual, valorMensualComplete: r.todos.COMPLETE.valorMensual,
     informeInternacionalAparte: r.todos.COMPLETE.internacionalAparte?.precio,
     requiereAprobacion: r.requiereAprobacion,
-    ...(esGerencia ? { peorMargen: r.peorMargen } : {}),
+    ...(rol === 'GERENCIA' ? { peorMargen: r.peorMargen } : {}),
   };
+}
+
+export async function previsualizarCare(_state: PreviewCareState, formData: FormData): Promise<PreviewCareState> {
+  const session = await verifySession();
+  return calcularPreviewCare(session.rol, formData);
+}
+
+// Desde el modal de Pipedrive — ver previsualizarPuntualPipedrive.
+export async function previsualizarCarePipedrive(
+  token: string, dealIdParam: string, userIdParam: string,
+  _state: PreviewCareState, formData: FormData,
+): Promise<PreviewCareState> {
+  const r = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!r.ok) return { error: `Sesión de Pipedrive inválida — cierra este modal y vuelve a abrirlo desde el trato. (${r.motivo})` };
+  const usuario = await resolverUsuarioPipedrive(r.sesion.userId);
+  if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV.' };
+  return calcularPreviewCare(usuario.rol, formData);
 }

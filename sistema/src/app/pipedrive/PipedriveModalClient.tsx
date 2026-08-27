@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import CotizadorForm, { type CotizacionPuntualExistente } from '../cotizador/CotizadorForm';
 import CareForm, { type CotizacionCareExistente } from '../care/CareForm';
-import { crearCotizacionPuntualPipedrive, crearCotizacionCarePipedrive, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
+import {
+  crearCotizacionPuntualPipedrive, crearCotizacionCarePipedrive,
+  previsualizarPuntualPipedrive, previsualizarCarePipedrive,
+  type GuardarPipedriveState, type PreviewPuntualState, type PreviewCareState,
+} from '@/app/actions/cotizaciones';
 
 // El JWT de la URL (tokenInicial) caduca a los pocos minutos — para cualquier
 // guardado hay que pedirle uno nuevo al SDK de Pipedrive primero. Si por lo
@@ -47,6 +51,16 @@ export default function PipedriveModalClient({
     const token = await tokenFresco(tokenInicial);
     return crearCotizacionCarePipedrive(token, String(dealId), String(userId), formData);
   }
+  // "Calcular" también tiene que autenticarse con el JWT: la versión normal
+  // llama a verifySession() y, sin cookie, redirige al login dentro del iframe.
+  async function previewPuntual(prevState: PreviewPuntualState, formData: FormData): Promise<PreviewPuntualState> {
+    const token = await tokenFresco(tokenInicial);
+    return previsualizarPuntualPipedrive(token, String(dealId), String(userId), prevState, formData);
+  }
+  async function previewCare(prevState: PreviewCareState, formData: FormData): Promise<PreviewCareState> {
+    const token = await tokenFresco(tokenInicial);
+    return previsualizarCarePipedrive(token, String(dealId), String(userId), prevState, formData);
+  }
 
   // Ni Puntual ni Care tienen todavía una cotización vigente para este trato
   // — el comercial elige qué crear antes de ver el formulario correspondiente.
@@ -66,20 +80,28 @@ export default function PipedriveModalClient({
     );
   }
 
+  // El trato SIEMPRE se vincula (viene de selectedIds, es un hecho), aunque no
+  // se haya podido traer su nombre/contacto desde la API de Pipedrive — si el
+  // prefill fuera undefined, el formulario mostraría el buscador manual de
+  // tratos y la cotización quedaría sin vincular al trato desde el que se abrió.
+  const prefill = { id: String(dealId), clienteNombre: dealPrefill?.clienteNombre ?? '', clienteContacto: dealPrefill?.clienteContacto ?? '' };
+
   if (familia === 'PUNTUAL') {
     return (
       <CotizadorForm
         existente={puntualExistente}
-        dealPrefill={!puntualExistente && dealPrefill ? { id: String(dealId), ...dealPrefill } : undefined}
+        dealPrefill={puntualExistente ? undefined : prefill}
         accion={accionPuntual}
+        accionPreview={previewPuntual}
       />
     );
   }
   return (
     <CareForm
       existente={careExistente}
-      dealPrefill={!careExistente && dealPrefill ? { id: String(dealId), ...dealPrefill } : undefined}
+      dealPrefill={careExistente ? undefined : prefill}
       accion={accionCare}
+      accionPreview={previewCare}
     />
   );
 }

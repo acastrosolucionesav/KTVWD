@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { crearCotizacionPuntual, previsualizarPuntual, type CrearPuntualState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
+import { crearCotizacionPuntual, previsualizarPuntual, type CrearPuntualState, type PreviewPuntualState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
@@ -50,19 +50,23 @@ export type CotizacionPuntualExistente = {
 
 export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: string };
 
-// accion: override para el modal embebido en Pipedrive (ver /pipedrive) — ahí
-// no hay redirect al guardar (el modal no puede navegar a páginas que exigen
-// el login normal de KTV), así que la acción devuelve cotizacionId en vez de
-// nunca retornar. El formulario normal sigue igual, sin pasar esta prop.
+// accion / accionPreview: overrides para el modal embebido en Pipedrive (ver
+// /pipedrive). Ahí no hay cookie de sesión de KTV — las acciones normales
+// llaman a verifySession() y redirigirían al login dentro del iframe — así que
+// el modal pasa versiones que se autentican con el JWT de Pipedrive. Además,
+// al guardar no hay redirect (el modal no puede navegar al detalle interno),
+// por eso la acción devuelve cotizacionId en vez de nunca retornar. El
+// formulario normal sigue igual, sin pasar estas props.
 type AccionCotizador = (prevState: CrearPuntualState | GuardarPipedriveState, formData: FormData) => Promise<CrearPuntualState | GuardarPipedriveState>;
+type AccionPreview = (prevState: PreviewPuntualState, formData: FormData) => Promise<PreviewPuntualState>;
 
-export default function CotizadorForm({ existente, esCorreccion, dealPrefill, accion }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill; accion?: AccionCotizador }) {
+export default function CotizadorForm({ existente, esCorreccion, dealPrefill, accion, accionPreview }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill; accion?: AccionCotizador; accionPreview?: AccionPreview }) {
   const [state, action, pending] = useActionState(accion ?? crearCotizacionPuntual, undefined);
   // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25): antes, calcular Y
   // guardar eran el mismo botón — cada intento de ver el precio creaba una
   // cotización real. "Calcular" corre esta acción aparte (nunca toca la base);
   // "Crear cotización" / "Guardar cambios" sigue siendo el único botón que persiste.
-  const [preview, previewAction, previewPending] = useActionState(previsualizarPuntual, undefined);
+  const [preview, previewAction, previewPending] = useActionState(accionPreview ?? previsualizarPuntual, undefined);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);
@@ -117,8 +121,12 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         <div className="p-4 bg-[#EBF8FF] rounded-xl border border-[#66C2F8]/40">
           <label className="block text-xs font-bold uppercase tracking-wide text-[#66C2F8] mb-1">🔗 Trato de Pipedrive vinculado</label>
           <input type="hidden" name="pipedriveDealId" value={dealPrefill.id} />
-          <p className="text-sm text-[#171E27] font-semibold">{clienteNombre}</p>
-          <p className="text-[11px] text-gray-500 mt-1">Abriste el cotizador desde el trato en Pipedrive — Cliente y Contacto ya vienen cargados. Al enviar la propuesta, el trato se actualiza solo.</p>
+          <p className="text-sm text-[#171E27] font-semibold">{clienteNombre || `Trato #${dealPrefill.id}`}</p>
+          <p className="text-[11px] text-gray-500 mt-1">
+            {dealPrefill.clienteNombre
+              ? 'Abriste el cotizador desde el trato en Pipedrive — Cliente y Contacto ya vienen cargados. Al enviar la propuesta, el trato se actualiza solo.'
+              : 'Abriste el cotizador desde este trato en Pipedrive y la cotización quedará vinculada a él, pero no se pudieron traer sus datos — escriba el Cliente y el Contacto abajo.'}
+          </p>
         </div>
       ) : (
         <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
