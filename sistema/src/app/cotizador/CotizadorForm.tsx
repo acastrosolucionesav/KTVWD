@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { crearCotizacionPuntual, previsualizarPuntual } from '@/app/actions/cotizaciones';
+import { crearCotizacionPuntual, previsualizarPuntual, type CrearPuntualState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
@@ -50,8 +50,14 @@ export type CotizacionPuntualExistente = {
 
 export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: string };
 
-export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill }) {
-  const [state, action, pending] = useActionState(crearCotizacionPuntual, undefined);
+// accion: override para el modal embebido en Pipedrive (ver /pipedrive) — ahí
+// no hay redirect al guardar (el modal no puede navegar a páginas que exigen
+// el login normal de KTV), así que la acción devuelve cotizacionId en vez de
+// nunca retornar. El formulario normal sigue igual, sin pasar esta prop.
+type AccionCotizador = (prevState: CrearPuntualState | GuardarPipedriveState, formData: FormData) => Promise<CrearPuntualState | GuardarPipedriveState>;
+
+export default function CotizadorForm({ existente, esCorreccion, dealPrefill, accion }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill; accion?: AccionCotizador }) {
+  const [state, action, pending] = useActionState(accion ?? crearCotizacionPuntual, undefined);
   // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25): antes, calcular Y
   // guardar eran el mismo botón — cada intento de ver el precio creaba una
   // cotización real. "Calcular" corre esta acción aparte (nunca toca la base);
@@ -290,6 +296,9 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill }: 
       )}
 
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
+      {!state?.error && !!(state as GuardarPipedriveState | undefined)?.cotizacionId && (
+        <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">✓ Cotización guardada — ya puedes cerrar esta ventana o seguir ajustando.</p>
+      )}
 
       <div className="flex items-center gap-3">
         <button type="submit" formAction={previewAction} disabled={previewPending}

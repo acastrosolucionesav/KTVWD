@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { crearCotizacionCare, previsualizarCare } from '@/app/actions/cotizaciones';
+import { crearCotizacionCare, previsualizarCare, type CrearCareState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
 
@@ -29,16 +29,22 @@ export type CotizacionCareExistente = {
   descuentoPct: number | null;
 };
 
-export default function CareForm({ existente, esCorreccion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean }) {
-  const [state, action, pending] = useActionState(crearCotizacionCare, undefined);
+export type DealPrefillCare = { id: string; clienteNombre: string; clienteContacto: string };
+
+// accion: override para el modal embebido en Pipedrive — ver el mismo
+// mecanismo en CotizadorForm.tsx.
+type AccionCare = (prevState: CrearCareState | GuardarPipedriveState, formData: FormData) => Promise<CrearCareState | GuardarPipedriveState>;
+
+export default function CareForm({ existente, esCorreccion, dealPrefill, accion }: { existente?: CotizacionCareExistente; esCorreccion?: boolean; dealPrefill?: DealPrefillCare; accion?: AccionCare }) {
+  const [state, action, pending] = useActionState(accion ?? crearCotizacionCare, undefined);
   // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25) — mismo mecanismo que
   // el cotizador de Familia 1: "Calcular" no toca la base, solo "Crear
   // cotización"/"Guardar cambios" persiste.
   const [preview, previewAction, previewPending] = useActionState(previsualizarCare, undefined);
   const [plan, setPlan] = useState<'BASIC' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
-  const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? '');
-  const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? '');
+  const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');
+  const [clienteContacto, setClienteContacto] = useState(existente?.clienteContacto ?? dealPrefill?.clienteContacto ?? '');
 
   function seleccionarDeal(deal: PipedriveDealResumen | null) {
     setDealPipedrive(deal);
@@ -72,6 +78,8 @@ export default function CareForm({ existente, esCorreccion }: { existente?: Coti
 
       {existente ? (
         <input type="hidden" name="pipedriveDealId" value={existente.pipedriveDealId} />
+      ) : dealPrefill ? (
+        <input type="hidden" name="pipedriveDealId" value={dealPrefill.id} />
       ) : (
         <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-300">
           <label className="block text-xs font-bold uppercase tracking-wide text-amber-700 mb-1">🔗 Paso 1 — Buscar el trato en Pipedrive (opcional)</label>
