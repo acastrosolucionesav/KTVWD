@@ -3,10 +3,13 @@ import { obtenerTrato } from '@/lib/pipedrive';
 import { prisma } from '@/lib/prisma';
 import PipedriveModalClient from './PipedriveModalClient';
 
-function MensajeModal({ texto }: { texto: string }) {
+function MensajeModal({ texto, detalle }: { texto: string; detalle?: string }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F7FBFF] px-6">
-      <p className="max-w-sm text-center text-sm text-gray-600 bg-white rounded-2xl shadow p-6 border border-gray-200">{texto}</p>
+      <div className="max-w-md text-center bg-white rounded-2xl shadow p-6 border border-gray-200">
+        <p className="text-sm text-gray-600">{texto}</p>
+        {detalle && <p className="mt-3 text-xs text-gray-400 border-t border-gray-100 pt-3">{detalle}</p>}
+      </div>
     </div>
   );
 }
@@ -19,14 +22,28 @@ function MensajeModal({ texto }: { texto: string }) {
 export default async function PipedriveModalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; token?: string; userId?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id, token, userId } = await searchParams;
+  const params = await searchParams;
+  const leer = (k: string) => (Array.isArray(params[k]) ? params[k][0] : params[k]) as string | undefined;
+  const id = leer('id');
+  const token = leer('token');
+  const userId = leer('userId');
 
-  const sesion = await verificarTokenModal(token, id, userId);
-  if (!sesion) {
-    return <MensajeModal texto="No se pudo validar la sesión de Pipedrive. Cierra esta ventana y vuelve a abrirla desde el trato." />;
+  const r = await verificarTokenModal(token, id, userId);
+  if (!r.ok) {
+    // Se listan los nombres de los parámetros que sí llegaron (no sus valores:
+    // el token es sensible) — si Pipedrive los manda con otro nombre, esto lo
+    // hace evidente de una vez en vez de dejarlo como un fallo mudo.
+    const recibidos = Object.keys(params);
+    return (
+      <MensajeModal
+        texto="No se pudo validar la sesión de Pipedrive. Cierra esta ventana y vuelve a abrirla desde el trato."
+        detalle={`${r.motivo} · Parámetros recibidos: ${recibidos.length > 0 ? recibidos.join(', ') : '(ninguno)'}`}
+      />
+    );
   }
+  const sesion = r.sesion;
 
   const usuario = await resolverUsuarioPipedrive(sesion.userId);
   if (!usuario) {

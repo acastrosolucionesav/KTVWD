@@ -21,22 +21,41 @@ const CLIENT_SECRET = process.env.PIPEDRIVE_CLIENT_SECRET?.trim();
 
 export type SesionModalPipedrive = { dealId: number; userId: number };
 
+// Motivo del rechazo — se le muestra a quien abre el modal (no expone el token
+// ni el secret, solo qué parte del handshake falló). Sin esto el fallo es mudo
+// y obliga a adivinar entre media docena de causas idénticas en síntoma:
+// parámetros con otro nombre, secret de otra app, secret con un espacio de más,
+// token vencido.
+export type RechazoModal = { ok: false; motivo: string };
+export type ResultadoModal = { ok: true; sesion: SesionModalPipedrive } | RechazoModal;
+
 export async function verificarTokenModal(
   token: string | undefined,
   dealIdParam: string | undefined,
   userIdParam: string | undefined,
-): Promise<SesionModalPipedrive | null> {
-  if (!CLIENT_SECRET || !token || !dealIdParam || !userIdParam) return null;
+): Promise<ResultadoModal> {
+  if (!CLIENT_SECRET) return { ok: false, motivo: 'Falta PIPEDRIVE_CLIENT_SECRET en el servidor.' };
+
+  const faltantes = [
+    !token && 'token',
+    !dealIdParam && 'id (trato)',
+    !userIdParam && 'userId',
+  ].filter(Boolean);
+  if (faltantes.length > 0) {
+    return { ok: false, motivo: `Pipedrive no envió: ${faltantes.join(', ')}. Puede que los parámetros lleguen con otro nombre.` };
+  }
 
   const dealId = Number(dealIdParam);
   const userId = Number(userIdParam);
-  if (!Number.isFinite(dealId) || !Number.isFinite(userId)) return null;
+  if (!Number.isFinite(dealId) || !Number.isFinite(userId)) {
+    return { ok: false, motivo: `El trato o el usuario no son numéricos (id="${dealIdParam}", userId="${userIdParam}").` };
+  }
 
   try {
     const key = new TextEncoder().encode(CLIENT_SECRET);
     // jwtVerify ya hace la comparación de firma en tiempo constante y rechaza
     // un token vencido (claim exp) — no hay que reimplementar nada de eso.
-    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
+    const { payload } = await jwtVerify(token!, key, { algorithms: ['HS256'] });
 
     // ⚠️ Pendiente de confirmar con un token real de Pipedrive: si el payload
     // trae el deal_id/user_id embebido (con ese nombre u otro, p.ej.
@@ -47,11 +66,19 @@ export async function verificarTokenModal(
     // garantiza que el token es de nuestra app y no está vencido, no que
     // corresponde exactamente a ese deal_id/user_id de la URL.
     const dealIdEnToken = (payload as Record<string, unknown>).deal_id ?? (payload as Record<string, unknown>).dealId;
-    if (dealIdEnToken !== undefined && String(dealIdEnToken) !== dealIdParam) return null;
+    if (dealIdEnToken !== undefined && String(dealIdEnToken) !== dealIdParam) {
+      return { ok: false, motivo: `El token corresponde al trato ${String(dealIdEnToken)}, no al ${dealIdParam}.` };
+    }
 
-    return { dealId, userId };
-  } catch {
-    return null;
+    return { ok: true, sesion: { dealId, userId } };
+  } catch (e) {
+    const codigo = (e as { code?: string })?.code ?? '';
+    const detalle = codigo === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED'
+      ? 'La firma no coincide — el Client Secret configurado no es el de la app que abrió este modal.'
+      : codigo === 'ERR_JWT_EXPIRED'
+        ? 'El token de Pipedrive ya venció.'
+        : `${codigo || (e as Error)?.message || 'error desconocido'}.`;
+    return { ok: false, motivo: detalle };
   }
 }
 

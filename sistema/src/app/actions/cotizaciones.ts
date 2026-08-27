@@ -471,11 +471,11 @@ export type GuardarPipedriveState = { error?: string; cotizacionId?: string };
 export async function crearCotizacionPuntualPipedrive(
   token: string, dealIdParam: string, userIdParam: string, formData: FormData,
 ): Promise<GuardarPipedriveState> {
-  const sesion = await verificarTokenModal(token, dealIdParam, userIdParam);
-  if (!sesion) return { error: 'Sesión de Pipedrive inválida o vencida — cierra este modal y vuelve a abrirlo desde el trato.' };
-  const usuario = await resolverUsuarioPipedrive(sesion.userId);
+  const r = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!r.ok) return { error: `Sesión de Pipedrive inválida — cierra este modal y vuelve a abrirlo desde el trato. (${r.motivo})` };
+  const usuario = await resolverUsuarioPipedrive(r.sesion.userId);
   if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV — pide a Gerencia que te cree una con el mismo correo.' };
-  return guardarCotizacionPuntual(usuario.id, formData, String(sesion.dealId));
+  return guardarCotizacionPuntual(usuario.id, formData, String(r.sesion.dealId));
 }
 
 // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25): antes, el único botón
@@ -878,11 +878,11 @@ export async function crearCotizacionCare(_state: CrearCareState, formData: Form
 export async function crearCotizacionCarePipedrive(
   token: string, dealIdParam: string, userIdParam: string, formData: FormData,
 ): Promise<GuardarPipedriveState> {
-  const sesion = await verificarTokenModal(token, dealIdParam, userIdParam);
-  if (!sesion) return { error: 'Sesión de Pipedrive inválida o vencida — cierra este modal y vuelve a abrirlo desde el trato.' };
-  const usuario = await resolverUsuarioPipedrive(sesion.userId);
+  const r = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!r.ok) return { error: `Sesión de Pipedrive inválida — cierra este modal y vuelve a abrirlo desde el trato. (${r.motivo})` };
+  const usuario = await resolverUsuarioPipedrive(r.sesion.userId);
   if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV — pide a Gerencia que te cree una con el mismo correo.' };
-  return guardarCotizacionCare(usuario.id, formData, String(sesion.dealId));
+  return guardarCotizacionCare(usuario.id, formData, String(r.sesion.dealId));
 }
 
 // Vista previa SIN GUARDAR — mismo mecanismo que previsualizarPuntual: calcula
