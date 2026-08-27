@@ -2,16 +2,25 @@ import 'server-only';
 
 // Destino del "Callback URL" que exige el Developer Hub de Pipedrive al crear
 // la app (Cotizador KTV). Pipedrive manda aquí al usuario después de que
-// aprueba la instalación, con ?code=... — y si esta ruta responde 404, la
-// instalación queda a medias y la extensión (el Custom Modal del trato) NO
-// aparece en Pipedrive, aunque en el Developer Hub todo se vea bien
-// configurado. Ese fue exactamente el síntoma la primera vez que se instaló.
+// aprueba la instalación, con ?code=...
 //
-// No se canjea el `code` por tokens de OAuth a propósito: la integración lee
-// y escribe en Pipedrive con PIPEDRIVE_API_TOKEN (ver src/lib/pipedrive.ts), y
+// ⚠️ No basta con responder 200: hay que CANJEAR ese `code` por un token
+// (POST a oauth.pipedrive.com/oauth/token). Ese canje es lo que cierra el
+// trámite de instalación del lado de Pipedrive. Si no se hace, la app queda
+// como no instalada — no aparece en "Installed apps" — y la extensión (el
+// Custom Modal del trato) NUNCA se ve, aunque en el Developer Hub todo esté
+// bien configurado y el usuario haya aprobado los permisos. El síntoma es
+// mudo: ni error ni aviso, simplemente el botón no está.
+//
+// Los tokens que devuelve el canje no se guardan: la integración lee y
+// escribe en Pipedrive con PIPEDRIVE_API_TOKEN (ver src/lib/pipedrive.ts), y
 // la identidad de quien abre el modal se valida con el JWT que manda Pipedrive
-// (src/lib/pipedriveModalAuth.ts). Esta ruta solo tiene que cerrar el circuito
-// de instalación con un 200 y una página que le diga a la persona qué sigue.
+// (src/lib/pipedriveModalAuth.ts). El canje se hace solo para completar el
+// handshake de instalación.
+const CLIENT_ID = process.env.PIPEDRIVE_CLIENT_ID?.trim();
+const CLIENT_SECRET = process.env.PIPEDRIVE_CLIENT_SECRET?.trim();
+const TOKEN_URL = 'https://oauth.pipedrive.com/oauth/token';
+
 function pagina(titulo: string, mensaje: string, esError = false) {
   return new Response(
     `<!doctype html>
@@ -41,6 +50,49 @@ export async function GET(req: Request) {
       'La instalación del Cotizador KTV en Pipedrive fue cancelada o rechazada. Puede volver a intentarlo desde el enlace de instalación.',
       true,
     );
+  }
+
+  const code = url.searchParams.get('code');
+  if (!code) {
+    return pagina('Falta el código de instalación', 'Pipedrive no envió el código de autorización. Vuelva a abrir el enlace de instalación desde el Developer Hub.', true);
+  }
+
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    return pagina(
+      'Falta configuración en el servidor',
+      'No están configuradas PIPEDRIVE_CLIENT_ID y/o PIPEDRIVE_CLIENT_SECRET en el servidor, así que no se puede terminar la instalación. Avise a Gerencia.',
+      true,
+    );
+  }
+
+  // El redirect_uri tiene que ser IDÉNTICO al registrado en el Developer Hub
+  // — se reconstruye desde la propia petición para que no se desalinee si
+  // algún día cambia el dominio.
+  const redirectUri = `${url.origin}${url.pathname}`;
+
+  try {
+    const res = await fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        // Pipedrive espera las credenciales de la app como Basic auth, no en el cuerpo.
+        Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
+    });
+
+    if (!res.ok) {
+      const detalle = await res.text().catch(() => '');
+      console.error('Pipedrive: falló el canje del código de instalación', res.status, detalle);
+      return pagina(
+        'No se pudo terminar la instalación',
+        `Pipedrive rechazó el canje del código (error ${res.status}). Verifique que el Client ID y el Client Secret configurados correspondan a la misma app del Developer Hub, y vuelva a intentar la instalación.`,
+        true,
+      );
+    }
+  } catch (e) {
+    console.error('Pipedrive: error de red al canjear el código de instalación', e);
+    return pagina('No se pudo terminar la instalación', 'Hubo un problema de conexión con Pipedrive al terminar la instalación. Vuelva a intentarlo en unos minutos.', true);
   }
 
   return pagina(
