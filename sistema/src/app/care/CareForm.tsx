@@ -42,6 +42,10 @@ export default function CareForm({ existente, esCorreccion, dealPrefill, accion,
   // el cotizador de Familia 1: "Calcular" no toca la base, solo "Crear
   // cotización"/"Guardar cambios" persiste.
   const [preview, previewAction, previewPending] = useActionState(accionPreview ?? previsualizarCare, undefined);
+  // Ver el mismo mecanismo en CotizadorForm: dentro del modal de Pipedrive no
+  // hay redirect, así que hay que arrastrar el id devuelto para que un segundo
+  // guardado edite el mismo registro en vez de duplicarlo.
+  const idGuardado = existente?.id ?? (state as GuardarPipedriveState | undefined)?.cotizacionId;
   const [plan, setPlan] = useState<'BASIC' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');
@@ -65,7 +69,7 @@ export default function CareForm({ existente, esCorreccion, dealPrefill, accion,
           El cliente ya aceptó esta cotización — no se edita directamente. Al guardar se creará una <b>versión nueva</b> con estos datos corregidos, y el link de la propuesta original se desactivará automáticamente.
         </p>
       )}
-      {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}
+      {idGuardado && <input type="hidden" name="cotizacionId" value={idGuardado} />}
 
       <div>
         <label className={label}>Plan recomendado (se destaca en la propuesta)</label>
@@ -189,6 +193,14 @@ export default function CareForm({ existente, esCorreccion, dealPrefill, accion,
 
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
 
+      {/* Solo aplica dentro del modal de Pipedrive: ahí la acción no redirige
+          al detalle interno (el iframe no puede navegar fuera), así que sin
+          este aviso el comercial guarda y no ve ninguna señal de que pasó algo.
+          En el formulario normal la acción redirige y esto nunca se renderiza. */}
+      {!state?.error && !!(state as GuardarPipedriveState | undefined)?.cotizacionId && (
+        <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">✓ Cotización guardada — ya puedes cerrar esta ventana o seguir ajustando.</p>
+      )}
+
       <div className="flex items-center gap-3">
         <button type="submit" formAction={previewAction} disabled={previewPending}
           className="bg-white border border-[#66C2F8] text-[#171E27] font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
@@ -196,7 +208,7 @@ export default function CareForm({ existente, esCorreccion, dealPrefill, accion,
         </button>
         <button type="submit" disabled={pending}
           className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-          {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización Care'}
+          {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : idGuardado ? 'Guardar cambios' : 'Crear cotización Care'}
         </button>
       </div>
     </form>

@@ -67,6 +67,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   // cotización real. "Calcular" corre esta acción aparte (nunca toca la base);
   // "Crear cotización" / "Guardar cambios" sigue siendo el único botón que persiste.
   const [preview, previewAction, previewPending] = useActionState(accionPreview ?? previsualizarPuntual, undefined);
+  const idGuardado = existente?.id ?? (state as GuardarPipedriveState | undefined)?.cotizacionId;
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);
@@ -104,7 +105,13 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           El cliente ya aceptó esta cotización — no se edita directamente. Al guardar se creará una <b>versión nueva</b> con estos datos corregidos, y el link de la propuesta original se desactivará automáticamente.
         </p>
       )}
-      {existente && <input type="hidden" name="cotizacionId" value={existente.id} />}
+      {/* idGuardado: dentro del modal de Pipedrive no hay redirect tras guardar,
+          así que el formulario se queda en pantalla con los mismos datos. Sin
+          arrastrar el id devuelto, un segundo "Crear cotización" crearía un
+          registro duplicado del mismo trato — con esto el segundo guardado
+          edita el mismo (decisión Gerencia 2026-07-28: una cotización por
+          negociación mientras el cliente no la haya aceptado). */}
+      {idGuardado && <input type="hidden" name="cotizacionId" value={idGuardado} />}
 
       <div>
         <label className={label}>Producto a cotizar (escoja UNO)</label>
@@ -315,7 +322,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         </button>
         <button type="submit" disabled={pending}
           className="bg-[#66C2F8] text-white font-bold rounded-full px-6 py-2.5 disabled:opacity-60">
-          {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : existente ? 'Guardar cambios' : 'Crear cotización'}
+          {pending ? 'Guardando…' : esCorreccion ? 'Crear versión corregida' : idGuardado ? 'Guardar cambios' : 'Crear cotización'}
         </button>
       </div>
     </form>
