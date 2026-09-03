@@ -7,7 +7,7 @@ import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
 import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
-import { registrarPropuestaEnviada, registrarCotizacionCreada } from '@/lib/pipedrive';
+import { registrarPropuestaEnviada, registrarCotizacionCreada, actualizarTratoCotizacion, type CamposComercialesTrato } from '@/lib/pipedrive';
 import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
 import { enviarCorreoAprobacionPendiente } from '@/lib/email';
 
@@ -49,6 +49,21 @@ type PuntualData = {
   diasEjecucion: number | null;
   ejecucionSitio: string | null;
 };
+// Datos que el trato de Pipedrive necesita reflejar de la cotización — son los
+// mismos que Gerencia dejó como obligatorios para entrar a la etapa "Propuesta
+// Enviada", y todos salen de lo que el comercial ya llenó en el cotizador. Care
+// no tiene anticipo/saldo/Aerocivil/días de ejecución (es un programa
+// recurrente, no una operación puntual con fecha): ahí solo viaja la vigencia.
+function camposTratoPuntual(p: PuntualData, vigenteHasta: Date | null): CamposComercialesTrato {
+  return {
+    anticipoPct: p.anticipoPct,
+    saldoPct: p.saldoPct,
+    aerocivil: p.permisoAerocivil,
+    diasEjecucion: p.diasEjecucion ?? p.diasEjecucionSistema,
+    vigenteHasta,
+  };
+}
+
 type ItemLavadoData = {
   orden: number; nombre: string; concepto: ConceptoLavado;
   m2Vidrio: number; m2Opaca: number; superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
@@ -303,7 +318,7 @@ async function guardarCotizacionPuntual(
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
-  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
+  let existente: { clienteId: string; idTrazabilidad: string; linkToken: string; vigenteHasta: Date | null } | null = null;
   let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
   // Foto de cómo estaba ANTES de esta edición — se guarda como VersionCotizacion
   // (decisión Gerencia 2026-07-30, caso Pfizer: al editar en el mismo registro se
@@ -367,6 +382,19 @@ async function guardarCotizacionPuntual(
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId, accion: 'edito' } });
+
+    // El trato es un espejo de la cotización: si se ajusta el precio en una
+    // ronda de negociación, el valor del trato tiene que moverse con él (antes
+    // solo se escribía al crear, así que un trato ajustado quedaba mostrando
+    // la cifra vieja). Sin nota, para no llenar el historial en cada ajuste.
+    if (pipedriveDealId) {
+      await actualizarTratoCotizacion(Number(pipedriveDealId), {
+        valor: totalCliente,
+        urlPropuesta: `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${existente.linkToken}`,
+        campos: camposTratoPuntual(puntualData, existente.vigenteHasta),
+      }).catch((e) => console.error('Pipedrive: error actualizando el trato tras editar', e));
+    }
+
     if (requiereAprobacion) {
       await enviarCorreoAprobacionPendiente({
         idTrazabilidad: existente.idTrazabilidad,
@@ -442,6 +470,8 @@ async function guardarCotizacionPuntual(
       urlPropuesta: `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${cotizacion.linkToken}`,
       familia: 'PUNTUAL',
       requiereAprobacion,
+      valor: totalCliente,
+      campos: camposTratoPuntual(puntualData, vigenteHasta),
     }).catch((e) => console.error('Pipedrive: error registrando cotización creada', e));
   }
 
@@ -553,26 +583,71 @@ export async function rechazarCotizacion(cotizacionId: string) {
 
 export async function marcarEnviada(cotizacionId: string) {
   const session = await verifySession();
+  await marcarEnviadaCore(session.userId, cotizacionId);
+}
+
+// Desde el modal embebido en Pipedrive — mismo mecanismo de autenticación que
+// crearCotizacionPuntualPipedrive (el JWT se revalida acá, nunca se confía en
+// un usuarioId que mande el llamador). Existe porque el comercial escribe el
+// correo con la plantilla dentro del propio trato: si "marcar como enviada"
+// solo viviera en el panel interno de KTV, el trato se quedaría siempre en la
+// etapa anterior con el valor en cero (encontrado en producción, Petrometal).
+export async function marcarEnviadaPipedrive(
+  token: string, dealIdParam: string, userIdParam: string, cotizacionId: string,
+): Promise<{ error?: string; ok?: boolean }> {
+  const r = await verificarTokenModal(token, dealIdParam, userIdParam);
+  if (!r.ok) return { error: `Sesión de Pipedrive inválida — cierra este modal y vuelve a abrirlo desde el trato. (${r.motivo})` };
+  const usuario = await resolverUsuarioPipedrive(r.sesion.userId);
+  if (!usuario) return { error: 'Tu usuario de Pipedrive no tiene una cuenta correspondiente en el Sistema Comercial KTV.' };
+  // La cotización tiene que ser la de ESTE trato: el id viaja desde el cliente
+  // y una Server Action es invocable directo, así que sin este cruce alguien
+  // podría marcar como enviada una cotización de otro trato.
+  const c = await prisma.cotizacion.findUnique({
+    where: { id: cotizacionId },
+    select: { pipedriveDealId: true, cliente: { select: { pipedriveDealId: true } } },
+  });
+  if (!c) return { error: 'La cotización ya no existe.' };
+  const deLaCotizacion = c.pipedriveDealId ?? c.cliente.pipedriveDealId;
+  if (deLaCotizacion !== String(r.sesion.dealId)) return { error: 'Esa cotización no pertenece a este trato.' };
+  await marcarEnviadaCore(usuario.id, cotizacionId);
+  return { ok: true };
+}
+
+async function marcarEnviadaCore(usuarioId: string, cotizacionId: string) {
   const c = await prisma.cotizacion.update({
     where: { id: cotizacionId },
     data: { estado: 'ENVIADA', enviadoAt: new Date() },
-    include: { cliente: true, itemsTerceros: true },
+    include: { cliente: true, itemsTerceros: true, puntual: true },
   });
-  await prisma.auditoria.create({ data: { cotizacionId, usuarioId: session.userId, accion: 'envio' } });
+  await prisma.auditoria.create({ data: { cotizacionId, usuarioId, accion: 'envio' } });
   revalidatePath(`/cotizaciones/${cotizacionId}`);
 
   // Integración Pipedrive: si la cotización quedó vinculada a un trato, se
   // registra la nota + valor + cambio de etapa. Nunca bloquea el envío real
   // de la propuesta si Pipedrive falla o no está configurado.
-  if (c.cliente.pipedriveDealId) {
+  // Cotizacion.pipedriveDealId lo escribe el modal embebido (el trato desde el
+  // que se abrió); cliente.pipedriveDealId, el buscador de tratos del
+  // formulario normal. Cualquiera de los dos sirve para escribir de vuelta.
+  const dealIdTrato = c.pipedriveDealId ?? c.cliente.pipedriveDealId;
+  if (dealIdTrato) {
     // Familia 1: el total único ya incluye los ítems de terceros (mismo
     // criterio que el DTO de cliente y el panel interno) — Care no, ahí se
     // muestran aparte del valor anual recurrente del plan.
     const sumaItemsTerceros = c.itemsTerceros.reduce((s, it) => s + it.precioVenta, 0);
     const valor = c.familia === 'PUNTUAL' ? c.totalCliente + sumaItemsTerceros : c.totalCliente;
     const urlPropuesta = `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${c.linkToken}`;
-    await registrarPropuestaEnviada(Number(c.cliente.pipedriveDealId), {
+    await registrarPropuestaEnviada(Number(dealIdTrato), {
       urlPropuesta, valor, familia: c.familia,
+      // Sin estos campos Pipedrive rechaza el paso a "Propuesta Enviada"
+      // cuando Gerencia los dejó como obligatorios de esa etapa.
+      campos: c.puntual
+        ? {
+            anticipoPct: c.puntual.anticipoPct, saldoPct: c.puntual.saldoPct,
+            aerocivil: c.puntual.permisoAerocivil,
+            diasEjecucion: c.puntual.diasEjecucion ?? c.puntual.diasEjecucionSistema,
+            vigenteHasta: c.vigenteHasta,
+          }
+        : { vigenteHasta: c.vigenteHasta },
     }).catch((e) => console.error('Pipedrive: error registrando propuesta enviada', e));
   }
 }
@@ -761,7 +836,7 @@ async function guardarCotizacionCare(usuarioId: string, formData: FormData, deal
   const { parametros, snapshotJson } = await getParametrosVigentes();
 
   const cotizacionExistenteId = String(formData.get('cotizacionId') || '').trim() || null;
-  let existente: { clienteId: string; idTrazabilidad: string } | null = null;
+  let existente: { clienteId: string; idTrazabilidad: string; linkToken: string; vigenteHasta: Date | null } | null = null;
   let anterior: { id: string; idTrazabilidad: string; clienteId: string } | null = null;
   // Ver el mismo mecanismo en crearCotizacionPuntual (decisión Gerencia 2026-07-30).
   let snapshotAnterior: string | null = null;
@@ -811,6 +886,16 @@ async function guardarCotizacionCare(usuarioId: string, formData: FormData, deal
       },
     });
     await prisma.auditoria.create({ data: { cotizacionId: cotizacionExistenteId!, usuarioId, accion: 'edito' } });
+
+    // Espejo del trato — ver el mismo bloque en guardarCotizacionPuntual.
+    if (pipedriveDealId) {
+      await actualizarTratoCotizacion(Number(pipedriveDealId), {
+        valor: todos[planRecomendado].valorAnual,
+        urlPropuesta: `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${existente.linkToken}`,
+        campos: { vigenteHasta: existente.vigenteHasta },
+      }).catch((e) => console.error('Pipedrive: error actualizando el trato tras editar', e));
+    }
+
     if (requiereAprobacion) {
       await enviarCorreoAprobacionPendiente({
         idTrazabilidad: existente.idTrazabilidad,
@@ -879,6 +964,8 @@ async function guardarCotizacionCare(usuarioId: string, formData: FormData, deal
       urlPropuesta: `${process.env.NEXT_PUBLIC_APP_URL || ''}/propuesta/${cotizacion.linkToken}`,
       familia: 'CARE',
       requiereAprobacion,
+      valor: todos[planRecomendado].valorAnual,
+      campos: { vigenteHasta },
     }).catch((e) => console.error('Pipedrive: error registrando cotización Care creada', e));
   }
 

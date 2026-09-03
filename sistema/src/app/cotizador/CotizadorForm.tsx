@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { crearCotizacionPuntual, previsualizarPuntual, type CrearPuntualState, type PreviewPuntualState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
@@ -60,7 +60,7 @@ export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: 
 type AccionCotizador = (prevState: CrearPuntualState | GuardarPipedriveState, formData: FormData) => Promise<CrearPuntualState | GuardarPipedriveState>;
 type AccionPreview = (prevState: PreviewPuntualState, formData: FormData) => Promise<PreviewPuntualState>;
 
-export default function CotizadorForm({ existente, esCorreccion, dealPrefill, accion, accionPreview }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill; accion?: AccionCotizador; accionPreview?: AccionPreview }) {
+export default function CotizadorForm({ existente, esCorreccion, dealPrefill, accion, accionPreview, onGuardado }: { existente?: CotizacionPuntualExistente; esCorreccion?: boolean; dealPrefill?: DealPrefill; accion?: AccionCotizador; accionPreview?: AccionPreview; onGuardado?: (cotizacionId: string) => void }) {
   const [state, action, pending] = useActionState(accion ?? crearCotizacionPuntual, undefined);
   // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25): antes, calcular Y
   // guardar eran el mismo botón — cada intento de ver el precio creaba una
@@ -68,6 +68,16 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   // "Crear cotización" / "Guardar cambios" sigue siendo el único botón que persiste.
   const [preview, previewAction, previewPending] = useActionState(accionPreview ?? previsualizarPuntual, undefined);
   const idGuardado = existente?.id ?? (state as GuardarPipedriveState | undefined)?.cotizacionId;
+  // El modal de Pipedrive necesita saber qué cotización quedó guardada para
+  // poder ofrecer "Ya la envié" sin que el comercial tenga que cerrar y volver
+  // a abrir la ventana. En el formulario normal no se pasa y esto no hace nada.
+  // `state` va en las dependencias a propósito: cada guardado devuelve un
+  // estado nuevo, y así el modal se entera de TODOS los guardados (no solo del
+  // primero) — tras editar, la cotización vuelve a Borrador y hay que poder
+  // volver a marcarla como enviada.
+  useEffect(() => {
+    if (idGuardado) onGuardado?.(idGuardado);
+  }, [state, idGuardado, onGuardado]);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);

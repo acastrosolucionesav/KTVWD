@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import CotizadorForm, { type CotizacionPuntualExistente } from '../cotizador/CotizadorForm';
 import CareForm, { type CotizacionCareExistente } from '../care/CareForm';
 import {
   crearCotizacionPuntualPipedrive, crearCotizacionCarePipedrive,
-  previsualizarPuntualPipedrive, previsualizarCarePipedrive,
+  previsualizarPuntualPipedrive, previsualizarCarePipedrive, marcarEnviadaPipedrive,
   type GuardarPipedriveState, type PreviewPuntualState, type PreviewCareState,
 } from '@/app/actions/cotizaciones';
 
@@ -41,6 +41,43 @@ export default function PipedriveModalClient({
 }) {
   const [familia, setFamilia] = useState<'PUNTUAL' | 'CARE' | null>(
     puntualExistente ? 'PUNTUAL' : careExistente ? 'CARE' : null,
+  );
+  // Qué cotización está viva en esta ventana — la que ya existía para el trato,
+  // o la que se acabe de guardar (el formulario lo avisa por onGuardado).
+  const [cotizacionId, setCotizacionId] = useState<string | undefined>(puntualExistente?.id ?? careExistente?.id);
+  // Cada guardado deja el trato desactualizado otra vez (la cotización vuelve a
+  // Borrador con números nuevos), así que se rearma el botón de "Ya la envié".
+  const alGuardar = useCallback((id: string) => { setCotizacionId(id); setEnvio({}); }, []);
+  const [envio, setEnvio] = useState<{ pendiente?: boolean; ok?: boolean; error?: string }>({});
+
+  // El comercial escribe el correo con la plantilla dentro del propio trato, así
+  // que el sistema no tiene forma de enterarse solo de que ya se envió. Este
+  // botón es ese aviso: marca la cotización como ENVIADA, pone el valor en el
+  // trato y lo mueve a "Propuesta Enviada" (llenando de paso los campos que esa
+  // etapa exige, que si no bloquean el movimiento).
+  async function marcarComoEnviada() {
+    if (!cotizacionId) return;
+    setEnvio({ pendiente: true });
+    const token = await tokenFresco(tokenInicial);
+    const r = await marcarEnviadaPipedrive(token, String(dealId), String(userId), cotizacionId);
+    setEnvio({ ok: r.ok, error: r.error });
+  }
+
+  const barraEnvio = !cotizacionId ? null : (
+      <div className="max-w-2xl mx-auto mt-8 -mb-4 bg-white rounded-2xl border border-[#66C2F8]/40 px-5 py-4 flex items-center gap-4 flex-wrap">
+        <div className="flex-1 min-w-[220px]">
+          <p className="text-sm font-bold text-[#171E27]">¿Ya le enviaste el correo al cliente?</p>
+          <p className="text-[11px] text-gray-500">
+            Al confirmarlo, el trato pasa a <b>Propuesta Enviada</b> con el valor cotizado. El correo se sigue
+            escribiendo desde el trato con la plantilla de siempre.
+          </p>
+        </div>
+        <button type="button" onClick={marcarComoEnviada} disabled={envio.pendiente || envio.ok}
+          className="bg-[#171E27] text-white font-bold rounded-full px-5 py-2.5 text-sm disabled:opacity-60">
+          {envio.ok ? '✓ Trato actualizado' : envio.pendiente ? 'Actualizando…' : 'Ya la envié'}
+        </button>
+        {envio.error && <p className="w-full text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{envio.error}</p>}
+      </div>
   );
 
   async function accionPuntual(_prevState: GuardarPipedriveState | undefined, formData: FormData): Promise<GuardarPipedriveState> {
@@ -88,20 +125,28 @@ export default function PipedriveModalClient({
 
   if (familia === 'PUNTUAL') {
     return (
-      <CotizadorForm
-        existente={puntualExistente}
-        dealPrefill={puntualExistente ? undefined : prefill}
-        accion={accionPuntual}
-        accionPreview={previewPuntual}
-      />
+      <>
+        {barraEnvio}
+        <CotizadorForm
+          existente={puntualExistente}
+          dealPrefill={puntualExistente ? undefined : prefill}
+          accion={accionPuntual}
+          accionPreview={previewPuntual}
+          onGuardado={alGuardar}
+        />
+      </>
     );
   }
   return (
-    <CareForm
-      existente={careExistente}
-      dealPrefill={careExistente ? undefined : prefill}
-      accion={accionCare}
-      accionPreview={previewCare}
-    />
+    <>
+      {barraEnvio}
+      <CareForm
+        existente={careExistente}
+        dealPrefill={careExistente ? undefined : prefill}
+        accion={accionCare}
+        accionPreview={previewCare}
+        onGuardado={alGuardar}
+      />
+    </>
   );
 }

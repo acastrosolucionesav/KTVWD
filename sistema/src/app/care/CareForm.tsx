@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { crearCotizacionCare, previsualizarCare, type CrearCareState, type PreviewCareState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
@@ -36,7 +36,7 @@ export type DealPrefillCare = { id: string; clienteNombre: string; clienteContac
 type AccionCare = (prevState: CrearCareState | GuardarPipedriveState, formData: FormData) => Promise<CrearCareState | GuardarPipedriveState>;
 type AccionPreviewCare = (prevState: PreviewCareState, formData: FormData) => Promise<PreviewCareState>;
 
-export default function CareForm({ existente, esCorreccion, dealPrefill, accion, accionPreview }: { existente?: CotizacionCareExistente; esCorreccion?: boolean; dealPrefill?: DealPrefillCare; accion?: AccionCare; accionPreview?: AccionPreviewCare }) {
+export default function CareForm({ existente, esCorreccion, dealPrefill, accion, accionPreview, onGuardado }: { existente?: CotizacionCareExistente; esCorreccion?: boolean; dealPrefill?: DealPrefillCare; accion?: AccionCare; accionPreview?: AccionPreviewCare; onGuardado?: (cotizacionId: string) => void }) {
   const [state, action, pending] = useActionState(accion ?? crearCotizacionCare, undefined);
   // Vista previa SIN GUARDAR (decisión Gerencia 2026-07-25) — mismo mecanismo que
   // el cotizador de Familia 1: "Calcular" no toca la base, solo "Crear
@@ -46,6 +46,15 @@ export default function CareForm({ existente, esCorreccion, dealPrefill, accion,
   // hay redirect, así que hay que arrastrar el id devuelto para que un segundo
   // guardado edite el mismo registro en vez de duplicarlo.
   const idGuardado = existente?.id ?? (state as GuardarPipedriveState | undefined)?.cotizacionId;
+  // Ver CotizadorForm: le avisa al modal de Pipedrive qué cotización quedó
+  // guardada, para poder ofrecer ahí mismo "Ya la envié".
+  // `state` va en las dependencias a propósito: cada guardado devuelve un
+  // estado nuevo, y así el modal se entera de TODOS los guardados (no solo del
+  // primero) — tras editar, la cotización vuelve a Borrador y hay que poder
+  // volver a marcarla como enviada.
+  useEffect(() => {
+    if (idGuardado) onGuardado?.(idGuardado);
+  }, [state, idGuardado, onGuardado]);
   const [plan, setPlan] = useState<'BASIC' | 'ESSENTIAL' | 'COMPLETE'>(existente?.plan ?? 'ESSENTIAL');
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');

@@ -107,24 +107,154 @@ export async function registrarEnvioMaterial(dealId: number, args: { titulo: str
   return { ok: true as const };
 }
 
-// Campo personalizado "Cotizador" del trato (lo crea Gerencia una sola vez en
-// Pipedrive: Configuración → Campos de datos → Trato). Se busca por nombre y
-// se cachea la key solo cuando se encuentra — si aún no existe, se reintenta
-// en el siguiente uso sin romper nada.
-let campoCotizadorKeyCache: string | null = null;
-async function obtenerCampoCotizador(): Promise<string | null> {
-  if (campoCotizadorKeyCache) return campoCotizadorKeyCache;
-  const res = await fetch(`${BASE}/dealFields?api_token=${TOKEN}`, { cache: 'no-store' }).catch(() => null);
+// Campos personalizados del trato (los crea Gerencia en Pipedrive:
+// Configuración → Campos de datos → Trato). SIEMPRE se buscan por NOMBRE y se
+// resuelve la key real (`abc123…`) contra la API — la key es un hash distinto
+// en cada cuenta de Pipedrive, así que hardcodearla rompería el sistema en
+// cuanto se use otra cuenta (o si Gerencia borra y vuelve a crear el campo).
+// Se cachea el mapa solo cuando la consulta funcionó; si falla se reintenta en
+// el siguiente uso sin romper nada.
+type CampoTrato = { key: string; tipo: string };
+let mapaCamposCache: Map<string, CampoTrato> | null = null;
+
+// "Días Ejecución", "DIAS EJECUCION" y "días ejecución" son el mismo campo para
+// quien lo configuró en Pipedrive — se comparan sin tildes, sin mayúsculas y
+// sin el "%" que Gerencia usa en los nombres ("Anticipo %").
+function normalizarNombre(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/%/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function mapaCamposTrato(): Promise<Map<string, CampoTrato> | null> {
+  if (mapaCamposCache) return mapaCamposCache;
+  const res = await fetch(`${BASE}/dealFields?api_token=${TOKEN}&limit=500`, { cache: 'no-store' }).catch(() => null);
   if (!res || !res.ok) return null;
   const json = await res.json();
-  const campo = (json?.data ?? []).find((f: any) => String(f.name ?? '').trim().toLowerCase() === 'cotizador');
-  if (campo?.key) campoCotizadorKeyCache = campo.key;
-  return campoCotizadorKeyCache;
+  const mapa = new Map<string, CampoTrato>();
+  for (const f of json?.data ?? []) {
+    if (f?.key && f?.name) mapa.set(normalizarNombre(String(f.name)), { key: String(f.key), tipo: String(f.field_type ?? '') });
+  }
+  if (mapa.size === 0) return null;
+  mapaCamposCache = mapa;
+  return mapa;
+}
+
+async function obtenerCampoCotizador(): Promise<string | null> {
+  const mapa = await mapaCamposTrato();
+  return mapa?.get('cotizador')?.key ?? null;
+}
+
+// Campos comerciales que Gerencia marcó como OBLIGATORIOS para que un trato
+// pueda entrar a la etapa "Propuesta Enviada" (Pipedrive los exige tanto al
+// arrastrar la tarjeta a mano como al mover la etapa por API). Todos salen de
+// datos que el comercial YA llenó en el cotizador, así que se escriben solos
+// al guardar la cotización — si no, el comercial tendría que volver a teclear
+// lo mismo dentro de Pipedrive para poder mover el trato.
+export type CamposComercialesTrato = {
+  anticipoPct?: number | null;
+  saldoPct?: number | null;
+  aerocivil?: string | null;
+  diasEjecucion?: number | null;
+  vigenteHasta?: Date | null;
+};
+
+// Nombre(s) posibles del campo en Pipedrive, en orden de preferencia.
+const NOMBRES_CAMPO: Record<keyof CamposComercialesTrato, string[]> = {
+  anticipoPct: ['anticipo'],
+  saldoPct: ['saldo'],
+  aerocivil: ['dias aerocivil', 'aerocivil', 'permiso aerocivil'],
+  diasEjecucion: ['dias ejecucion', 'dias de ejecucion'],
+  vigenteHasta: ['vigencia', 'vigente hasta'],
+};
+
+// Adapta el valor al tipo real del campo en Pipedrive. Es necesario porque no
+// controlamos cómo lo creó Gerencia: "Días Aerocivil" puede ser texto ("30 a 40
+// días hábiles…") o numérico, y en el segundo caso hay que mandar el número o
+// Pipedrive rechaza el trato entero. Los campos de opciones (enum/set) y de
+// relación se omiten a propósito: escribirlos exige el id de la opción, y
+// mandar texto ahí ensuciaría el dato en vez de ayudar.
+function formatearValor(tipo: string, valor: unknown): string | number | null {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (tipo === 'date') {
+    const d = valor instanceof Date ? valor : new Date(String(valor));
+    return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  }
+  if (tipo === 'double' || tipo === 'monetary' || tipo === 'int') {
+    const n = typeof valor === 'number' ? valor : Number(String(valor).replace(',', '.').match(/-?\d+(\.\d+)?/)?.[0] ?? NaN);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (tipo === 'enum' || tipo === 'set' || tipo === 'user' || tipo === 'org' || tipo === 'people' || tipo === 'deal') return null;
+  return valor instanceof Date ? valor.toISOString().slice(0, 10) : String(valor);
+}
+
+async function cuerpoCamposComerciales(campos: CamposComercialesTrato): Promise<Record<string, string | number>> {
+  const mapa = await mapaCamposTrato().catch(() => null);
+  if (!mapa) return {};
+  const cuerpo: Record<string, string | number> = {};
+  for (const [prop, nombres] of Object.entries(NOMBRES_CAMPO) as [keyof CamposComercialesTrato, string[]][]) {
+    const campo = nombres.map((n) => mapa.get(n)).find(Boolean);
+    if (!campo) continue;
+    const valor = formatearValor(campo.tipo, campos[prop]);
+    if (valor !== null) cuerpo[campo.key] = valor;
+  }
+  return cuerpo;
+}
+
+// Un solo PUT con todo lo que el trato debe reflejar de la cotización: valor,
+// link de la propuesta, campos comerciales obligatorios y (opcionalmente) la
+// etapa. Nunca lanza — Pipedrive es un espejo del sistema, no su fuente de
+// verdad: si falla, la cotización ya quedó guardada igual.
+async function actualizarTrato(dealId: number, args: {
+  valor?: number | null;
+  urlPropuesta?: string | null;
+  campos?: CamposComercialesTrato;
+  moverAEnviada?: boolean;
+}) {
+  if (!habilitado()) return;
+  const cuerpo: Record<string, unknown> = {};
+
+  if (args.valor !== null && args.valor !== undefined && Number.isFinite(args.valor)) {
+    cuerpo.value = Math.round(args.valor);
+    cuerpo.currency = 'COP';
+  }
+  if (args.urlPropuesta) {
+    const campoKey = await obtenerCampoCotizador().catch(() => null);
+    if (campoKey) cuerpo[campoKey] = args.urlPropuesta;
+  }
+  if (args.campos) Object.assign(cuerpo, await cuerpoCamposComerciales(args.campos));
+  if (args.moverAEnviada) {
+    const stageId = await obtenerEtapaPropuestaEnviada().catch(() => null);
+    if (stageId) cuerpo.stage_id = stageId;
+  }
+  if (Object.keys(cuerpo).length === 0) return;
+
+  const res = await fetch(`${BASE}/deals/${dealId}?api_token=${TOKEN}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  }).catch(() => null);
+  if (!res || !res.ok) {
+    console.error('Pipedrive: no se pudo actualizar el trato', dealId, res ? await res.text().catch(() => '') : 'sin respuesta');
+  }
+}
+
+// Al EDITAR una cotización ya vinculada a un trato: se refresca el espejo del
+// trato (valor, link, campos), sin nota — el comercial ajusta varias veces
+// durante una negociación y una nota por ajuste enterraría el historial.
+export async function actualizarTratoCotizacion(dealId: number, args: {
+  valor: number;
+  urlPropuesta: string;
+  campos?: CamposComercialesTrato;
+}) {
+  await actualizarTrato(dealId, { valor: args.valor, urlPropuesta: args.urlPropuesta, campos: args.campos });
 }
 
 // Al CREAR una cotización vinculada a un trato: nota en el historial + el
-// enlace público de la propuesta en el campo "Cotizador" del panel de
-// Detalles — el comercial ve el link ahí mismo, sin salir de Pipedrive.
+// espejo del trato (valor cotizado, enlace público en el campo "Cotizador" y
+// los campos comerciales obligatorios de la etapa). El valor se escribe desde
+// la creación y no solo al marcarla como enviada: el comercial manda la
+// propuesta con la plantilla de correo del propio Pipedrive, así que si el
+// valor esperara a "Marcar como enviada" en el sistema, el trato se quedaría
+// en COP 0 justo cuando ya se cotizó (encontrado en producción, Petrometal).
 // Nunca lanza ni bloquea la creación si Pipedrive falla o no está configurado.
 export async function registrarCotizacionCreada(dealId: number, args: {
   idTrazabilidad: string;
@@ -132,6 +262,8 @@ export async function registrarCotizacionCreada(dealId: number, args: {
   urlPropuesta: string;
   familia: 'PUNTUAL' | 'CARE';
   requiereAprobacion: boolean;
+  valor?: number;
+  campos?: CamposComercialesTrato;
 }) {
   if (!habilitado()) return;
 
@@ -149,21 +281,16 @@ export async function registrarCotizacionCreada(dealId: number, args: {
     body: JSON.stringify({ content: nota, deal_id: dealId }),
   }).catch((e) => console.error('Pipedrive: error creando nota de cotización', e));
 
-  const campoKey = await obtenerCampoCotizador().catch(() => null);
-  if (campoKey) {
-    await fetch(`${BASE}/deals/${dealId}?api_token=${TOKEN}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [campoKey]: args.urlPropuesta }),
-    }).catch((e) => console.error('Pipedrive: error llenando el campo Cotizador', e));
-  }
+  await actualizarTrato(dealId, { valor: args.valor, urlPropuesta: args.urlPropuesta, campos: args.campos });
 }
 
 // Al marcar una propuesta (Familia 1 o Care) como enviada: nota con el
 // enlace + valor, actualizar el valor del trato, y moverlo a la etapa
 // "Propuesta Enviada". No lanza si Pipedrive no está configurado o falla —
 // nunca debe bloquear el envío real de la propuesta al cliente.
-export async function registrarPropuestaEnviada(dealId: number, args: { urlPropuesta: string; valor: number; familia: 'PUNTUAL' | 'CARE' }) {
+export async function registrarPropuestaEnviada(dealId: number, args: {
+  urlPropuesta: string; valor: number; familia: 'PUNTUAL' | 'CARE'; campos?: CamposComercialesTrato;
+}) {
   if (!habilitado()) return;
 
   const nota = [
@@ -178,12 +305,12 @@ export async function registrarPropuestaEnviada(dealId: number, args: { urlPropu
     body: JSON.stringify({ content: nota, deal_id: dealId }),
   }).catch((e) => console.error('Pipedrive: error creando nota', e));
 
-  const stageId = await obtenerEtapaPropuestaEnviada().catch(() => null);
-  await fetch(`${BASE}/deals/${dealId}?api_token=${TOKEN}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ value: Math.round(args.valor), ...(stageId ? { stage_id: stageId } : {}) }),
-  }).catch((e) => console.error('Pipedrive: error actualizando el trato', e));
+  // Los campos comerciales van en el MISMO PUT que el cambio de etapa: si la
+  // etapa "Propuesta Enviada" los exige y llegaran vacíos, Pipedrive rechaza
+  // el movimiento entero y el trato se queda atrás sin que nadie se entere.
+  await actualizarTrato(dealId, {
+    valor: args.valor, urlPropuesta: args.urlPropuesta, campos: args.campos, moverAEnviada: true,
+  });
 }
 
 // Landing de Alianzas (spec_pagina_alianzas_20260721.md): un candidato llena el
