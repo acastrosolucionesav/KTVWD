@@ -214,6 +214,17 @@ function formatearValor(tipo: string, valor: unknown): string | number | null {
   return valor instanceof Date ? valor.toISOString().slice(0, 10) : String(valor);
 }
 
+// Cuántos días de vigencia le quedan a la propuesta. Se usa cuando el campo
+// "Vigencia" del trato es NUMÉRICO (así lo creó Gerencia: 123 Numerical, no una
+// fecha) — mandarle ahí la fecha escribiría un número sin sentido. Como la
+// propuesta se manda el mismo día que se cotiza y la vigencia es de 30 días,
+// normalmente queda en 30.
+function diasDeVigencia(vigenteHasta?: Date | null): number | null {
+  if (!vigenteHasta) return null;
+  const dias = Math.ceil((vigenteHasta.getTime() - Date.now()) / 86_400_000);
+  return dias > 0 ? dias : 0;
+}
+
 async function cuerpoCamposComerciales(campos: CamposComercialesTrato): Promise<Record<string, string | number>> {
   const mapa = await mapaCamposTrato().catch(() => null);
   if (!mapa) return {};
@@ -221,7 +232,12 @@ async function cuerpoCamposComerciales(campos: CamposComercialesTrato): Promise<
   for (const [prop, nombres] of Object.entries(NOMBRES_CAMPO) as [keyof CamposComercialesTrato, string[]][]) {
     const campo = nombres.map((n) => mapa.get(n)).find(Boolean);
     if (!campo) continue;
-    const valor = formatearValor(campo.tipo, campos[prop]);
+    // La vigencia es el único campo que cambia de forma según el tipo: fecha
+    // si el campo es de fecha, días restantes si es numérico.
+    const bruto = prop === 'vigenteHasta' && campo.tipo !== 'date'
+      ? diasDeVigencia(campos.vigenteHasta)
+      : campos[prop];
+    const valor = formatearValor(campo.tipo, bruto);
     if (valor !== null) cuerpo[campo.key] = valor;
   }
   return cuerpo;
