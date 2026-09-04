@@ -71,16 +71,44 @@ export async function obtenerCorreoUsuarioPipedrive(userId: number): Promise<str
   return typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
 }
 
-let etapaEnviadaIdCache: number | null = null;
-async function obtenerEtapaPropuestaEnviada(): Promise<number | null> {
-  if (etapaEnviadaIdCache !== null) return etapaEnviadaIdCache;
-  const res = await fetch(`${BASE}/stages?api_token=${TOKEN}`, { cache: 'no-store' });
-  if (!res.ok) return null;
+type Etapa = { id: number; nombre: string; orden: number; pipelineId: number };
+let etapasCache: Etapa[] | null = null;
+async function etapas(): Promise<Etapa[] | null> {
+  if (etapasCache) return etapasCache;
+  const res = await fetch(`${BASE}/stages?api_token=${TOKEN}`, { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) return null;
   const json = await res.json();
-  const etapa = (json?.data ?? []).find((s: any) => s.name === NOMBRE_ETAPA_ENVIADA);
-  if (!etapa) return null;
-  etapaEnviadaIdCache = etapa.id;
-  return etapa.id;
+  const lista: Etapa[] = (json?.data ?? [])
+    .filter((s: any) => s?.id)
+    .map((s: any) => ({ id: s.id, nombre: String(s.name ?? ''), orden: Number(s.order_nr ?? 0), pipelineId: Number(s.pipeline_id ?? 0) }));
+  if (lista.length === 0) return null;
+  etapasCache = lista;
+  return lista;
+}
+
+// A qué etapa debe pasar el trato cuando la propuesta ya salió — null si NO
+// hay que moverlo. Se decide con el estado real del trato porque mover de etapa
+// es destructivo en el sentido comercial: un trato que ya está en "Trámite
+// Aerocivil" o ganado NO puede volver a "Propuesta Enviada" (borraría el avance
+// del embudo y los reportes de conversión). Solo se mueve hacia adelante,
+// dentro del mismo pipeline del trato, y nunca un trato cerrado.
+async function etapaDestinoEnviada(dealId: number): Promise<number | null> {
+  const lista = await etapas();
+  if (!lista) return null;
+  const res = await fetch(`${BASE}/deals/${dealId}?api_token=${TOKEN}`, { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const d = (await res.json())?.data;
+  if (!d || d.status !== 'open') return null;
+
+  const pipelineId = Number(d.pipeline_id ?? 0);
+  const destino = lista.find((s) => s.nombre === NOMBRE_ETAPA_ENVIADA && s.pipelineId === pipelineId)
+    ?? lista.find((s) => s.nombre === NOMBRE_ETAPA_ENVIADA);
+  if (!destino || destino.pipelineId !== pipelineId) return null;
+  if (Number(d.stage_id) === destino.id) return null;
+
+  const actual = lista.find((s) => s.id === Number(d.stage_id));
+  if (actual && actual.orden >= destino.orden) return null;
+  return destino.id;
 }
 
 // Materiales comerciales que se pueden registrar en un trato — compartido
@@ -222,7 +250,9 @@ async function actualizarTrato(dealId: number, args: {
   }
   if (args.campos) Object.assign(cuerpo, await cuerpoCamposComerciales(args.campos));
   if (args.moverAEnviada) {
-    const stageId = await obtenerEtapaPropuestaEnviada().catch(() => null);
+    // El cambio de etapa va en el MISMO PUT que los campos comerciales: si la
+    // etapa los exige, tienen que llegar juntos o Pipedrive rechaza todo.
+    const stageId = await etapaDestinoEnviada(dealId).catch(() => null);
     if (stageId) cuerpo.stage_id = stageId;
   }
   if (Object.keys(cuerpo).length === 0) return;
@@ -311,6 +341,42 @@ export async function registrarPropuestaEnviada(dealId: number, args: {
   await actualizarTrato(dealId, {
     valor: args.valor, urlPropuesta: args.urlPropuesta, campos: args.campos, moverAEnviada: true,
   });
+}
+
+// El cliente abrió el link público de la propuesta. Es la única prueba dura de
+// que la propuesta de verdad salió (el correo se escribe con la plantilla de
+// Pipedrive, fuera del sistema), así que la primera apertura deja la nota en el
+// trato y lo empuja a "Propuesta Enviada" si venía de una etapa anterior.
+//
+// Las aperturas siguientes NO dejan nota: un cliente que revisa la propuesta
+// cinco veces llenaría el historial del trato y taparía lo que sí importa. El
+// conteo completo vive en el sistema (tabla Apertura, visible en el detalle).
+export async function registrarAperturaPropuesta(dealId: number, args: {
+  idTrazabilidad: string;
+  clienteNombre: string;
+  esPrimera: boolean;
+  // Se reenvían junto con el cambio de etapa por dos razones: la etapa puede
+  // exigirlos (y sin ellos rechaza el movimiento completo), y las cotizaciones
+  // guardadas antes de que el sistema escribiera el valor en el trato quedan
+  // así al día en la primera apertura del cliente, sin tocar nada a mano.
+  valor?: number;
+  campos?: CamposComercialesTrato;
+}) {
+  if (!habilitado()) return;
+
+  if (args.esPrimera) {
+    const nota = [
+      `👀 El cliente ABRIÓ la propuesta ${args.idTrazabilidad} (${args.clienteNombre}).`,
+      'Registrado automáticamente por el Sistema Comercial KTV al visitarse el link público.',
+    ].join('\n');
+    await fetch(`${BASE}/notes?api_token=${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: nota, deal_id: dealId }),
+    }).catch((e) => console.error('Pipedrive: error creando nota de apertura', e));
+
+    await actualizarTrato(dealId, { valor: args.valor, campos: args.campos, moverAEnviada: true });
+  }
 }
 
 // Landing de Alianzas (spec_pagina_alianzas_20260721.md): un candidato llena el

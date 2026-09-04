@@ -5,6 +5,7 @@ import { getCotizacionClienteDTO, type CotizacionClienteDTO } from '@/lib/dto';
 import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { enviarCorreoPropuestaAbierta } from '@/lib/email';
+import { registrarAperturaPropuesta } from '@/lib/pipedrive';
 import AceptarButton from './AceptarButton';
 
 // PÁGINA PÚBLICA — sin login. Solo puede recibir el DTO de cliente (dto.ts),
@@ -123,15 +124,51 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
     const cotizacionBase = await prisma.cotizacion.findUnique({
       where: { linkToken: id },
       select: {
-        id: true, idTrazabilidad: true,
+        id: true, idTrazabilidad: true, familia: true, totalCliente: true, vigenteHasta: true,
+        pipedriveDealId: true,
         creadoPor: { select: { nombre: true } },
-        cliente: { select: { nombre: true } },
+        cliente: { select: { nombre: true, pipedriveDealId: true } },
+        puntual: { select: { anticipoPct: true, saldoPct: true, permisoAerocivil: true, diasEjecucion: true, diasEjecucionSistema: true } },
+        itemsTerceros: { select: { precioVenta: true } },
+        _count: { select: { aperturas: true } },
       },
     });
     if (cotizacionBase) {
+      // Se cuenta ANTES de crear la fila: si es la primera, es la apertura que
+      // vale para mover el trato en Pipedrive.
+      const esPrimera = cotizacionBase._count.aperturas === 0;
       await prisma.apertura.create({
         data: { cotizacionId: cotizacionBase.id, userAgent: ua?.slice(0, 250) ?? null },
       }).catch(() => {});
+
+      // Que el cliente haya abierto el link es la prueba de que la propuesta
+      // salió — el correo se escribe con la plantilla de Pipedrive, fuera del
+      // sistema, así que esta es la señal más confiable que tenemos para mover
+      // el trato de etapa sin que nadie tenga que acordarse de marcarlo.
+      const dealIdTrato = cotizacionBase.pipedriveDealId ?? cotizacionBase.cliente.pipedriveDealId;
+      if (dealIdTrato) {
+        const sumaItemsTerceros = cotizacionBase.itemsTerceros.reduce((s, it) => s + it.precioVenta, 0);
+        await registrarAperturaPropuesta(Number(dealIdTrato), {
+          idTrazabilidad: cotizacionBase.idTrazabilidad,
+          clienteNombre: cotizacionBase.cliente.nombre,
+          esPrimera,
+          // Mismo criterio que marcarEnviada: en Familia 1 el total ya incluye
+          // los ítems de terceros; en Care el valor es el anual del plan.
+          valor: cotizacionBase.familia === 'PUNTUAL'
+            ? cotizacionBase.totalCliente + sumaItemsTerceros
+            : cotizacionBase.totalCliente,
+          campos: cotizacionBase.puntual
+            ? {
+                anticipoPct: cotizacionBase.puntual.anticipoPct,
+                saldoPct: cotizacionBase.puntual.saldoPct,
+                aerocivil: cotizacionBase.puntual.permisoAerocivil,
+                diasEjecucion: cotizacionBase.puntual.diasEjecucion ?? cotizacionBase.puntual.diasEjecucionSistema,
+                vigenteHasta: cotizacionBase.vigenteHasta,
+              }
+            : { vigenteHasta: cotizacionBase.vigenteHasta },
+        }).catch((e) => console.error('Pipedrive: error registrando la apertura', e));
+      }
+
       await enviarCorreoPropuestaAbierta({
         comercialNombre: cotizacionBase.creadoPor.nombre,
         idTrazabilidad: cotizacionBase.idTrazabilidad,
