@@ -50,6 +50,48 @@ async function enviar(to: string, subject: string, html: string) {
   await transport.sendMail({ from: `"KTV Working Drone" <${FROM}>`, to, subject, html });
 }
 
+// ── Diagnóstico (página /diagnostico-correo, solo Gerencia) ────────────────
+// Cuando un correo no llega, las causas posibles son media docena y todas se
+// ven igual desde afuera: variables que no entraron al despliegue, la clave
+// pegada con espacios, la cuenta equivocada, Google rechazando la
+// autenticación. Esto las separa sin exponer ningún secreto — nunca devuelve
+// la contraseña, solo si está, cuánto mide y si trae espacios.
+export function estadoCorreo() {
+  return {
+    habilitado: emailHabilitado(),
+    usuario: GMAIL_USER ?? null,
+    remitente: FROM,
+    destinatarioAlertas: GERENCIA_ALERTA,
+    clavePresente: !!GMAIL_APP_PASSWORD,
+    claveLongitud: GMAIL_APP_PASSWORD?.length ?? 0,
+    claveConEspacios: /\s/.test(GMAIL_APP_PASSWORD ?? ''),
+  };
+}
+
+// El mensaje crudo de Gmail es justo lo que hace falta para saber qué corregir
+// ("535-5.7.8 Username and Password not accepted" = clave o cuenta mala;
+// ETIMEDOUT = ni siquiera se pudo conectar). No lleva datos sensibles.
+function detalleError(e: unknown): string {
+  const err = e as { code?: string; responseCode?: number; response?: string; message?: string };
+  return [err?.code, err?.responseCode, err?.response ?? err?.message]
+    .filter(Boolean).join(' · ') || 'Error desconocido';
+}
+
+export async function enviarCorreoPrueba(): Promise<{ ok: true; destinatario: string } | { ok: false; error: string }> {
+  if (!emailHabilitado()) {
+    return { ok: false, error: 'Este despliegue no tiene GMAIL_USER / GMAIL_APP_PASSWORD. Guárdalas en Vercel y vuelve a desplegar (Redeploy) — las variables solo entran en despliegues nuevos.' };
+  }
+  try {
+    await enviar(GERENCIA_ALERTA, 'Prueba de correo — Sistema Comercial KTV', envoltura('Prueba de correo', `
+      <p style="color:#374151;font-size:14px">Si estás leyendo esto, el envío de correos del Sistema Comercial KTV quedó funcionando.</p>
+      <p style="color:#9ca3af;font-size:12px">Enviado desde la página de diagnóstico. Ya funcionan también la alerta de apertura de propuesta, la recuperación de contraseña y el aviso de cotización pendiente de aprobación.</p>
+    `));
+    return { ok: true, destinatario: GERENCIA_ALERTA };
+  } catch (e) {
+    return { ok: false, error: detalleError(e) };
+  }
+}
+
 export async function enviarCorreoRecuperacion(destinatario: string, urlRestablecer: string) {
   await enviar(destinatario, 'Recuperar contraseña — Sistema Comercial KTV', envoltura('Recuperar contraseña', `
     <p style="color:#374151;font-size:14px">Recibimos una solicitud para restablecer la contraseña de su cuenta en el Sistema Comercial KTV.</p>
