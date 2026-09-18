@@ -9,7 +9,8 @@ import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuen
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada, actualizarTratoCotizacion, type CamposComercialesTrato } from '@/lib/pipedrive';
 import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
-import { enviarCorreoAprobacionPendiente } from '@/lib/email';
+import { enviarCorreoAprobacionPendiente, enviarCorreoOrdenServicio } from '@/lib/email';
+import { datosOperativos } from '@/lib/ordenServicio';
 
 export type CrearPuntualState = { error?: string; ok?: boolean } | undefined;
 export type CrearCareState = { error?: string; ok?: boolean } | undefined;
@@ -676,8 +677,30 @@ export async function aceptarPropuesta(linkToken: string) {
       data: { cotizacionId: c.id, usuarioId: c.creadoPorId, accion: 'acepto_cliente', detalle: 'Aceptada desde el link público de la propuesta' },
     }),
   ]);
+  // Operaciones se entera acá: no tiene usuario en el sistema y nadie le avisa
+  // manualmente, así que sin este correo la Orden de Servicio se quedaba
+  // creada en la base sin que nadie la viera nunca. Va SIN CIFRAS — solo lo
+  // necesario para planear el trabajo (ver src/lib/ordenServicio.ts).
+  const completa = await prisma.cotizacion.findUnique({
+    where: { id: c.id },
+    include: { cliente: true, puntual: true, care: true, itemsLavado: true, itemsTerceros: true, creadoPor: true },
+  });
+  if (completa) {
+    const { servicio, lineas } = datosOperativos(completa);
+    await enviarCorreoOrdenServicio({
+      idTrazabilidad: completa.idTrazabilidad,
+      clienteNombre: completa.cliente.nombre,
+      clienteContacto: completa.cliente.contacto,
+      servicio,
+      detalleOperativo: lineas,
+      comercialNombre: completa.creadoPor.nombre,
+      urlOrden: `${process.env.NEXT_PUBLIC_APP_URL || ''}/ordenes/${completa.id}`,
+    }).catch((e) => console.error('Error enviando la Orden de Servicio a Operaciones', e));
+  }
+
   revalidatePath(`/propuesta/${linkToken}`);
   revalidatePath('/cotizaciones');
+  revalidatePath('/ordenes');
 }
 
 // Módulo 2 — activar/desactivar el link público de una propuesta. Cualquier

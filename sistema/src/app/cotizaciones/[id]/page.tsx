@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { verifySession } from '@/lib/dal';
 import { prisma } from '@/lib/prisma';
@@ -361,7 +362,12 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
             <div className="mt-3 flex items-center justify-between gap-3 flex-wrap border-t border-gray-100 pt-3">
               <p className="text-xs text-gray-500">
                 {c.aceptadaPorCliente
-                  ? <>Aceptada por el cliente {c.aceptadaAt ? `el ${c.aceptadaAt.toLocaleDateString('es-CO')}` : ''}.</>
+                  ? <>
+                      Aceptada por el cliente {c.aceptadaAt ? `el ${c.aceptadaAt.toLocaleDateString('es-CO')}` : ''}.{' '}
+                      {/* Al aceptar se crea la Orden de Servicio — desde acá se
+                          llega a ella sin tener que buscarla en el listado. */}
+                      <Link href={`/ordenes/${c.id}`} className="font-bold text-[#171E27] underline">Ver la Orden de Servicio →</Link>
+                    </>
                   : vencida
                     ? <span className="text-red-600 font-semibold">⏳ Vencida el {new Date(c.vigenteHasta).toLocaleDateString('es-CO')} — el cliente ya no puede abrirla ni aceptarla.</span>
                     : <>Vigente hasta el <b>{new Date(c.vigenteHasta).toLocaleDateString('es-CO')}</b>.</>}

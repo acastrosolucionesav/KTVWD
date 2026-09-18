@@ -15,6 +15,11 @@ const FROM = process.env.CORREO_FROM || GMAIL_USER || 'no-responder@ktvworkingdr
 // Correo real donde Gerencia recibe alertas del sistema.
 const GERENCIA_ALERTA = process.env.GERENCIA_ALERTA_EMAIL || 'acastro@ktvworkingdrone.com.co';
 
+// Buzón de Operaciones — recibe la Orden de Servicio cuando el cliente acepta.
+// Se manda a un buzón y no a una cuenta del sistema a propósito: Operaciones no
+// necesita usuario ni clave del cotizador para enterarse de que hay trabajo.
+const OPERACIONES = process.env.OPERACIONES_EMAIL || 'operaciones@ktvworkingdrone.com.co';
+
 function emailHabilitado() {
   return !!(GMAIL_USER && GMAIL_APP_PASSWORD);
 }
@@ -48,6 +53,34 @@ async function enviar(to: string, subject: string, html: string) {
     auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
   });
   await transport.sendMail({ from: `"KTV Working Drone" <${FROM}>`, to, subject, html });
+}
+
+// Orden de Servicio — el cliente aceptó la propuesta y hay que ejecutar.
+// ⚠️ SIN CIFRAS (KWD-SIS-PROMPT-001 v2): este correo va a Operaciones, que no
+// tiene por qué ver lo que se cobró. Solo datos para planear el trabajo: qué
+// se hace, dónde, sobre cuántos m², con qué superficie y en cuántos días.
+// El "Anticipo confirmado" es un sí/no, nunca un monto.
+export async function enviarCorreoOrdenServicio(args: {
+  idTrazabilidad: string;
+  clienteNombre: string;
+  clienteContacto: string | null;
+  servicio: string;
+  detalleOperativo: string[];
+  comercialNombre: string;
+  urlOrden: string;
+}) {
+  const lineas = args.detalleOperativo
+    .map((l) => `<li style="color:#374151;font-size:14px;margin-bottom:4px">${l}</li>`)
+    .join('');
+  await enviar(OPERACIONES, `Orden de Servicio — ${args.clienteNombre} (${args.idTrazabilidad})`, envoltura('Nueva Orden de Servicio', `
+    <p style="color:#374151;font-size:14px"><b>${args.clienteNombre}</b> aceptó la propuesta <b>${args.idTrazabilidad}</b>.</p>
+    <p style="color:#374151;font-size:14px;margin:0 0 4px"><b>Servicio:</b> ${args.servicio}</p>
+    ${args.clienteContacto ? `<p style="color:#374151;font-size:14px;margin:0 0 4px"><b>Contacto:</b> ${args.clienteContacto}</p>` : ''}
+    <p style="color:#374151;font-size:14px;margin:0 0 4px"><b>Comercial:</b> ${args.comercialNombre}</p>
+    <ul style="padding-left:18px;margin:14px 0">${lineas}</ul>
+    ${boton(args.urlOrden, 'Ver la Orden de Servicio')}
+    <p style="color:#9ca3af;font-size:12px">La ejecución no arranca hasta que Gerencia confirme el anticipo en la orden.</p>
+  `));
 }
 
 // ── Diagnóstico (página /diagnostico-correo, solo Gerencia) ────────────────

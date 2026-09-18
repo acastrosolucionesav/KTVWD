@@ -17,6 +17,9 @@ export default async function NavBar() {
         <Link href="/care" className="text-sm text-gray-300 hover:text-white">KTV Care</Link>
         <Link href="/materiales" className="text-sm text-gray-300 hover:text-white">Enviar material</Link>
         <Link href="/cotizaciones" className="text-sm text-gray-300 hover:text-white">Cotizaciones</Link>
+        {(session.rol === 'GERENCIA' || session.rol === 'DIRECTOR_COMERCIAL') && (
+          <Link href="/ordenes" className="text-sm text-gray-300 hover:text-white">Órdenes</Link>
+        )}
         {session.rol === 'GERENCIA' && (
           <>
             <Link href="/parametros" className="text-sm text-gray-300 hover:text-white">Parámetros</Link>
