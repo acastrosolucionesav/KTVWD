@@ -44,8 +44,8 @@ const GRUPOS: { titulo: string; items: { clave: keyof Parametros; label: string;
       { clave: 'DRON_4T_EUR', label: 'Dron 4T precio base (EUR)' },
       { clave: 'FACTOR_IMPORT_TRANSPORTE', label: 'Import + transporte dron (fracción del valor)' },
       { clave: 'DRON_4T_VIDA_ANIOS', label: 'Vida útil dron (años)' },
-      { clave: 'PROD_INSPECCION_M2_DIA', label: 'Productividad inspección (m² techo/día)', nota: '⚠️ Placeholder — calibrar con Órdenes de Vuelo' },
-      { clave: 'COSTO_INFORME_ANALISIS', label: 'Costo de construir el informe (COP)', nota: '⚠️ Pendiente de definir — hoy 0' },
+      { clave: 'TARIFA_INSPECCION_M2', label: 'Costo operativo de inspección (COP por m² de techo)', nota: 'Incluye vuelo, cuadrilla, transporte y horas de elaborar el informe. A 500, un techo de 10.000 m² paga 5 días de operación' },
+      { clave: 'COSTO_INFORME_ANALISIS', label: 'Costo de construir el informe (COP)', nota: 'Dejar en 0: la tarifa por m² de arriba ya lo incluye' },
     ],
   },
   {

@@ -42,6 +42,15 @@ export type Parametros = {
   MARGEN_MINIMO: number;
   MINIMO_PROYECTO_LAVADO: number; // cargo mínimo facturable por proyecto de lavado — evita margen negativo en edificios chicos
   INT_PISO_MERCADO: number;       // piso de mercado del Informe Internacional (estudio 2026-07: firmas de patología cobran $9M+)
+  // Costo operativo de una inspección, por m² de TECHO (Gerencia 2026-09-19).
+  // Reemplaza el cálculo por días, que dependía de una productividad inventada
+  // (20.000 m²/día) que nunca se calibró y daba medio día para 10.000 m² de
+  // techo — un costo irreal de ~$497.000 para una salida con dos pilotos.
+  // Se cotiza por metro, igual que el lavado, pero con tarifa propia: volar y
+  // procesar imágenes no es lo mismo que lavar. 500 incluye vuelo, cuadrilla,
+  // transporte, combustible y las horas de elaborar el informe: en un techo de
+  // 10.000 m² paga 5 días completos de operación.
+  TARIFA_INSPECCION_M2: number;
   // --- Costo real del DV dentro de Care (spec_calcularCare.md 2026-07-14) ---
   // ⚠️ PROVISIONAL — pendiente validar con Gerencia: supone 2 pilotos fijos rotando cada 30 min
   // (norma Aerocivil) y un % de depreciación de flota exclusivo de equipos de inspección (no de
@@ -99,6 +108,7 @@ export const PARAMETROS_INICIALES: Parametros = {
   MARGEN_MINIMO: 0.35, // piso real confirmado por Gerencia 2026-07-12 — 25% nunca se trabaja salvo excepción forzada
   MINIMO_PROYECTO_LAVADO: 1600000, // recalculado 2026-07-16 tras corrección del fee Noruega a 7% — con este piso el lavado más chico (sin recargo) vuelve a dar ~35% de margen
   INT_PISO_MERCADO: 9000000,       // aprobado por Gerencia 2026-07-12 — piso del estudio de mercado; solo afecta el tramo pequeño (los otros ya lo superan)
+  TARIFA_INSPECCION_M2: 500,       // aprobado por Gerencia 2026-09-19 — ver el comentario en el tipo Parametros
   COSTO_OPERATIVO_DV_TRAMO_1: 631000,  // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_2: 1262000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_3: 1893000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
@@ -307,9 +317,29 @@ function tierTecho(p: Parametros, techo: number): 0 | 1 | 2 | null {
 function costoOperacionInspeccion(p: Parametros, techo: number) {
   const dron4tLandedCop = p.DRON_4T_EUR * (1 + p.FACTOR_IMPORT_TRANSPORTE) * p.EUR_COP;
   const depreciacionDronDia = dron4tLandedCop / p.DRON_4T_VIDA_ANIOS / 366;
-  const dias = Math.max(0.5, Math.ceil((techo / p.PROD_INSPECCION_M2_DIA) * 2) / 2);
   const costoDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + depreciacionDronDia) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
-  return { dias, costo: dias * costoDia + p.COSTO_INFORME_ANALISIS };
+
+  // Snapshots anteriores a 2026-09-19 no traen la tarifa por m²: se recalculan
+  // con el método viejo (por días) para que una cotización histórica siga
+  // mostrando exactamente los números con los que se hizo.
+  if (!p.TARIFA_INSPECCION_M2) {
+    const dias = Math.max(0.5, Math.ceil((techo / p.PROD_INSPECCION_M2_DIA) * 2) / 2);
+    return { dias, costo: dias * costoDia + p.COSTO_INFORME_ANALISIS };
+  }
+
+  // Costo por m² de techo (Gerencia 2026-09-19). El mínimo de media jornada
+  // existe porque la tarifa es lineal y el mundo no: un techo de 1.000 m²
+  // daría $500.000, pero salir a operar cuesta medio día así el techo sea
+  // diminuto — mismo criterio que MINIMO_PROYECTO_LAVADO en el lavado.
+  //
+  // COSTO_INFORME_ANALISIS debe quedarse en 0 mientras la tarifa por m² cubra
+  // las horas de elaborar el informe (que es el criterio con el que se fijó
+  // el 500); si algún día se separa, este sumando es donde va.
+  const costo = Math.max(techo * p.TARIFA_INSPECCION_M2, costoDia * 0.5) + p.COSTO_INFORME_ANALISIS;
+  // Días equivalentes — solo referencia interna (nunca se le muestra al cliente,
+  // que ve `ejecucionSitio`). Sirve para contrastar la tarifa contra la
+  // operación real cuando por fin haya datos de campo.
+  return { dias: costo / costoDia, costo };
 }
 
 export function calcularInspeccion(p: Parametros, techo: number) {
@@ -320,8 +350,19 @@ export function calcularInspeccion(p: Parametros, techo: number) {
   const feeNoruegaCop = feeEur !== null ? feeEur * p.EUR_COP : null;
   // Piso de mercado: la fórmula (2×fee + operación) daba $7,5M en el tramo pequeño, por
   // debajo de lo que cobran las firmas de patología en Colombia ($9M+, estudio 2026-07).
+  // Piso por margen: la fórmula 2×fee + operación se diseñó cuando la operación
+  // costaba centavos (medio día inventado). Con el costo real por m² de techo,
+  // en techos grandes esa fórmula deja el precio por DEBAJO del 35% — el piso
+  // de margen es absoluto, así que el precio nunca puede quedar ahí. Del precio
+  // se va el 7% del fee sobre facturación antes que nada, por eso los costos
+  // solo pueden ocupar (1 − 7% − 35%) del precio.
+  const precioMinimoPorMargen = (costos: number) => costos / (1 - p.FEE_NORUEGA - p.MARGEN_MINIMO);
   const precioInternacional = feeNoruegaCop !== null
-    ? Math.max(2 * feeNoruegaCop + costoOperacionInsp, p.INT_PISO_MERCADO ?? 0) // ?? 0: snapshots viejos sin este parámetro
+    ? Math.max(
+        2 * feeNoruegaCop + costoOperacionInsp,
+        precioMinimoPorMargen(feeNoruegaCop + costoOperacionInsp),
+        p.INT_PISO_MERCADO ?? 0, // ?? 0: snapshots viejos sin este parámetro
+      )
     : null;
   const feeNoruegaSobreVenta = (venta: number) => venta * p.FEE_NORUEGA;
 
