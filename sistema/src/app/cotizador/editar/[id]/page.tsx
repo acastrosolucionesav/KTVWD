@@ -50,6 +50,17 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         permisoAerocivil: p.permisoAerocivil ?? '',
         diasEjecucion: p.diasEjecucion,
         ejecucionSitio: p.ejecucionSitio ?? '',
+        modoCotizacion: c.puntual.modoCotizacion,
+        diasEstimados: c.puntual.diasEstimados,
+        equipoAlturas: c.puntual.equipoAlturas,
+        ciudadFuera: c.puntual.ciudadFuera,
+        nochesAlojamiento: c.puntual.nochesAlojamiento,
+        trayectosIntermunicipales: c.puntual.trayectosIntermunicipales,
+        horasExtraPiloto: c.puntual.horasExtraPiloto,
+        horasExtraAsistente: c.puntual.horasExtraAsistente,
+        diasApoyoExterno: c.puntual.diasApoyoExterno,
+        margenObjetivo: c.puntual.margenObjetivo,
+        nombreTrabajo: c.itemsLavado[0]?.nombre ?? '',
       }}
     />
   );

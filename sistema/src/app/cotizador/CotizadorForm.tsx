@@ -46,6 +46,18 @@ export type CotizacionPuntualExistente = {
   permisoAerocivil: string;
   diasEjecucion: number | null;
   ejecucionSitio: string;
+  // Modo por días
+  modoCotizacion: string | null;
+  diasEstimados: number | null;
+  equipoAlturas: boolean;
+  ciudadFuera: boolean;
+  nochesAlojamiento: number | null;
+  trayectosIntermunicipales: number | null;
+  horasExtraPiloto: number | null;
+  horasExtraAsistente: number | null;
+  diasApoyoExterno: number | null;
+  margenObjetivo: number | null;
+  nombreTrabajo: string;
 };
 
 export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: string };
@@ -79,6 +91,10 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
     if (idGuardado) onGuardado?.(idGuardado);
   }, [state, idGuardado, onGuardado]);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
+  // Modo de cotización (Gerencia 2026-11-04): por metros de fachada, o por días
+  // estimados cuando el cliente no tiene el área — que es lo más común.
+  const [modo, setModo] = useState<'METROS' | 'DIAS'>(existente?.modoCotizacion === 'DIAS' ? 'DIAS' : 'METROS');
+  const [fueraDeCiudad, setFueraDeCiudad] = useState(existente?.ciudadFuera ?? false);
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
@@ -167,7 +183,120 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         </div>
       </div>
 
+      {/* Modo de cotización — la decisión que cambia todo el formulario.
+          Por metros es lo de siempre; por días es para cuando el cliente no
+          tiene el área de su fachada, que es la mayoría de las veces. */}
       {incluyeLavado && (
+        <div className="p-4 rounded-xl border-2 border-[#66C2F8]/40 bg-[#F7FBFF] space-y-2">
+          <label className={label}>¿Cómo se va a cotizar este trabajo?</label>
+          <input type="hidden" name="modoCotizacion" value={modo} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setModo('METROS')}
+              className={`flex-1 text-sm font-bold rounded-full px-4 py-2 border-2 ${modo === 'METROS' ? 'bg-[#66C2F8] text-white border-[#66C2F8]' : 'bg-white text-[#171E27] border-gray-300'}`}>
+              Por metros de fachada
+            </button>
+            <button type="button" onClick={() => setModo('DIAS')}
+              className={`flex-1 text-sm font-bold rounded-full px-4 py-2 border-2 ${modo === 'DIAS' ? 'bg-[#66C2F8] text-white border-[#66C2F8]' : 'bg-white text-[#171E27] border-gray-300'}`}>
+              Por días de trabajo
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-500">
+            {modo === 'METROS'
+              ? 'Tarifa por m² de fachada. Úselo cuando el cliente sepa el área.'
+              : 'El piloto estima los días y el precio se arma desde el costo diario real. Úselo cuando el cliente no tenga el área — el cliente nunca ve el valor por día, solo el total.'}
+          </p>
+        </div>
+      )}
+
+      {incluyeLavado && modo === 'DIAS' && (
+        <div className="space-y-4 p-4 rounded-xl border border-[#66C2F8]/30">
+          <div>
+            <label className={label}>Nombre del trabajo (lo ve el cliente)</label>
+            <input name="nombreTrabajo" className={input} placeholder="Ej. Lavado de fachada — Torre Norte"
+              defaultValue={existente?.nombreTrabajo ?? ''} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={label}>Días estimados de trabajo</label>
+              <input name="diasEstimados" type="number" min="0.5" step="0.5" className={input}
+                defaultValue={existente?.diasEstimados ?? ''} placeholder="Los estima el piloto" />
+            </div>
+            <div>
+              <label className={label}>Margen objetivo (%)</label>
+              <input name="margenObjetivo" type="number" min="0" max="95" step="1" className={input}
+                defaultValue={existente?.margenObjetivo != null ? Math.round(existente.margenObjetivo * 100) : 40} />
+              <p className="text-[11px] text-gray-400 mt-1">El precio se calcula solo para dejar este margen.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={label}>Tipo de edificio (altura)</label>
+              <select name="tipoEdificioDias" className={input} defaultValue={existente?.itemsLavado?.[0]?.tipoEdificio ?? 'BAJO'}>
+                <option value="BAJO">Bajo — hasta 4 pisos (0%)</option>
+                <option value="MEDIO">Medio — 5 a 9 pisos (+10%)</option>
+                <option value="ALTO">Alto — más de 10 pisos (+15%)</option>
+              </select>
+            </div>
+            <div>
+              <label className={label}>Nivel de dificultad</label>
+              <select name="dificultadDias" className={input} defaultValue={existente?.itemsLavado?.[0]?.dificultad ?? 'BAJO'}>
+                <option value="BAJO">Baja (+1%)</option>
+                <option value="MEDIO">Media (+20%)</option>
+                <option value="ALTO">Alta — geometría especial (+30%)</option>
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" name="equipoAlturas" className="rounded" defaultChecked={existente?.equipoAlturas ?? false} />
+            Se necesita el equipo de alturas (Mode Spider, pértigas, equipo de montaña)
+          </label>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" name="fueraDeCiudad" className="rounded" checked={fueraDeCiudad}
+              onChange={(e) => setFueraDeCiudad(e.target.checked)} />
+            El trabajo es fuera de la ciudad (alojamiento, trayecto y alimentación)
+          </label>
+
+          {fueraDeCiudad && (
+            <div className="grid grid-cols-2 gap-4 pl-6">
+              <div>
+                <label className={label}>Noches de alojamiento</label>
+                <input name="nochesAlojamiento" type="number" min="0" className={input}
+                  defaultValue={existente?.nochesAlojamiento ?? ''} placeholder="Vacío = días − 1" />
+              </div>
+              <div>
+                <label className={label}>Trayectos intermunicipales</label>
+                <input name="trayectosIntermunicipales" type="number" min="0" className={input}
+                  defaultValue={existente?.trayectosIntermunicipales ?? ''} placeholder="Vacío = 1" />
+              </div>
+            </div>
+          )}
+
+          <details className="text-sm">
+            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-gray-500">Horas extra y apoyo subcontratado (opcional)</summary>
+            <div className="grid grid-cols-3 gap-4 mt-3">
+              <div>
+                <label className={label}>Horas extra piloto</label>
+                <input name="horasExtraPiloto" type="number" min="0" step="0.5" className={input} defaultValue={existente?.horasExtraPiloto ?? ''} />
+              </div>
+              <div>
+                <label className={label}>Horas extra asistente</label>
+                <input name="horasExtraAsistente" type="number" min="0" step="0.5" className={input} defaultValue={existente?.horasExtraAsistente ?? ''} />
+              </div>
+              <div>
+                <label className={label}>Días de apoyo externo</label>
+                <input name="diasApoyoExterno" type="number" min="0" step="0.5" className={input} defaultValue={existente?.diasApoyoExterno ?? ''} />
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2">Las horas extra son del total de la operación, no por día.</p>
+          </details>
+        </div>
+      )}
+
+      {incluyeLavado && modo === 'METROS' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <label className={label + ' mb-0'}>Ítems de lavado a cotizar</label>

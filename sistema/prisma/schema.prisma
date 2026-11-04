@@ -259,6 +259,23 @@ model CotizacionPuntual {
   diasEjecucionSistema Float?
   diasEjecucion        Float?
   ejecucionSitio       String?
+
+  // --- Cotización POR DÍAS (matriz de costeo 2026, Gerencia 2026-11-04) ---
+  // Muchos clientes no tienen los m² de su fachada; sin metros no hay nada que
+  // multiplicar por la tarifa. En ese caso el piloto estima los días y el precio
+  // se arma desde el costo diario (ver calcularPorDias en pricing.ts).
+  // modoCotizacion null = METROS, que es como se cotizó todo hasta hoy.
+  modoCotizacion       String?  // 'METROS' | 'DIAS'
+  diasEstimados        Float?
+  equipoAlturas        Boolean  @default(false)
+  // Fuera de la ciudad: alojamiento, trayectos intermunicipales y colación.
+  // (ciudadFuera, más arriba, es el interruptor; estos son sus detalles.)
+  nochesAlojamiento    Int?
+  trayectosIntermunicipales Int?
+  horasExtraPiloto     Float?
+  horasExtraAsistente  Float?
+  diasApoyoExterno     Float?
+  margenObjetivo       Float?   // con el que se calculó el precio (0.40 por defecto)
 }
 
 // Ítem de lavado (spec_multi_item_lavado_20260722.md): una cotización puntual

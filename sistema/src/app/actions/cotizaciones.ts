@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros } from '@/lib/pricing';
+import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, calcularPorDias, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada, actualizarTratoCotizacion, type CamposComercialesTrato } from '@/lib/pipedrive';
 import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
@@ -49,6 +49,17 @@ type PuntualData = {
   diasEjecucionSistema: number | null;
   diasEjecucion: number | null;
   ejecucionSitio: string | null;
+  // Modo por días (Gerencia 2026-11-04)
+  modoCotizacion: string;
+  diasEstimados: number | null;
+  equipoAlturas: boolean;
+  ciudadFuera: boolean;
+  nochesAlojamiento: number | null;
+  trayectosIntermunicipales: number | null;
+  horasExtraPiloto: number | null;
+  horasExtraAsistente: number | null;
+  diasApoyoExterno: number | null;
+  margenObjetivo: number | null;
 };
 // Datos que el trato de Pipedrive necesita reflejar de la cotización — son los
 // mismos que Gerencia dejó como obligatorios para entrar a la etapa "Propuesta
@@ -92,6 +103,16 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
 
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
+
+  // Modo de cotización (Gerencia 2026-11-04). METROS es el de siempre: tarifa
+  // por m² de fachada. DIAS existe porque muchos clientes no tienen el área de
+  // su fachada — sin metros no hay nada que multiplicar — y entonces el piloto
+  // estima los días y el precio se arma desde el costo diario de la matriz 2026.
+  const modoCotizacion = String(formData.get('modoCotizacion') || 'METROS') === 'DIAS' ? 'DIAS' : 'METROS';
+  const porDiasActivo = modoCotizacion === 'DIAS' && incluyeLavado;
+  if (modoCotizacion === 'DIAS' && !incluyeLavado) {
+    return { error: 'La inspección sola se cotiza por área de techo, no por días — es el techo lo que fija el valor del informe.' };
+  }
   // Múltiples ítems de lavado por cotización (spec_multi_item_lavado_20260722.md):
   // un cliente puede pedir varios edificios/superficies distintos en un solo
   // documento (ej. torre + fachada Alucobond + letreros). Cada fila del
@@ -105,7 +126,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   const itemTiposEdificio = formData.getAll('itemTipoEdificio').map((v) => String(v) as NivelRecargo);
   const itemDificultades = formData.getAll('itemDificultad').map((v) => String(v) as NivelRecargo);
 
-  const itemsLavadoInput = incluyeLavado
+  const itemsLavadoInput = incluyeLavado && !porDiasActivo
     ? itemNombres.map((nombre, i) => {
         const concepto = itemConceptos[i] ?? 'FACHADA_Y_VENTANAS';
         const m2Vidrio = concepto === 'SOLO_FACHADA' ? 0 : itemM2VidrioInput[i] ?? 0;
@@ -120,14 +141,67 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
         };
       })
     : [];
-  if (incluyeLavado && itemsLavadoInput.length === 0) return { error: 'Agregue al menos un ítem de lavado (edificio, fachada o superficie a cotizar).' };
+  if (incluyeLavado && !porDiasActivo && itemsLavadoInput.length === 0) return { error: 'Agregue al menos un ítem de lavado (edificio, fachada o superficie a cotizar).' };
   for (const it of itemsLavadoInput) {
     if (!it.nombre) return { error: 'Cada ítem de lavado necesita un nombre visible para el cliente (ej. "Torre 14 pisos").' };
     if (it.m2Vidrio + it.m2Opaca <= 0) return { error: `Ingrese el área a lavar de "${it.nombre}" (fachada y/o vidrios) según el concepto elegido.` };
   }
   const m2 = itemsLavadoInput.reduce((s, it) => s + it.m2Vidrio + it.m2Opaca, 0);
 
+  // El techo se lee acá arriba porque el modo por días también lo necesita:
+  // en el combo, el Diagnóstico Visual que se regala cuesta según el techo.
   const techo = Number(formData.get('techo') || 0);
+
+  // --- Entradas propias del modo POR DÍAS ---
+  // Son las mismas variables de la matriz de Excel: días estimados, altura,
+  // dificultad, si hace falta el equipo de alturas, si el trabajo es fuera de
+  // la ciudad y el margen objetivo. Todo lo demás (consumibles, equipos,
+  // cuadrilla) sale de los parámetros, no se digita.
+  const diasEstimados = Number(formData.get('diasEstimados') || 0);
+  const nombreTrabajo = String(formData.get('nombreTrabajo') || '').trim();
+  const tipoEdificioDias = (String(formData.get('tipoEdificioDias') || 'BAJO') as NivelRecargo);
+  const dificultadDias = (String(formData.get('dificultadDias') || 'BAJO') as NivelRecargo);
+  const equipoAlturas = formData.get('equipoAlturas') === 'on';
+  const fueraDeCiudad = formData.get('fueraDeCiudad') === 'on';
+  const nochesAlojamiento = formData.get('nochesAlojamiento') ? Number(formData.get('nochesAlojamiento')) : null;
+  const trayectosIntermunicipales = formData.get('trayectosIntermunicipales') ? Number(formData.get('trayectosIntermunicipales')) : null;
+  const horasExtraPiloto = Number(formData.get('horasExtraPiloto') || 0);
+  const horasExtraAsistente = Number(formData.get('horasExtraAsistente') || 0);
+  const diasApoyoExterno = Number(formData.get('diasApoyoExterno') || 0);
+  const margenObjetivoInput = formData.get('margenObjetivo') ? Number(formData.get('margenObjetivo')) : null;
+  const margenObjetivo = margenObjetivoInput !== null ? margenObjetivoInput / 100 : parametros.MARGEN_MINIMO;
+
+  if (porDiasActivo) {
+    if (!(diasEstimados > 0)) return { error: 'Ingrese los días estimados de trabajo — los estima el piloto.' };
+    if (!nombreTrabajo) return { error: 'Escriba el nombre del trabajo como lo verá el cliente (ej. "Lavado de fachada — Torre Norte").' };
+    if (margenObjetivo < parametros.MARGEN_MINIMO) {
+      return { error: `El margen objetivo no puede ser menor al mínimo de ${(parametros.MARGEN_MINIMO * 100).toFixed(0)}%. Para cotizar por debajo, Gerencia debe aprobarlo sobre la cotización ya creada.` };
+    }
+  }
+
+  const porDias = porDiasActivo
+    ? calcularPorDias(parametros, {
+        dias: diasEstimados,
+        tipoEdificio: tipoEdificioDias,
+        dificultad: dificultadDias,
+        equipoAlturas,
+        fueraDeCiudad,
+        noches: nochesAlojamiento ?? undefined,
+        trayectos: trayectosIntermunicipales ?? undefined,
+        horasExtraPiloto,
+        horasExtraAsistente,
+        diasApoyoExterno,
+        margenObjetivo,
+        comisionPct: 0.05,
+        // El DV del combo se regala al cliente pero cuesta producirlo: el
+        // precio tiene que cubrirlo o el margen objetivo no se cumple.
+        costoAdicional: servicio === 'LAVADO_MAS_INSPECCION' ? calcularInspeccion(parametros, techo).costoOperacionInsp : 0,
+      })
+    : null;
+  if (porDias?.imposible) {
+    return { error: 'El margen objetivo es tan alto que no queda nada para cubrir los costos. Bájelo.' };
+  }
+
   if (servicio === 'INSPECCION_SOLA' && techo <= 0) {
     return { error: 'Ingrese el área de techo (m²) para cotizar el Diagnóstico Visual KTV.' };
   }
@@ -154,14 +228,16 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // lista. NO se multiplica con el descuento manual: se aplica el MAYOR de los
   // dos. El de volumen es una política publicada (no requiere aprobación); el
   // manual, si supera al de volumen, sigue disparando aprobación de Gerencia.
-  const descuentoVolumenPct = incluyeLavado ? descuentoVolumen(m2) * 100 : 0;
+  // En modo por días no hay tarifa de lista sobre la cual descontar: el precio
+  // sale del costo más el margen objetivo. Negociar ahí es bajar el margen.
+  const descuentoVolumenPct = incluyeLavado && !porDiasActivo ? descuentoVolumen(m2) * 100 : 0;
   const descuentoEfectivoPct = Math.max(descuentoVolumenPct, descuentoManualPct);
 
   // Múltiples ítems de lavado (spec_multi_item_lavado_20260722.md): el piso de
   // proyecto y el piso de margen se evalúan UNA vez sobre la suma de todos los
   // ítems (una sola movilización), y el precio final se reparte de vuelta a
   // cada ítem a prorrata — ver calcularLavadoMultiItem.
-  const lavado = incluyeLavado
+  const lavado = incluyeLavado && !porDiasActivo
     ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct: descuentoEfectivoPct })
     : null;
   const insp = calcularInspeccion(parametros, techo);
@@ -170,7 +246,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // descuento manual mayor al de volumen y el piso de margen tuvo que recortarlo
   // (pisoAplicado), se bloquea para que lo reduzca. El de volumen, en cambio, se
   // recorta solo en silencio (es política, no negociación).
-  if (incluyeLavado && descuentoManualPct > descuentoVolumenPct && lavado!.pisoAplicado) {
+  if (incluyeLavado && !porDiasActivo && descuentoManualPct > descuentoVolumenPct && lavado!.pisoAplicado) {
     return { error: `Con este descuento manual el margen del lavado cae por debajo del mínimo permitido (35%). Redúzcalo — el edificio ya recibe ${descuentoVolumenPct}% automático por volumen.` };
   }
 
@@ -178,9 +254,12 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // calcula con productividad real (sumada de todos los ítems); aumentar es
   // libre, reducir por debajo del cálculo dispara aprobación de Gerencia
   // (mismo mecanismo que el descuento).
-  const diasEjecucionSistema = lavado ? lavado.diasEjecucionSistema : null;
+  // En modo por días no hay cálculo de productividad que contradecir: los días
+  // que estimó el piloto SON los del costeo, así que sistema y final coinciden
+  // y nunca se dispara la aprobación por recorte de días.
+  const diasEjecucionSistema = porDias ? porDias.dias : lavado ? lavado.diasEjecucionSistema : null;
   const diasEjecucionInput = formData.get('diasEjecucion') ? Number(formData.get('diasEjecucion')) : null;
-  const diasEjecucion = incluyeLavado ? (diasEjecucionInput ?? diasEjecucionSistema!) : null;
+  const diasEjecucion = porDias ? porDias.dias : incluyeLavado ? (diasEjecucionInput ?? diasEjecucionSistema!) : null;
   const requiereAprobacionPorDias = diasEjecucionSistema !== null && diasEjecucion !== null && diasEjecucion < diasEjecucionSistema;
   const ejecucionSitio = incluyeLavado
     ? `${diasEjecucion} día${diasEjecucion === 1 ? '' : 's'} hábil${diasEjecucion === 1 ? '' : 'es'}. Una vez aprobados permisos y recibido el anticipo.`
@@ -200,7 +279,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     ? insp.precioInternacional
     : null;
 
-  const precioLavado = lavado ? lavado.precioLavado : null;
+  const precioLavado = porDias ? porDias.precio : lavado ? lavado.precioLavado : null;
   const totalCliente = (precioLavado ?? 0)
     + (servicio === 'INSPECCION_SOLA' ? (precioInformeBase ?? 0) : 0); // el DV gratis en combo no suma al total
 
@@ -214,7 +293,15 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   let costoOperacionTotal: number;
   let feeNoruegaTotal: number;
   let comisionTotal: number;
-  if (servicio === 'SOLO_LAVADO') {
+  if (porDias) {
+    // Modo por días: el costo ya viene armado de la matriz (costo directo C,
+    // con administración, imprevistos y recargos de altura y dificultad
+    // adentro). El DV regalado del combo se suma igual que en modo metros.
+    // costoC ya trae adentro el DV regalado (costoAdicional), no se suma otra vez.
+    costoOperacionTotal = porDias.costoC;
+    feeNoruegaTotal = porDias.feeNoruega;
+    comisionTotal = porDias.comision;
+  } else if (servicio === 'SOLO_LAVADO') {
     costoOperacionTotal = lavado!.costoOperacion;
     feeNoruegaTotal = lavado!.feeNoruega;
     comisionTotal = lavado!.comision;
@@ -249,7 +336,25 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // (ver calcularLavadoMultiItem). concepto/m2Vidrio/m2Opaca/superficie/
   // tipoEdificio/dificultad YA NO se escriben en CotizacionPuntual (deprecados,
   // ver schema.prisma) — viven únicamente en cada ItemLavado.
-  const itemsLavadoData = lavado
+  // En modo por días el trabajo es UNO solo (no hay desglose por superficie),
+  // así que se guarda un único ítem con el nombre que escribió el comercial y
+  // el precio total. Así toda la cadena de abajo —propuesta al cliente, panel
+  // interno, Orden de Servicio— funciona igual sin saber en qué modo se cotizó.
+  const itemsLavadoData = porDias
+    ? [{
+        orden: 0,
+        nombre: nombreTrabajo,
+        concepto: 'FACHADA_Y_VENTANAS' as ConceptoLavado,
+        m2Vidrio: 0, m2Opaca: 0,
+        superficie: 'MIXTA' as Superficie,
+        tipoEdificio: tipoEdificioDias,
+        dificultad: dificultadDias,
+        costoOperacion: porDias.costoC,
+        feeNoruega: porDias.feeNoruega,
+        precioLavado: porDias.precio,
+        diasEjecucionSistema: porDias.dias,
+      }]
+    : lavado
     ? lavado.items.map((it, orden) => ({
         orden,
         nombre: it.nombre,
@@ -270,9 +375,9 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     servicio,
     tipoInformeBase,
     mostrarInformeInternacional,
-    m2Fachada: incluyeLavado ? m2 : null,
+    m2Fachada: incluyeLavado && !porDiasActivo ? m2 : null,
     rangoTecho: techo || null,
-    diasOperacion: (lavado?.dias ?? 0) + (servicio !== 'SOLO_LAVADO' ? insp.diasOperacionInsp : 0),
+    diasOperacion: (porDias?.dias ?? lavado?.dias ?? 0) + (servicio !== 'SOLO_LAVADO' ? insp.diasOperacionInsp : 0),
     costoOperacion: costoOperacionTotal,
     feeNoruega: feeNoruegaTotal,
     margenPct: margenP,
@@ -288,6 +393,18 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     diasEjecucionSistema,
     diasEjecucion,
     ejecucionSitio,
+    // Modo por días — null/false en las cotizaciones por metros, que es como
+    // se cotizó todo hasta 2026-11-04.
+    modoCotizacion,
+    diasEstimados: porDias ? porDias.dias : null,
+    equipoAlturas: porDiasActivo ? equipoAlturas : false,
+    ciudadFuera: porDiasActivo ? fueraDeCiudad : false,
+    nochesAlojamiento: porDias ? porDias.noches : null,
+    trayectosIntermunicipales: porDias ? porDias.trayectos : null,
+    horasExtraPiloto: porDiasActivo && horasExtraPiloto > 0 ? horasExtraPiloto : null,
+    horasExtraAsistente: porDiasActivo && horasExtraAsistente > 0 ? horasExtraAsistente : null,
+    diasApoyoExterno: porDiasActivo && diasApoyoExterno > 0 ? diasApoyoExterno : null,
+    margenObjetivo: porDias ? porDias.margenObjetivo : null,
   };
 
   return {

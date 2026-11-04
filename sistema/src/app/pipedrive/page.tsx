@@ -94,6 +94,17 @@ export default async function PipedriveModalPage({
         permisoAerocivil: cPuntual.puntual.permisoAerocivil ?? '',
         diasEjecucion: cPuntual.puntual.diasEjecucion,
         ejecucionSitio: cPuntual.puntual.ejecucionSitio ?? '',
+        modoCotizacion: cPuntual.puntual.modoCotizacion,
+        diasEstimados: cPuntual.puntual.diasEstimados,
+        equipoAlturas: cPuntual.puntual.equipoAlturas,
+        ciudadFuera: cPuntual.puntual.ciudadFuera,
+        nochesAlojamiento: cPuntual.puntual.nochesAlojamiento,
+        trayectosIntermunicipales: cPuntual.puntual.trayectosIntermunicipales,
+        horasExtraPiloto: cPuntual.puntual.horasExtraPiloto,
+        horasExtraAsistente: cPuntual.puntual.horasExtraAsistente,
+        diasApoyoExterno: cPuntual.puntual.diasApoyoExterno,
+        margenObjetivo: cPuntual.puntual.margenObjetivo,
+        nombreTrabajo: cPuntual.itemsLavado[0]?.nombre ?? '',
       }
     : undefined;
 

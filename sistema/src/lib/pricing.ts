@@ -51,6 +51,38 @@ export type Parametros = {
   // transporte, combustible y las horas de elaborar el informe: en un techo de
   // 10.000 m² paga 5 días completos de operación.
   TARIFA_INSPECCION_M2: number;
+  // --- Cotización POR DÍAS (matriz de costeo 2026, Gerencia 2026-11-04) ---
+  // Cuando el cliente no tiene los m² de fachada —pasa seguido— no se puede
+  // cotizar por metro. El piloto estima los días y el costo se arma por día,
+  // con los valores reales de la matriz de Bogotá. Son costo-empresa diario
+  // (no salario): incluyen prestaciones y carga fiscal.
+  MO_JEFE_PILOTOS_DIA: number;
+  MO_PILOTO_DIA: number;
+  MO_ASISTENTE_DIA: number;
+  MO_APOYO_EXTERNO_DIA: number;   // subcontratado que acompaña la operación
+  HORA_EXTRA_PILOTO: number;
+  HORA_EXTRA_ASISTENTE: number;
+  // Movilización dentro de la ciudad — se cobra todos los días de operación.
+  MOVILIZACION_DIA: number;
+  PEAJES_DIA: number;
+  // Viáticos: SOLO cuando el trabajo es fuera de la ciudad. La colación está
+  // acá y no en el día base porque así se costeó el caso real que la originó
+  // (lavada fuera de Bogotá, confirmado por Gerencia 2026-11-04).
+  COLACION_PERSONA_DIA: number;
+  NOCHE_ALOJAMIENTO: number;
+  TRAYECTO_INTERMUNICIPAL: number;
+  // Depreciación del equipo de alturas (Mode Spider, pértigas, equipo de
+  // montaña). Sale del día base y solo se suma cuando la operación lo necesita
+  // — es el resto de DEPRECIACION_DIA lo que se cobra siempre.
+  DEPRECIACION_ALTURAS_DIA: number;
+  // Recargos del modo por días — son los de la matriz 2026 y NO los del lavado
+  // por metros (0/5/10%), que se quedan como están: cambiarlos movería el
+  // precio de todo lo que ya se cotiza por metro.
+  RECARGO_ALTURA_MEDIO: number;
+  RECARGO_ALTURA_ALTO: number;
+  RECARGO_DIFICULTAD_BAJO: number;
+  RECARGO_DIFICULTAD_MEDIO: number;
+  RECARGO_DIFICULTAD_ALTO: number;
   // --- Costo real del DV dentro de Care (spec_calcularCare.md 2026-07-14) ---
   // ⚠️ PROVISIONAL — pendiente validar con Gerencia: supone 2 pilotos fijos rotando cada 30 min
   // (norma Aerocivil) y un % de depreciación de flota exclusivo de equipos de inspección (no de
@@ -105,10 +137,28 @@ export const PARAMETROS_INICIALES: Parametros = {
   ROOF_FEE_1_EUR: 798,
   ROOF_FEE_2_EUR: 1198,
   ROOF_FEE_3_EUR: 1598,
-  MARGEN_MINIMO: 0.35, // piso real confirmado por Gerencia 2026-07-12 — 25% nunca se trabaja salvo excepción forzada
+  MARGEN_MINIMO: 0.40, // subido de 35% a 40% por Gerencia 2026-11-04, al costear con la matriz 2026: el 35% se fijó en julio sobre un costeo que no incluía la cuadrilla real
   MINIMO_PROYECTO_LAVADO: 1600000, // recalculado 2026-07-16 tras corrección del fee Noruega a 7% — con este piso el lavado más chico (sin recargo) vuelve a dar ~35% de margen
   INT_PISO_MERCADO: 9000000,       // aprobado por Gerencia 2026-07-12 — piso del estudio de mercado; solo afecta el tramo pequeño (los otros ya lo superan)
   TARIFA_INSPECCION_M2: 500,       // aprobado por Gerencia 2026-09-19 — ver el comentario en el tipo Parametros
+  // Matriz de costeo 2026 (hoja "Costeo Bogota 2026") — costo empresa diario
+  MO_JEFE_PILOTOS_DIA: 246531,
+  MO_PILOTO_DIA: 171435,
+  MO_ASISTENTE_DIA: 161435,
+  MO_APOYO_EXTERNO_DIA: 50000,
+  HORA_EXTRA_PILOTO: 24517,
+  HORA_EXTRA_ASISTENTE: 15067,
+  MOVILIZACION_DIA: 131401,
+  PEAJES_DIA: 22526,
+  COLACION_PERSONA_DIA: 37543,
+  NOCHE_ALOJAMIENTO: 563146,
+  TRAYECTO_INTERMUNICIPAL: 1877153,
+  DEPRECIACION_ALTURAS_DIA: 76600, // Mode Spider 45.826 + Pértiga Hunger 10.258 + Pértiga Ionic 10.258 + Equipo de Montaña 10.258
+  RECARGO_ALTURA_MEDIO: 0.10,
+  RECARGO_ALTURA_ALTO: 0.15,
+  RECARGO_DIFICULTAD_BAJO: 0.01,
+  RECARGO_DIFICULTAD_MEDIO: 0.20,
+  RECARGO_DIFICULTAD_ALTO: 0.30,
   COSTO_OPERATIVO_DV_TRAMO_1: 631000,  // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_2: 1262000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_3: 1893000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
@@ -340,6 +390,121 @@ function costoOperacionInspeccion(p: Parametros, techo: number) {
   // que ve `ejecucionSitio`). Sirve para contrastar la tarifa contra la
   // operación real cuando por fin haya datos de campo.
   return { dias: costo / costoDia, costo };
+}
+
+// ============================================================================
+// COTIZACIÓN POR DÍAS (matriz de costeo 2026 — Gerencia 2026-11-04)
+// ============================================================================
+// Por qué existe: muchos clientes no tienen los m² de su fachada, y sin metros
+// no hay nada que multiplicar por la tarifa. Acá el piloto estima los días y el
+// costo se arma hacia arriba, igual que en la matriz de Excel:
+//
+//   (1) mano de obra + (2) consumibles + (3) equipos + (4) movilización/viáticos
+//        = Costo Directo A
+//   + 10% administración + 5% imprevistos                 = Costo Directo B
+//   + recargo por altura (%B) + recargo por dificultad (%B) = Costo Directo C
+//   precio = C / (1 − fee Noruega − comisión − margen objetivo)
+//
+// La diferencia con la matriz de Excel: allá el margen se calcula sin la
+// comisión comercial y se muestra aparte ("margen post comisión"). Acá la
+// comisión entra en el cálculo, como en TODOS los demás productos del sistema
+// — si no, el 40% no sería comparable con el 40% del lavado por metros ni con
+// el de Care, y el piso dejaría de significar lo mismo en cada pantalla.
+//
+// Lo que ve el cliente NO cambia: alcance, días de ejecución y valor total.
+// Nunca el valor por día (regla 1 — eso traslada al cliente el riesgo de
+// productividad, que es la ventaja de operar con drones).
+export type ArgsPorDias = {
+  dias: number;
+  tipoEdificio: NivelRecargo;
+  dificultad: NivelRecargo;
+  equipoAlturas: boolean;
+  // Fuera de la ciudad: alojamiento, trayectos intermunicipales y colación.
+  fueraDeCiudad: boolean;
+  noches?: number;
+  trayectos?: number;
+  personas?: number;            // cuadrilla: jefe + piloto + asistente = 3
+  horasExtraPiloto?: number;    // horas, en total (no por día)
+  horasExtraAsistente?: number;
+  diasApoyoExterno?: number;    // subcontratado acompañando la operación
+  margenObjetivo?: number;
+  comisionPct?: number;
+  // Costo que no sale de los días pero que el precio debe cubrir — hoy, el
+  // Diagnóstico Visual que se regala en el combo "Lavado + Inspección". Entra
+  // después de los recargos (ya es un costo completo, no hay que volver a
+  // aplicarle administración ni dificultad), pero antes de calcular el precio,
+  // para que el margen objetivo se cumpla de verdad. Si se sumara después, el
+  // combo siempre quedaría por debajo del objetivo y pediría aprobación.
+  costoAdicional?: number;
+};
+
+export function calcularPorDias(p: Parametros, args: ArgsPorDias) {
+  const dias = Math.max(0.5, args.dias);
+  const personas = args.personas ?? 3;
+  const comisionPct = args.comisionPct ?? 0.05;
+  const margenObjetivo = args.margenObjetivo ?? p.MARGEN_MINIMO;
+
+  // (1) Mano de obra — la cuadrilla estándar de la matriz es jefe de pilotos,
+  // piloto y asistente. Las horas extra se cotizan en total, no por día: el
+  // piloto sabe si va a necesitarlas en toda la operación, no cada jornada.
+  const cuadrillaDia = p.MO_JEFE_PILOTOS_DIA + p.MO_PILOTO_DIA + p.MO_ASISTENTE_DIA;
+  const manoObra =
+    cuadrillaDia * dias +
+    (args.horasExtraPiloto ?? 0) * p.HORA_EXTRA_PILOTO +
+    (args.horasExtraAsistente ?? 0) * p.HORA_EXTRA_ASISTENTE +
+    (args.diasApoyoExterno ?? 0) * p.MO_APOYO_EXTERNO_DIA;
+
+  // (2) Consumibles y (3) equipos: por día de operación. El equipo de alturas
+  // sale del día base y solo entra si la operación lo necesita.
+  const consumibles = p.CONSUMIBLES_DIA * dias;
+  const depreciacionBaseDia = p.DEPRECIACION_DIA - p.DEPRECIACION_ALTURAS_DIA;
+  const equipos = (depreciacionBaseDia + (args.equipoAlturas ? p.DEPRECIACION_ALTURAS_DIA : 0)) * dias;
+
+  // (4) Movilización siempre; viáticos solo fuera de la ciudad.
+  const movilizacion = (p.MOVILIZACION_DIA + p.PEAJES_DIA) * dias;
+  const noches = args.fueraDeCiudad ? (args.noches ?? Math.max(0, Math.ceil(dias) - 1)) : 0;
+  const trayectos = args.fueraDeCiudad ? (args.trayectos ?? 1) : 0;
+  const viaticos = args.fueraDeCiudad
+    ? noches * p.NOCHE_ALOJAMIENTO + trayectos * p.TRAYECTO_INTERMUNICIPAL + p.COLACION_PERSONA_DIA * personas * dias
+    : 0;
+
+  const costoA = manoObra + consumibles + equipos + movilizacion + viaticos;
+  const admin = costoA * p.PCT_ADMIN;
+  const imprevistos = costoA * p.PCT_IMPREV;
+  const costoB = costoA + admin + imprevistos;
+
+  const recargoAltura =
+    args.tipoEdificio === 'ALTO' ? p.RECARGO_ALTURA_ALTO
+    : args.tipoEdificio === 'MEDIO' ? p.RECARGO_ALTURA_MEDIO
+    : 0;
+  const recargoDificultad =
+    args.dificultad === 'ALTO' ? p.RECARGO_DIFICULTAD_ALTO
+    : args.dificultad === 'MEDIO' ? p.RECARGO_DIFICULTAD_MEDIO
+    : p.RECARGO_DIFICULTAD_BAJO;
+  const montoAltura = costoB * recargoAltura;
+  const montoDificultad = costoB * recargoDificultad;
+  const costoC = costoB + montoAltura + montoDificultad + (args.costoAdicional ?? 0);
+
+  // Despeje del precio: precio − fee·precio − comisión·precio − C = margen·precio
+  const divisor = 1 - p.FEE_NORUEGA - comisionPct - margenObjetivo;
+  // Guarda contra una combinación imposible (margen objetivo tan alto que no
+  // queda nada para los costos): sin esto el precio saldría negativo o infinito.
+  const precio = divisor > 0 ? costoC / divisor : Number.POSITIVE_INFINITY;
+
+  const feeNoruega = precio * p.FEE_NORUEGA;
+  const comision = precio * comisionPct;
+  const margenD = precio - costoC - feeNoruega - comision;
+
+  return {
+    dias, personas, noches, trayectos,
+    manoObra, consumibles, equipos, movilizacion, viaticos,
+    costoA, admin, imprevistos, costoB,
+    recargoAltura, recargoDificultad, montoAltura, montoDificultad, costoC,
+    feeNoruega, comision,
+    precio, margenD, margenP: precio > 0 && Number.isFinite(precio) ? margenD / precio : 0,
+    margenObjetivo,
+    imposible: divisor <= 0,
+  };
 }
 
 export function calcularInspeccion(p: Parametros, techo: number) {
