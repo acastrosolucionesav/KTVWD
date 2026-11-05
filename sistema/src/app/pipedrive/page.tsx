@@ -110,6 +110,8 @@ export default async function PipedriveModalPage({
         horasExtraAsistente: cPuntual.puntual.horasExtraAsistente,
         diasApoyoExterno: cPuntual.puntual.diasApoyoExterno,
         margenObjetivo: cPuntual.puntual.margenObjetivo,
+        filtroAgua: cPuntual.puntual.filtroAgua,
+        galonesQuimico: cPuntual.puntual.galonesQuimico,
         nombreTrabajo: cPuntual.itemsLavado[0]?.nombre ?? '',
         itemsTerceros: cPuntual.itemsTerceros.map((t) => ({
           descripcionCliente: t.descripcionCliente, tipo: t.tipo, costoReal: t.costoReal, notaInterna: t.notaInterna ?? '',

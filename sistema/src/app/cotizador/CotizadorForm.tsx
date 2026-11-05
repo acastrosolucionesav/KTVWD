@@ -57,6 +57,8 @@ export type CotizacionPuntualExistente = {
   horasExtraAsistente: number | null;
   diasApoyoExterno: number | null;
   margenObjetivo: number | null;
+  filtroAgua: boolean;
+  galonesQuimico: number | null;
   nombreTrabajo: string;
   itemsTerceros: { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; notaInterna: string }[];
 };
@@ -260,6 +262,19 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
             <input type="checkbox" name="equipoAlturas" className="rounded" defaultChecked={existente?.equipoAlturas ?? false} />
             Se necesita el equipo de alturas (Mode Spider, pértigas, equipo de montaña)
           </label>
+
+          <div className="grid grid-cols-2 gap-4 items-end">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" name="filtroAgua" className="rounded" defaultChecked={existente?.filtroAgua ?? true} />
+              Se usa el filtro de agua (resina, filtros y carbon block)
+            </label>
+            <div>
+              <label className={label}>Galones de químico (de todo el proyecto)</label>
+              <input name="galonesQuimico" type="number" min="0" step="0.5" className={input}
+                defaultValue={existente?.galonesQuimico ?? 5} />
+              <p className="text-[11px] text-gray-400 mt-1">No es por día: es lo que se gasta en el trabajo completo.</p>
+            </div>
+          </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" name="fueraDeCiudad" className="rounded" checked={fueraDeCiudad}

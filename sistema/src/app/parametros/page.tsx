@@ -20,6 +20,10 @@ const GRUPOS: { titulo: string; items: { clave: keyof Parametros; label: string;
   {
     titulo: 'Cotización por días (matriz de costeo 2026)',
     items: [
+      { clave: 'CONSUMIBLES_COMBUSTIBLE_DIA', label: 'Combustible por día (COP)', nota: 'Diésel + gasolina — siempre' },
+      { clave: 'CONSUMIBLES_FILTRO_AGUA_DIA', label: 'Insumos del filtro de agua por día (COP)', nota: 'Resina, filtros y carbon block — solo si se usa el filtro' },
+      { clave: 'QUIMICO_GALON', label: 'Galón de químico (COP)' },
+      { clave: 'QUIMICO_GALONES_DEFECTO', label: 'Galones de químico por defecto', nota: 'Por proyecto, no por día — se puede cambiar en cada cotización' },
       { clave: 'MO_JEFE_PILOTOS_DIA', label: 'Jefe de pilotos — costo empresa por día (COP)' },
       { clave: 'MO_PILOTO_DIA', label: 'Piloto — costo empresa por día (COP)' },
       { clave: 'MO_ASISTENTE_DIA', label: 'Asistente de piloto — costo empresa por día (COP)' },

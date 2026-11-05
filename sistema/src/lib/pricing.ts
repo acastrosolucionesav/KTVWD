@@ -83,6 +83,15 @@ export type Parametros = {
   RECARGO_DIFICULTAD_BAJO: number;
   RECARGO_DIFICULTAD_MEDIO: number;
   RECARGO_DIFICULTAD_ALTO: number;
+  // Consumibles desglosados (matriz 2026, hoja de Bogotá). Antes estaban en un
+  // solo CONSUMIBLES_DIA fijo, y eso escondía dos cosas que la hoja sí separa:
+  //  · los insumos del filtro de agua solo entran si el filtro se usa;
+  //  · el químico se compra POR PROYECTO, no por día (en las tres hojas de
+  //    Gerencia la cantidad es 5 galones, con 2, 3 y 5 días de trabajo).
+  CONSUMIBLES_COMBUSTIBLE_DIA: number; // diésel + gasolina, siempre
+  CONSUMIBLES_FILTRO_AGUA_DIA: number; // resina + filtros + carbon block
+  QUIMICO_GALON: number;
+  QUIMICO_GALONES_DEFECTO: number;
   // --- Costo real del DV dentro de Care (spec_calcularCare.md 2026-07-14) ---
   // ⚠️ PROVISIONAL — pendiente validar con Gerencia: supone 2 pilotos fijos rotando cada 30 min
   // (norma Aerocivil) y un % de depreciación de flota exclusivo de equipos de inspección (no de
@@ -159,6 +168,10 @@ export const PARAMETROS_INICIALES: Parametros = {
   RECARGO_DIFICULTAD_BAJO: 0.01,
   RECARGO_DIFICULTAD_MEDIO: 0.20,
   RECARGO_DIFICULTAD_ALTO: 0.30,
+  CONSUMIBLES_COMBUSTIBLE_DIA: 150172, // 10 galones de diésel + 10 de gasolina a 7.509
+  CONSUMIBLES_FILTRO_AGUA_DIA: 39043,  // resina 9.010 + dos filtros 20.022 + carbon block 10.011
+  QUIMICO_GALON: 70817,
+  QUIMICO_GALONES_DEFECTO: 5,
   COSTO_OPERATIVO_DV_TRAMO_1: 631000,  // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_2: 1262000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
   COSTO_OPERATIVO_DV_TRAMO_3: 1893000, // ⚠️ estimado 2026-07-14 — pendiente validar con Gerencia
@@ -421,6 +434,10 @@ export type ArgsPorDias = {
   equipoAlturas: boolean;
   // Fuera de la ciudad: alojamiento, trayectos intermunicipales y colación.
   fueraDeCiudad: boolean;
+  // El filtro de agua no siempre se monta; cuando no, sus insumos no se gastan.
+  filtroAgua?: boolean;
+  // Galones de químico de TODO el proyecto, no por día.
+  galonesQuimico?: number;
   noches?: number;
   trayectos?: number;
   personas?: number;            // cuadrilla: jefe + piloto + asistente = 3
@@ -456,7 +473,11 @@ export function calcularPorDias(p: Parametros, args: ArgsPorDias) {
 
   // (2) Consumibles y (3) equipos: por día de operación. El equipo de alturas
   // sale del día base y solo entra si la operación lo necesita.
-  const consumibles = p.CONSUMIBLES_DIA * dias;
+  const filtroAgua = args.filtroAgua ?? true;
+  const galones = args.galonesQuimico ?? p.QUIMICO_GALONES_DEFECTO;
+  const consumibles =
+    (p.CONSUMIBLES_COMBUSTIBLE_DIA + (filtroAgua ? p.CONSUMIBLES_FILTRO_AGUA_DIA : 0)) * dias
+    + galones * p.QUIMICO_GALON;
   const depreciacionBaseDia = p.DEPRECIACION_DIA - p.DEPRECIACION_ALTURAS_DIA;
   const equipos = (depreciacionBaseDia + (args.equipoAlturas ? p.DEPRECIACION_ALTURAS_DIA : 0)) * dias;
 
@@ -499,7 +520,7 @@ export function calcularPorDias(p: Parametros, args: ArgsPorDias) {
   const margenD = precio - costoC - feeNoruega - comision;
 
   return {
-    dias, personas, noches, trayectos,
+    dias, personas, noches, trayectos, filtroAgua, galones,
     manoObra, consumibles, equipos, movilizacion, viaticos,
     costoA, admin, imprevistos, costoB,
     recargoAltura, recargoDificultad, montoAltura, montoDificultad, costoC,
