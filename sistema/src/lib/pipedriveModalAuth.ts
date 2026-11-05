@@ -27,7 +27,11 @@ export type SesionModalPipedrive = { dealId: number; userId: number };
 // y obliga a adivinar entre media docena de causas idénticas en síntoma:
 // parámetros con otro nombre, secret de otra app, secret con un espacio de más,
 // token vencido.
-export type RechazoModal = { ok: false; motivo: string };
+// `vencido` separa el único fallo que tiene arreglo automático: el token de la
+// URL caduca a los pocos minutos, y el SDK de Pipedrive puede emitir uno nuevo
+// sin molestar a nadie. Los demás motivos (secret equivocado, parámetros con
+// otro nombre) necesitan intervención y no se deben reintentar solos.
+export type RechazoModal = { ok: false; motivo: string; vencido?: boolean };
 export type ResultadoModal = { ok: true; sesion: SesionModalPipedrive } | RechazoModal;
 
 export async function verificarTokenModal(
@@ -79,7 +83,7 @@ export async function verificarTokenModal(
       : codigo === 'ERR_JWT_EXPIRED'
         ? 'El token de Pipedrive ya venció.'
         : `${codigo || (e as Error)?.message || 'error desconocido'}.`;
-    return { ok: false, motivo: detalle };
+    return { ok: false, motivo: detalle, vencido: codigo === 'ERR_JWT_EXPIRED' };
   }
 }
 

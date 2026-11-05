@@ -2,6 +2,7 @@ import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveMo
 import { obtenerTrato } from '@/lib/pipedrive';
 import { prisma } from '@/lib/prisma';
 import PipedriveModalClient from './PipedriveModalClient';
+import RenovarToken from './RenovarToken';
 
 function MensajeModal({ texto, detalle }: { texto: string; detalle?: string }) {
   return (
@@ -38,6 +39,11 @@ export default async function PipedriveModalPage({
   const dealIdParam = leer('selectedIds')?.split(',')[0]?.trim() || undefined;
 
   const r = await verificarTokenModal(token, dealIdParam, userId);
+  // Token vencido: no es un error que deba ver el comercial — el SDK puede
+  // emitir uno nuevo. Se intenta una sola vez (ver RenovarToken).
+  if (!r.ok && r.vencido && !leer('reintento')) {
+    return <RenovarToken />;
+  }
   if (!r.ok) {
     // Se listan los nombres de los parámetros que sí llegaron (no sus valores:
     // el token es sensible) — si Pipedrive los manda con otro nombre, esto lo
