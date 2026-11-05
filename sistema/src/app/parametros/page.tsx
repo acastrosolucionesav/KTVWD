@@ -18,6 +18,28 @@ const GRUPOS: { titulo: string; items: { clave: keyof Parametros; label: string;
     ],
   },
   {
+    titulo: 'Cotización por días (matriz de costeo 2026)',
+    items: [
+      { clave: 'MO_JEFE_PILOTOS_DIA', label: 'Jefe de pilotos — costo empresa por día (COP)' },
+      { clave: 'MO_PILOTO_DIA', label: 'Piloto — costo empresa por día (COP)' },
+      { clave: 'MO_ASISTENTE_DIA', label: 'Asistente de piloto — costo empresa por día (COP)' },
+      { clave: 'MO_APOYO_EXTERNO_DIA', label: 'Apoyo externo subcontratado por día (COP)' },
+      { clave: 'HORA_EXTRA_PILOTO', label: 'Hora extra piloto (COP)' },
+      { clave: 'HORA_EXTRA_ASISTENTE', label: 'Hora extra asistente (COP)' },
+      { clave: 'MOVILIZACION_DIA', label: 'Movilización en ciudad por día (COP)' },
+      { clave: 'PEAJES_DIA', label: 'Peajes por día (COP)' },
+      { clave: 'COLACION_PERSONA_DIA', label: 'Alimentación por persona por día (COP)', nota: 'Solo fuera de la ciudad' },
+      { clave: 'NOCHE_ALOJAMIENTO', label: 'Noche de alojamiento (COP)', nota: 'Solo fuera de la ciudad' },
+      { clave: 'TRAYECTO_INTERMUNICIPAL', label: 'Trayecto intermunicipal (COP)', nota: 'Solo fuera de la ciudad' },
+      { clave: 'DEPRECIACION_ALTURAS_DIA', label: 'Equipo de alturas — depreciación por día (COP)', nota: 'Se descuenta del día base y solo se suma si se marca la casilla' },
+      { clave: 'RECARGO_ALTURA_MEDIO', label: 'Recargo edificio medio (fracción, ej. 0.10)' },
+      { clave: 'RECARGO_ALTURA_ALTO', label: 'Recargo edificio alto (fracción)' },
+      { clave: 'RECARGO_DIFICULTAD_BAJO', label: 'Recargo dificultad baja (fracción)' },
+      { clave: 'RECARGO_DIFICULTAD_MEDIO', label: 'Recargo dificultad media (fracción)' },
+      { clave: 'RECARGO_DIFICULTAD_ALTO', label: 'Recargo dificultad alta (fracción)' },
+    ],
+  },
+  {
     titulo: 'Costos de operación',
     items: [
       { clave: 'CUADRILLA_DIA', label: 'Cuadrilla por día (COP)' },
