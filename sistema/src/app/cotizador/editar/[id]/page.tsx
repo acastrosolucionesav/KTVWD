@@ -61,7 +61,6 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         diasApoyoExterno: c.puntual.diasApoyoExterno,
         margenObjetivo: c.puntual.margenObjetivo,
         filtroAgua: c.puntual.filtroAgua,
-        galonesQuimico: c.puntual.galonesQuimico,
         nombreTrabajo: c.itemsLavado[0]?.nombre ?? '',
         itemsTerceros: c.itemsTerceros.map((t) => ({
           descripcionCliente: t.descripcionCliente, tipo: t.tipo, costoReal: t.costoReal, notaInterna: t.notaInterna ?? '',

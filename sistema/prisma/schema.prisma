@@ -277,7 +277,6 @@ model CotizacionPuntual {
   diasApoyoExterno     Float?
   margenObjetivo       Float?   // con el que se calculó el precio (0.40 por defecto)
   filtroAgua           Boolean  @default(true)  // si no se monta, sus insumos no se gastan
-  galonesQuimico       Float?   // del proyecto entero, no por día
 }
 
 // Ítem de lavado (spec_multi_item_lavado_20260722.md): una cotización puntual
