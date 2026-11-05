@@ -264,7 +264,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" name="fueraDeCiudad" className="rounded" checked={fueraDeCiudad}
               onChange={(e) => setFueraDeCiudad(e.target.checked)} />
-            El trabajo es fuera de la ciudad (alojamiento, trayecto y alimentación)
+            El trabajo es fuera de la ciudad (transporte, peajes, alojamiento y alimentación)
           </label>
 
           {fueraDeCiudad && (

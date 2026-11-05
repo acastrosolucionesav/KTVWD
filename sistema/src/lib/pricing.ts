@@ -460,8 +460,11 @@ export function calcularPorDias(p: Parametros, args: ArgsPorDias) {
   const depreciacionBaseDia = p.DEPRECIACION_DIA - p.DEPRECIACION_ALTURAS_DIA;
   const equipos = (depreciacionBaseDia + (args.equipoAlturas ? p.DEPRECIACION_ALTURAS_DIA : 0)) * dias;
 
-  // (4) Movilización siempre; viáticos solo fuera de la ciudad.
-  const movilizacion = (p.MOVILIZACION_DIA + p.PEAJES_DIA) * dias;
+  // (4) Movilización y viáticos: TODO esto se cobra SOLO si el trabajo es fuera
+  // de la ciudad (Gerencia 2026-11-05). En Bogotá el desplazamiento del equipo
+  // ya está absorbido en la operación normal y no se le carga al cliente — si
+  // se cobrara igual, toda cotización local saldría inflada.
+  const movilizacion = args.fueraDeCiudad ? (p.MOVILIZACION_DIA + p.PEAJES_DIA) * dias : 0;
   const noches = args.fueraDeCiudad ? (args.noches ?? Math.max(0, Math.ceil(dias) - 1)) : 0;
   const trayectos = args.fueraDeCiudad ? (args.trayectos ?? 1) : 0;
   const viaticos = args.fueraDeCiudad
