@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, calcularPorDias, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros } from '@/lib/pricing';
+import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, calcularPorDias, calcularItemTercero, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros, type TipoItemTercero } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada, actualizarTratoCotizacion, type CamposComercialesTrato } from '@/lib/pipedrive';
 import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
@@ -76,6 +76,14 @@ function camposTratoPuntual(p: PuntualData, vigenteHasta: Date | null): CamposCo
   };
 }
 
+// Insumos extra o trabajos subcontratados que el comercial agrega AL COTIZAR
+// (antes solo se podían agregar después, desde el detalle interno — y eso se
+// olvidaba, dejando el subcontrato sin cobrar). Nunca se absorben al costo:
+// llevan su margen neto fijo encima (15% producto / 25% servicio).
+type ItemTerceroData = {
+  descripcionCliente: string; notaInterna: string | null;
+  tipo: TipoItemTercero; costoReal: number; margenNetoDeseado: number; precioVenta: number;
+};
 type ItemLavadoData = {
   orden: number; nombre: string; concepto: ConceptoLavado;
   m2Vidrio: number; m2Opaca: number; superficie: Superficie; tipoEdificio: NivelRecargo; dificultad: NivelRecargo;
@@ -87,7 +95,7 @@ type ResultadoPuntual =
       error?: undefined;
       clienteNombre: string; clienteContacto: string | null; pipedriveDealId: string | null;
       observaciones: string | null; totalCliente: number; margenP: number; requiereAprobacion: boolean;
-      puntualData: PuntualData; itemsLavadoData: ItemLavadoData[];
+      puntualData: PuntualData; itemsLavadoData: ItemLavadoData[]; itemsTercerosData: ItemTerceroData[];
     };
 
 // Cálculo y validación PUROS de una cotización puntual — no toca la base de
@@ -371,6 +379,29 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
       }))
     : [];
 
+  // Insumos adicionales y trabajos de terceros, agregados desde el formulario.
+  // Llegan como arreglos paralelos, igual que los ítems de lavado.
+  const terceroDescripciones = formData.getAll('terceroDescripcion').map((v) => String(v).trim());
+  const terceroTipos = formData.getAll('terceroTipo').map((v) => String(v) as TipoItemTercero);
+  const terceroCostos = formData.getAll('terceroCosto').map((v) => Number(v) || 0);
+  const terceroNotas = formData.getAll('terceroNota').map((v) => String(v).trim());
+  const itemsTercerosData: ItemTerceroData[] = [];
+  for (let i = 0; i < terceroDescripciones.length; i++) {
+    const descripcionCliente = terceroDescripciones[i];
+    const costoReal = terceroCostos[i] ?? 0;
+    // Una fila vacía no es un error: el formulario puede dejar filas sin llenar.
+    if (!descripcionCliente && costoReal <= 0) continue;
+    if (!descripcionCliente) return { error: 'Cada insumo o trabajo de tercero necesita una descripción para el cliente.' };
+    if (!(costoReal > 0)) return { error: `Ingrese el costo real de "${descripcionCliente}".` };
+    const tipo = terceroTipos[i] === 'PRODUCTO' ? 'PRODUCTO' : 'SERVICIO';
+    const { margenNetoDeseado, precioVenta } = calcularItemTercero(parametros, { tipo, costoReal });
+    itemsTercerosData.push({
+      descripcionCliente,
+      notaInterna: terceroNotas[i] || null,
+      tipo, costoReal, margenNetoDeseado, precioVenta,
+    });
+  }
+
   const puntualData = {
     servicio,
     tipoInformeBase,
@@ -410,7 +441,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   return {
     clienteNombre, clienteContacto, pipedriveDealId, observaciones,
     totalCliente, margenP, requiereAprobacion,
-    puntualData, itemsLavadoData,
+    puntualData, itemsLavadoData, itemsTercerosData,
   };
 }
 
@@ -476,7 +507,7 @@ async function guardarCotizacionPuntual(
 
   const r = computarPuntual(formData, parametros);
   if (r.error !== undefined) return { error: r.error };
-  const { clienteNombre, clienteContacto, pipedriveDealId, observaciones, totalCliente, margenP, requiereAprobacion, puntualData, itemsLavadoData } = r;
+  const { clienteNombre, clienteContacto, pipedriveDealId, observaciones, totalCliente, margenP, requiereAprobacion, puntualData, itemsLavadoData, itemsTercerosData } = r;
 
   if (existente) {
     await prisma.clienteProspecto.update({
@@ -495,6 +526,9 @@ async function guardarCotizacionPuntual(
         // Se reemplazan por completo — más simple y seguro que diffear filas
         // (una edición en Borrador puede agregar/quitar/reordenar ítems libremente).
         itemsLavado: { deleteMany: {}, create: itemsLavadoData },
+        // Se reemplazan igual que los ítems de lavado: el formulario trae la
+        // lista completa, incluidos los que ya existían (se cargan al editar).
+        itemsTerceros: { deleteMany: {}, create: itemsTercerosData },
         ...(dealIdModal ? { pipedriveDealId: dealIdModal } : {}),
         ...(snapshotAnterior ? { versiones: { create: { snapshot: snapshotAnterior, editadoPorId: usuarioId } } } : {}),
       },
@@ -558,6 +592,7 @@ async function guardarCotizacionPuntual(
       versionAnteriorId: anterior?.id,
       puntual: { create: puntualData },
       itemsLavado: { create: itemsLavadoData },
+      itemsTerceros: { create: itemsTercerosData },
       auditorias: { create: { usuarioId, accion: anterior ? 'creo_correccion' : 'creo' } },
     },
   });
@@ -640,6 +675,10 @@ export type PreviewPuntualState = {
   error?: string; ok?: boolean;
   totalCliente?: number; requiereAprobacion?: boolean;
   margenPct?: number;
+  // Los insumos/terceros se facturan aparte del lavado (llevan su propio
+  // margen neto y nunca se absorben), así que se muestran por separado — si
+  // no, el comercial agrega uno y ve el total igual y cree que se perdió.
+  totalTerceros?: number;
 } | undefined;
 
 // Núcleo del cálculo — recibe el rol ya resuelto (Regla A: el margen solo se
@@ -653,6 +692,7 @@ async function calcularPreviewPuntual(rol: string, formData: FormData): Promise<
     ok: true,
     totalCliente: r.totalCliente,
     requiereAprobacion: r.requiereAprobacion,
+    totalTerceros: r.itemsTercerosData.reduce((sa, t) => sa + t.precioVenta, 0),
     ...(rol === 'GERENCIA' ? { margenPct: r.margenP } : {}),
   };
 }

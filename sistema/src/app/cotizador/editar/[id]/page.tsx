@@ -8,7 +8,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
   const { id } = await params;
   const c = await prisma.cotizacion.findUnique({
     where: { id },
-    include: { cliente: true, puntual: true, versionNueva: { select: { id: true } }, itemsLavado: { orderBy: { orden: 'asc' } } },
+    include: { cliente: true, puntual: true, versionNueva: { select: { id: true } }, itemsLavado: { orderBy: { orden: 'asc' } }, itemsTerceros: true },
   });
   if (!c || c.familia !== 'PUNTUAL' || !c.puntual) notFound();
   // Ya se corrigió una vez — siempre se edita/corrige la versión más reciente.
@@ -61,6 +61,9 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         diasApoyoExterno: c.puntual.diasApoyoExterno,
         margenObjetivo: c.puntual.margenObjetivo,
         nombreTrabajo: c.itemsLavado[0]?.nombre ?? '',
+        itemsTerceros: c.itemsTerceros.map((t) => ({
+          descripcionCliente: t.descripcionCliente, tipo: t.tipo, costoReal: t.costoReal, notaInterna: t.notaInterna ?? '',
+        })),
       }}
     />
   );

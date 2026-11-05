@@ -58,7 +58,10 @@ export type CotizacionPuntualExistente = {
   diasApoyoExterno: number | null;
   margenObjetivo: number | null;
   nombreTrabajo: string;
+  itemsTerceros: { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; notaInterna: string }[];
 };
+
+export type TerceroUI = { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; notaInterna: string };
 
 export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: string };
 
@@ -95,6 +98,10 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   // estimados cuando el cliente no tiene el área — que es lo más común.
   const [modo, setModo] = useState<'METROS' | 'DIAS'>(existente?.modoCotizacion === 'DIAS' ? 'DIAS' : 'METROS');
   const [fueraDeCiudad, setFueraDeCiudad] = useState(existente?.ciudadFuera ?? false);
+  // Insumos extra y trabajos subcontratados. Antes solo se podían agregar
+  // DESPUÉS, desde el detalle interno — y eso se olvidaba, dejando el
+  // subcontrato sin cobrar. Ahora se agregan al cotizar (Gerencia 2026-11-05).
+  const [terceros, setTerceros] = useState<TerceroUI[]>(existente?.itemsTerceros ?? []);
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
   const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
@@ -377,6 +384,55 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         </div>
       )}
 
+      {/* Insumos adicionales y trabajos de terceros — opcionales, en cualquiera
+          de los dos modos. Nunca se absorben al costo: llevan su margen neto
+          fijo encima y se le facturan al cliente aparte del lavado. */}
+      <div className="space-y-3 p-4 rounded-xl border border-amber-200 bg-amber-50/40">
+        <div className="flex items-center justify-between">
+          <label className={label + ' mb-0'}>Insumos adicionales o trabajos de terceros (opcional)</label>
+          <button type="button" onClick={() => setTerceros((t) => [...t, { descripcionCliente: '', tipo: 'SERVICIO', costoReal: 0, notaInterna: '' }])}
+            className="text-xs font-bold text-[#66C2F8] hover:underline">
+            + Agregar
+          </button>
+        </div>
+        <p className="text-[11px] text-gray-500 -mt-2">
+          Para lo que no entra en la operación normal: un químico especial, andamios, una obra que subcontratamos.
+          Se le cobra al cliente con su margen propio (producto 15%, servicio 25%) y nunca se absorbe al costo.
+        </p>
+        {terceros.length === 0 && <p className="text-[11px] text-gray-400">Ninguno. La mayoría de cotizaciones no lleva.</p>}
+        {terceros.map((t, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2 items-end bg-white rounded-lg p-3 border border-gray-200">
+            <div className="col-span-5">
+              <label className={label}>Qué es (lo ve el cliente)</label>
+              <input name="terceroDescripcion" className={input} placeholder="Ej. Sellado de juntas" value={t.descripcionCliente}
+                onChange={(e) => setTerceros((prev) => prev.map((x, j) => j === i ? { ...x, descripcionCliente: e.target.value } : x))} />
+            </div>
+            <div className="col-span-2">
+              <label className={label}>Tipo</label>
+              <select name="terceroTipo" className={input} value={t.tipo}
+                onChange={(e) => setTerceros((prev) => prev.map((x, j) => j === i ? { ...x, tipo: e.target.value as 'PRODUCTO' | 'SERVICIO' } : x))}>
+                <option value="PRODUCTO">Producto</option>
+                <option value="SERVICIO">Servicio</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className={label}>Nos cuesta</label>
+              <input name="terceroCosto" type="number" min="0" className={input} value={t.costoReal || ''}
+                onChange={(e) => setTerceros((prev) => prev.map((x, j) => j === i ? { ...x, costoReal: Number(e.target.value) || 0 } : x))} />
+            </div>
+            <div className="col-span-2">
+              <label className={label}>Nota interna</label>
+              <input name="terceroNota" className={input} placeholder="Proveedor" value={t.notaInterna}
+                onChange={(e) => setTerceros((prev) => prev.map((x, j) => j === i ? { ...x, notaInterna: e.target.value } : x))} />
+            </div>
+            <div className="col-span-1 text-right">
+              <button type="button" onClick={() => setTerceros((prev) => prev.filter((_, j) => j !== i))}
+                className="text-xs font-bold text-red-500 hover:underline">Quitar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div>
         <label className={label}>Área de techo (m²) — para el Diagnóstico Visual / Informe Internacional</label>
         <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
@@ -437,8 +493,14 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
       {preview?.ok && (
         <div className="bg-[#EBF8FF] border border-[#66C2F8]/40 rounded-lg px-4 py-3 text-sm space-y-1">
           <p className="font-bold text-[#171E27]">Total cliente: {cop(preview.totalCliente)}</p>
+          {!!preview.totalTerceros && (
+            <>
+              <p className="text-gray-600">+ insumos y terceros: {cop(preview.totalTerceros)}</p>
+              <p className="font-bold text-[#171E27]">Total con insumos y terceros: {cop((preview.totalCliente ?? 0) + preview.totalTerceros)}</p>
+            </>
+          )}
           {preview.margenPct !== undefined && (
-            <p className={preview.margenPct < 0.35 ? 'text-amber-700' : 'text-gray-500'}>
+            <p className={preview.margenPct < 0.40 ? 'text-amber-700' : 'text-gray-500'}>
               Margen: {(preview.margenPct * 100).toFixed(1)}%
             </p>
           )}

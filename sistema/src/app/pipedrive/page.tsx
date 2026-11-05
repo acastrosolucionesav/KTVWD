@@ -61,7 +61,7 @@ export default async function PipedriveModalPage({
   // una corrección) — mismo criterio que el listado principal.
   const cotizaciones = await prisma.cotizacion.findMany({
     where: { pipedriveDealId: String(sesion.dealId), versionNueva: null },
-    include: { cliente: true, puntual: true, care: true, itemsLavado: { orderBy: { orden: 'asc' } } },
+    include: { cliente: true, puntual: true, care: true, itemsLavado: { orderBy: { orden: 'asc' } }, itemsTerceros: true },
   });
   const cPuntual = cotizaciones.find((c) => c.familia === 'PUNTUAL' && c.puntual);
   const cCare = cotizaciones.find((c) => c.familia === 'CARE' && c.care);
@@ -105,6 +105,9 @@ export default async function PipedriveModalPage({
         diasApoyoExterno: cPuntual.puntual.diasApoyoExterno,
         margenObjetivo: cPuntual.puntual.margenObjetivo,
         nombreTrabajo: cPuntual.itemsLavado[0]?.nombre ?? '',
+        itemsTerceros: cPuntual.itemsTerceros.map((t) => ({
+          descripcionCliente: t.descripcionCliente, tipo: t.tipo, costoReal: t.costoReal, notaInterna: t.notaInterna ?? '',
+        })),
       }
     : undefined;
 
