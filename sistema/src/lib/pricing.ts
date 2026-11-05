@@ -83,13 +83,14 @@ export type Parametros = {
   RECARGO_DIFICULTAD_BAJO: number;
   RECARGO_DIFICULTAD_MEDIO: number;
   RECARGO_DIFICULTAD_ALTO: number;
-  // Consumibles desglosados (matriz 2026, hoja de Bogotá). Todos van por día;
-  // lo único condicional es el bloque del filtro de agua, que en la hoja
-  // depende de "Uso de filtro de agua": si el filtro no se monta, la resina,
-  // los filtros y el carbon block no se gastan. La suma de los tres equivale
-  // al CONSUMIBLES_DIA único que había antes (260.034).
+  // Consumibles desglosados (matriz 2026, hoja de Bogotá). Los tres van por
+  // día y siempre: la hoja tiene un interruptor "Uso de filtro de agua", pero
+  // Gerencia confirmó (2026-11-05) que el filtro se monta en toda operación,
+  // así que preguntarlo solo agregaba una casilla que alguien puede desmarcar
+  // por error. Se dejan separados para poder ajustar cada bloque por su lado;
+  // su suma es el CONSUMIBLES_DIA único que había antes (260.034).
   CONSUMIBLES_COMBUSTIBLE_DIA: number; // diésel + gasolina
-  CONSUMIBLES_FILTRO_AGUA_DIA: number; // resina + filtros + carbon block, solo si se usa el filtro
+  CONSUMIBLES_FILTRO_AGUA_DIA: number; // resina + filtros + carbon block
   CONSUMIBLES_QUIMICO_DIA: number;
   // --- Costo real del DV dentro de Care (spec_calcularCare.md 2026-07-14) ---
   // ⚠️ PROVISIONAL — pendiente validar con Gerencia: supone 2 pilotos fijos rotando cada 30 min
@@ -432,8 +433,6 @@ export type ArgsPorDias = {
   equipoAlturas: boolean;
   // Fuera de la ciudad: alojamiento, trayectos intermunicipales y colación.
   fueraDeCiudad: boolean;
-  // El filtro de agua no siempre se monta; cuando no, sus insumos no se gastan.
-  filtroAgua?: boolean;
   noches?: number;
   trayectos?: number;
   personas?: number;            // cuadrilla: jefe + piloto + asistente = 3
@@ -469,9 +468,8 @@ export function calcularPorDias(p: Parametros, args: ArgsPorDias) {
 
   // (2) Consumibles y (3) equipos: por día de operación. El equipo de alturas
   // sale del día base y solo entra si la operación lo necesita.
-  const filtroAgua = args.filtroAgua ?? true;
   const consumibles =
-    (p.CONSUMIBLES_COMBUSTIBLE_DIA + p.CONSUMIBLES_QUIMICO_DIA + (filtroAgua ? p.CONSUMIBLES_FILTRO_AGUA_DIA : 0)) * dias;
+    (p.CONSUMIBLES_COMBUSTIBLE_DIA + p.CONSUMIBLES_QUIMICO_DIA + p.CONSUMIBLES_FILTRO_AGUA_DIA) * dias;
   const depreciacionBaseDia = p.DEPRECIACION_DIA - p.DEPRECIACION_ALTURAS_DIA;
   const equipos = (depreciacionBaseDia + (args.equipoAlturas ? p.DEPRECIACION_ALTURAS_DIA : 0)) * dias;
 
@@ -514,7 +512,7 @@ export function calcularPorDias(p: Parametros, args: ArgsPorDias) {
   const margenD = precio - costoC - feeNoruega - comision;
 
   return {
-    dias, personas, noches, trayectos, filtroAgua,
+    dias, personas, noches, trayectos,
     manoObra, consumibles, equipos, movilizacion, viaticos,
     costoA, admin, imprevistos, costoB,
     recargoAltura, recargoDificultad, montoAltura, montoDificultad, costoC,

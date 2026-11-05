@@ -57,7 +57,6 @@ export type CotizacionPuntualExistente = {
   horasExtraAsistente: number | null;
   diasApoyoExterno: number | null;
   margenObjetivo: number | null;
-  filtroAgua: boolean;
   nombreTrabajo: string;
   itemsTerceros: { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; notaInterna: string }[];
 };
@@ -260,11 +259,6 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" name="equipoAlturas" className="rounded" defaultChecked={existente?.equipoAlturas ?? false} />
             Se necesita el equipo de alturas (Mode Spider, pértigas, equipo de montaña)
-          </label>
-
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" name="filtroAgua" className="rounded" defaultChecked={existente?.filtroAgua ?? true} />
-            Se usa el filtro de agua (resina, filtros y carbon block)
           </label>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">

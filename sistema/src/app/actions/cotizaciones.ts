@@ -60,7 +60,6 @@ type PuntualData = {
   horasExtraAsistente: number | null;
   diasApoyoExterno: number | null;
   margenObjetivo: number | null;
-  filtroAgua: boolean;
 };
 // Datos que el trato de Pipedrive necesita reflejar de la cotización — son los
 // mismos que Gerencia dejó como obligatorios para entrar a la etapa "Propuesta
@@ -177,7 +176,6 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   const horasExtraPiloto = Number(formData.get('horasExtraPiloto') || 0);
   const horasExtraAsistente = Number(formData.get('horasExtraAsistente') || 0);
   const diasApoyoExterno = Number(formData.get('diasApoyoExterno') || 0);
-  const filtroAgua = formData.get('filtroAgua') === 'on';
   const margenObjetivoInput = formData.get('margenObjetivo') ? Number(formData.get('margenObjetivo')) : null;
   const margenObjetivo = margenObjetivoInput !== null ? margenObjetivoInput / 100 : parametros.MARGEN_MINIMO;
 
@@ -196,7 +194,6 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
         dificultad: dificultadDias,
         equipoAlturas,
         fueraDeCiudad,
-        filtroAgua,
         noches: nochesAlojamiento ?? undefined,
         trayectos: trayectosIntermunicipales ?? undefined,
         horasExtraPiloto,
@@ -439,7 +436,6 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     horasExtraAsistente: porDiasActivo && horasExtraAsistente > 0 ? horasExtraAsistente : null,
     diasApoyoExterno: porDiasActivo && diasApoyoExterno > 0 ? diasApoyoExterno : null,
     margenObjetivo: porDias ? porDias.margenObjetivo : null,
-    filtroAgua: porDiasActivo ? filtroAgua : true,
   };
 
   return {
