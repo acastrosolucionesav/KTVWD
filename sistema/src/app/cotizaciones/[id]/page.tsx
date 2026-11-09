@@ -175,6 +175,15 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                   <dt className="text-amber-400">Descuento manual aplicado</dt><dd className="text-amber-400 font-bold">{c.puntual!.descuentoPct.toFixed(1)}%</dd>
                 </>
               )}
+              {/* Sin esto no había forma de saber desde el detalle si el aumento
+                  manual quedó guardado o no — y eso fue exactamente lo que costó
+                  diagnosticar la primera vez que no subía el precio. */}
+              {c.puntual!.ajustePct != null && (
+                <>
+                  <dt className="text-[#66C2F8]">Aumento manual aplicado</dt>
+                  <dd className="text-[#66C2F8] font-bold">+{c.puntual!.ajustePct.toFixed(1)}%</dd>
+                </>
+              )}
               <dt className="text-gray-400">Margen</dt>
               <dd className={c.puntual!.margenPct! < 0.35 ? 'text-red-400 font-bold' : c.puntual!.margenPct! < 0.40 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
                 {(c.puntual!.margenPct! * 100).toFixed(1)}%
