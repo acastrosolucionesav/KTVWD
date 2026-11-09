@@ -282,7 +282,14 @@ export function descuentoVolumen(m2Total: number): number {
   return 0;
 }
 
-export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavadoInput[]; comisionPct: number; descuentoPct?: number }) {
+// ajustePct: aumento manual sobre el precio de lista (Gerencia 2026-11-09). Es
+// el espejo del descuento y nació de un caso real: un cliente que exige el
+// trabajo "a todo costo", donde hay que cobrar más de lo que da la tarifa. El
+// tope de $6.000/m² sigue intacto para los recargos AUTOMÁTICOS de edificio y
+// dificultad —que es lo que esa regla quería evitar—; esto es una decisión
+// explícita del comercial, no un cálculo que se dispara solo. Subir el precio
+// nunca pone en riesgo el piso de margen, así que no necesita aprobación.
+export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavadoInput[]; comisionPct: number; descuentoPct?: number; ajustePct?: number }) {
   const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
 
   const filas = args.items.map((it) => {
@@ -320,8 +327,11 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
   // `pisoAplicado` avisa que el descuento no cupo completo (la acción decide si
   // eso es un descuento manual demasiado profundo que hay que bloquear).
   const precioConDescuento = precioListaSinDescuento * (1 - (args.descuentoPct ?? 0) / 100);
-  const precioLavado = Math.max(precioConDescuento, precioPisoMargen);
-  const pisoAplicado = precioConDescuento < precioPisoMargen;
+  // El ajuste manual va al final, sobre el precio ya resuelto: así el descuento
+  // y el ajuste no se pelean, y queda claro que es lo último que se le suma.
+  const precioConAjuste = precioConDescuento * (1 + (args.ajustePct ?? 0) / 100);
+  const precioLavado = Math.max(precioConAjuste, precioPisoMargen);
+  const pisoAplicado = precioConAjuste < precioPisoMargen;
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = sumaCostoOperacion + feeNoruega + comision;

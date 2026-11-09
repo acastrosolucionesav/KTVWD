@@ -41,6 +41,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
         servicio: p.servicio,
         itemsLavado,
         descuentoPct: p.descuentoPct,
+        ajustePct: c.puntual.ajustePct,
         techo: p.rangoTecho ?? 0,
         mostrarInformeInternacional: p.mostrarInformeInternacional,
         observaciones: c.observaciones ?? '',

@@ -37,6 +37,7 @@ export type CotizacionPuntualExistente = {
   servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
   itemsLavado: ItemLavadoUI[];
   descuentoPct: number | null;
+  ajustePct: number | null;
   techo: number;
   mostrarInformeInternacional: boolean;
   observaciones: string;
@@ -373,13 +374,24 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
               </div>
             </div>
           ))}
-          <div>
-            <label className={label}>Descuento manual sobre el lavado (%) — opcional, aplica sobre el total de todos los ítems</label>
-            <input name="descuentoPct" type="number" min="0" max="99" step="0.1" className={input}
-              placeholder="0" defaultValue={existente?.descuentoPct ?? ''} />
-            <p className="text-[11px] text-amber-700 mt-1">
-              Cualquier valor distinto de 0 requiere aprobación de Gerencia antes de poder enviarse, y no puede bajar el margen general de 35%.
-            </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={label}>Descuento manual (%)</label>
+              <input name="descuentoPct" type="number" min="0" max="99" step="0.1" className={input}
+                placeholder="0" defaultValue={existente?.descuentoPct ?? ''} />
+              <p className="text-[11px] text-amber-700 mt-1">
+                Requiere aprobación de Gerencia y no puede bajar el margen del mínimo.
+              </p>
+            </div>
+            <div>
+              <label className={label}>Aumento manual (%)</label>
+              <input name="ajustePct" type="number" min="0" max="200" step="0.1" className={input}
+                placeholder="0" defaultValue={existente?.ajustePct ?? ''} />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Para cuando hay que cobrar por encima de la tarifa — un cliente &quot;a todo costo&quot;, por ejemplo.
+                No necesita aprobación. Los dos campos aplican sobre el total de todos los ítems; use uno u otro, no ambos.
+              </p>
+            </div>
           </div>
         </div>
       )}

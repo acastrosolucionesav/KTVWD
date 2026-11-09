@@ -38,6 +38,7 @@ type PuntualData = {
   feeNoruega: number;
   margenPct: number;
   descuentoPct: number | null;
+  ajustePct: number | null;
   precioLavadoSinDescuento: number | null;
   precioLavado: number | null;
   precioInformeBase: number | null;
@@ -231,6 +232,15 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   const descuentoManualPct = Number(formData.get('descuentoPct') || 0);
   if (descuentoManualPct < 0 || descuentoManualPct >= 100) return { error: 'El descuento debe estar entre 0% y 99%.' };
 
+  // Aumento manual sobre la tarifa (Gerencia 2026-11-09) — para los clientes
+  // que exigen el trabajo "a todo costo", donde el metro de lista no alcanza.
+  // No dispara aprobación: subir el precio nunca pone en riesgo el margen.
+  const ajustePct = Number(formData.get('ajustePct') || 0);
+  if (ajustePct < 0 || ajustePct > 200) return { error: 'El aumento manual debe estar entre 0% y 200%.' };
+  if (ajustePct > 0 && descuentoManualPct > 0) {
+    return { error: 'No se puede pedir descuento y aumento a la vez — deje uno de los dos en 0.' };
+  }
+
   // Descuento por volumen (spec_reestructuracion_care_20260723.md): automático
   // según el total de m² de fachada de todos los ítems, sobre la tarifa de
   // lista. NO se multiplica con el descuento manual: se aplica el MAYOR de los
@@ -246,7 +256,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // ítems (una sola movilización), y el precio final se reparte de vuelta a
   // cada ítem a prorrata — ver calcularLavadoMultiItem.
   const lavado = incluyeLavado && !porDiasActivo
-    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct: descuentoEfectivoPct })
+    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct: descuentoEfectivoPct, ajustePct })
     : null;
   const insp = calcularInspeccion(parametros, techo);
 
@@ -413,6 +423,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     feeNoruega: feeNoruegaTotal,
     margenPct: margenP,
     descuentoPct: incluyeLavado && descuentoManualPct > 0 ? descuentoManualPct : null,
+    ajustePct: incluyeLavado && ajustePct > 0 ? ajustePct : null,
     precioLavadoSinDescuento: lavado?.precioListaSinDescuento ?? null,
     precioLavado,
     precioInformeBase,

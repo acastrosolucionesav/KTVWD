@@ -91,6 +91,7 @@ export default async function PipedriveModalPage({
               }]
             : [],
         descuentoPct: cPuntual.puntual.descuentoPct,
+        ajustePct: cPuntual.puntual.ajustePct,
         techo: cPuntual.puntual.rangoTecho ?? 0,
         mostrarInformeInternacional: cPuntual.puntual.mostrarInformeInternacional,
         observaciones: cPuntual.observaciones ?? '',
