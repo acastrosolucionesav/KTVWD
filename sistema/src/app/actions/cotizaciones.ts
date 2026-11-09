@@ -568,6 +568,10 @@ async function guardarCotizacionPuntual(
     }
     revalidatePath('/cotizaciones');
     revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
+    // La propuesta pública también: si no, el cliente (y el comercial que la
+    // revisa) siguen viendo el precio anterior después de editar. Las demás
+    // acciones sobre la propuesta ya lo hacían; esta se había quedado por fuera.
+    revalidatePath(`/propuesta/${existente.linkToken}`);
     return { cotizacionId: cotizacionExistenteId! };
   }
 
@@ -1097,6 +1101,10 @@ async function guardarCotizacionCare(usuarioId: string, formData: FormData, deal
     }
     revalidatePath('/cotizaciones');
     revalidatePath(`/cotizaciones/${cotizacionExistenteId}`);
+    // La propuesta pública también: si no, el cliente (y el comercial que la
+    // revisa) siguen viendo el precio anterior después de editar. Las demás
+    // acciones sobre la propuesta ya lo hacían; esta se había quedado por fuera.
+    revalidatePath(`/propuesta/${existente.linkToken}`);
     return { cotizacionId: cotizacionExistenteId! };
   }
 
