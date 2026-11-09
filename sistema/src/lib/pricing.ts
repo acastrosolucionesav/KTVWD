@@ -368,7 +368,13 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
     // el trato quedó por encima del techo de mercado.
     m2Total: sumaM2,
     precioM2Efectivo: sumaM2 > 0 ? precioLavado / sumaM2 : 0,
-    sobreTarifaLista: sumaM2 > 0 && precioLavado / sumaM2 > p.TARIFA_LISTA + 0.01,
+    // Esta bandera avisa de un conflicto NO buscado: el piso de margen obligando
+    // a cobrar más que la tarifa de lista (pasa con superficie difícil y recargo
+    // alto, o en fachadas muy chicas donde manda el cargo mínimo). El aumento
+    // manual también deja el metro por encima de la tarifa, pero ahí es una
+    // decisión del comercial, no una sorpresa — por eso el techo contra el que
+    // se compara sube con él; si no, todo aumento pediría aprobación.
+    sobreTarifaLista: sumaM2 > 0 && precioLavado / sumaM2 > p.TARIFA_LISTA * (1 + (args.ajustePct ?? 0) / 100) + 0.01,
   };
 }
 
