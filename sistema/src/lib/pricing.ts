@@ -327,11 +327,14 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
   // `pisoAplicado` avisa que el descuento no cupo completo (la acción decide si
   // eso es un descuento manual demasiado profundo que hay que bloquear).
   const precioConDescuento = precioListaSinDescuento * (1 - (args.descuentoPct ?? 0) / 100);
-  // El ajuste manual va al final, sobre el precio ya resuelto: así el descuento
-  // y el ajuste no se pelean, y queda claro que es lo último que se le suma.
-  const precioConAjuste = precioConDescuento * (1 + (args.ajustePct ?? 0) / 100);
-  const precioLavado = Math.max(precioConAjuste, precioPisoMargen);
-  const pisoAplicado = precioConAjuste < precioPisoMargen;
+  const pisoAplicado = precioConDescuento < precioPisoMargen;
+  const precioAntesDeAjuste = Math.max(precioConDescuento, precioPisoMargen);
+  // El aumento manual va ENCIMA del precio ya resuelto, nunca compitiendo con
+  // el piso de margen. Si compitiera (un Math.max entre los dos), en las
+  // cotizaciones cuyo precio ya lo fija el piso —fachadas chicas, superficie
+  // difícil— el aumento se lo comería el piso y el total no se movería ni un
+  // peso, que es exactamente lo que le pasó a Gerencia la primera vez.
+  const precioLavado = precioAntesDeAjuste * (1 + (args.ajustePct ?? 0) / 100);
   const feeNoruega = precioLavado * p.FEE_NORUEGA;
   const comision = precioLavado * args.comisionPct;
   const costoTotal = sumaCostoOperacion + feeNoruega + comision;
