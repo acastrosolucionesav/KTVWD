@@ -178,6 +178,12 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
               {/* Sin esto no había forma de saber desde el detalle si el aumento
                   manual quedó guardado o no — y eso fue exactamente lo que costó
                   diagnosticar la primera vez que no subía el precio. */}
+              {c.puntual!.costosInternos != null && (
+                <>
+                  <dt className="text-gray-400">Costos internos (no visibles al cliente)</dt>
+                  <dd>{cop(c.puntual!.costosInternos)}{c.puntual!.costosInternosNota ? ` · ${c.puntual!.costosInternosNota}` : ''}</dd>
+                </>
+              )}
               {c.puntual!.ajustePct != null && (
                 <>
                   <dt className="text-[#66C2F8]">Aumento manual aplicado</dt>

@@ -39,6 +39,8 @@ type PuntualData = {
   margenPct: number;
   descuentoPct: number | null;
   ajustePct: number | null;
+  costosInternos: number | null;
+  costosInternosNota: string | null;
   precioLavadoSinDescuento: number | null;
   precioLavado: number | null;
   precioInformeBase: number | null;
@@ -161,6 +163,10 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // en el combo, el Diagnóstico Visual que se regala cuesta según el techo.
   const techo = Number(formData.get('techo') || 0);
 
+  // Costos internos: el trabajo los paga, el cliente no los ve desglosados.
+  const costosInternos = Math.max(0, Number(formData.get('costosInternos') || 0));
+  const costosInternosNota = String(formData.get('costosInternosNota') || '').trim() || null;
+
   // --- Entradas propias del modo POR DÍAS ---
   // Son las mismas variables de la matriz de Excel: días estimados, altura,
   // dificultad, si hace falta el equipo de alturas, si el trabajo es fuera de
@@ -203,8 +209,9 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
         margenObjetivo,
         comisionPct: 0.05,
         // El DV del combo se regala al cliente pero cuesta producirlo: el
-        // precio tiene que cubrirlo o el margen objetivo no se cumple.
-        costoAdicional: servicio === 'LAVADO_MAS_INSPECCION' ? calcularInspeccion(parametros, techo).costoOperacionInsp : 0,
+        // precio tiene que cubrirlo o el margen objetivo no se cumple. Los
+        // costos internos (transporte, viáticos) entran por el mismo lado.
+        costoAdicional: (servicio === 'LAVADO_MAS_INSPECCION' ? calcularInspeccion(parametros, techo).costoOperacionInsp : 0) + costosInternos,
       })
     : null;
   if (porDias?.imposible) {
@@ -256,7 +263,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // ítems (una sola movilización), y el precio final se reparte de vuelta a
   // cada ítem a prorrata — ver calcularLavadoMultiItem.
   const lavado = incluyeLavado && !porDiasActivo
-    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct: descuentoEfectivoPct, ajustePct })
+    ? calcularLavadoMultiItem(parametros, { items: itemsLavadoInput, comisionPct: 0.05, descuentoPct: descuentoEfectivoPct, ajustePct, costosInternos })
     : null;
   const insp = calcularInspeccion(parametros, techo);
 
@@ -424,6 +431,8 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     margenPct: margenP,
     descuentoPct: incluyeLavado && descuentoManualPct > 0 ? descuentoManualPct : null,
     ajustePct: incluyeLavado && ajustePct > 0 ? ajustePct : null,
+    costosInternos: costosInternos > 0 ? costosInternos : null,
+    costosInternosNota: costosInternos > 0 ? costosInternosNota : null,
     precioLavadoSinDescuento: lavado?.precioListaSinDescuento ?? null,
     precioLavado,
     precioInformeBase,

@@ -289,7 +289,13 @@ export function descuentoVolumen(m2Total: number): number {
 // dificultad —que es lo que esa regla quería evitar—; esto es una decisión
 // explícita del comercial, no un cálculo que se dispara solo. Subir el precio
 // nunca pone en riesgo el piso de margen, así que no necesita aprobación.
-export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavadoInput[]; comisionPct: number; descuentoPct?: number; ajustePct?: number }) {
+// costosInternos: plata que el trabajo cuesta de verdad pero que el cliente no
+// debe ver desglosada — transporte del equipo, viáticos, alojamiento. En el
+// modo por metros el precio sale de la tarifa, no del costo, así que sin esto
+// esos gastos se comían el margen en silencio. Se suman al costo (para que el
+// margen reportado sea honesto) y al precio con el margen mínimo encima, dentro
+// de la línea del lavado: el cliente ve un valor mayor, nunca el concepto.
+export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavadoInput[]; comisionPct: number; descuentoPct?: number; ajustePct?: number; costosInternos?: number }) {
   const costoOpDia = (p.CUADRILLA_DIA + p.CONSUMIBLES_DIA + p.DEPRECIACION_DIA) * (1 + p.PCT_ADMIN + p.PCT_IMPREV);
 
   const filas = args.items.map((it) => {
@@ -312,13 +318,19 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
     return { ...it, m2, dias, recargo, costoOperacion, precioConRecargo, topeM2Aplicado, diasEjecucionSistema };
   });
 
-  const sumaCostoOperacion = filas.reduce((s, f) => s + f.costoOperacion, 0);
+  const costosInternos = Math.max(0, args.costosInternos ?? 0);
+  const sumaCostoOperacion = filas.reduce((s, f) => s + f.costoOperacion, 0) + costosInternos;
   const sumaPrecioConRecargo = filas.reduce((s, f) => s + f.precioConRecargo, 0);
   const sumaM2 = filas.reduce((s, f) => s + f.m2, 0);
   const sumaDias = filas.reduce((s, f) => s + f.dias, 0);
   const diasEjecucionSistema = filas.reduce((s, f) => s + f.diasEjecucionSistema, 0);
 
-  const precioBase = Math.max(sumaPrecioConRecargo, p.MINIMO_PROYECTO_LAVADO ?? 0);
+  // El costo interno se traslada al precio con el margen mínimo encima: si
+  // entrara al precio "a secas", cada peso de viáticos bajaría el margen.
+  const suplementoInterno = costosInternos > 0
+    ? costosInternos / (1 - p.FEE_NORUEGA - args.comisionPct - p.MARGEN_MINIMO)
+    : 0;
+  const precioBase = Math.max(sumaPrecioConRecargo, p.MINIMO_PROYECTO_LAVADO ?? 0) + suplementoInterno;
   const precioPisoMargen = sumaCostoOperacion / (1 - p.MARGEN_MINIMO - p.FEE_NORUEGA - args.comisionPct);
   const precioListaSinDescuento = Math.max(precioBase, precioPisoMargen);
   // El precio con descuento NUNCA baja del piso de 35% de margen (regla Gerencia
@@ -358,7 +370,8 @@ export function calcularLavadoMultiItem(p: Parametros, args: { items: ItemLavado
   });
 
   return {
-    dias: sumaDias, costoOpDia, costoOperacion: sumaCostoOperacion, precioLavado, precioListaSinDescuento,
+    dias: sumaDias, costoOpDia, costoOperacion: sumaCostoOperacion, costosInternos, suplementoInterno,
+    precioLavado, precioListaSinDescuento,
     pisoAplicado, feeNoruega, comision, costoTotal, margenD, margenP, diasEjecucionSistema, items,
     // Tope de $6.000/m²: `topeM2Aplicado` avisa que el recargo se absorbió para no
     // pasar la tarifa de lista.

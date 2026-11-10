@@ -240,6 +240,11 @@ model CotizacionPuntual {
   // (piso más estricto que el 25% de excepciones automáticas por dificultad).
   descuentoPct           Float?  // 0-99, % aplicado sobre el precio de lista del lavado
   ajustePct              Float?  // % de aumento manual sobre el precio de lista (cliente "a todo costo")
+  // Costos que el trabajo tiene de verdad pero que el cliente no ve desglosados
+  // (transporte del equipo, viáticos, alojamiento). Entran al costo y al precio,
+  // nunca a la propuesta como línea aparte.
+  costosInternos         Float?
+  costosInternosNota     String?
   precioLavadoSinDescuento Float? // CONFIDENCIAL — Regla A, referencia interna del precio antes del descuento
 
   precioLavado           Float? // sin IVA

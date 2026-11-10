@@ -38,6 +38,8 @@ export type CotizacionPuntualExistente = {
   itemsLavado: ItemLavadoUI[];
   descuentoPct: number | null;
   ajustePct: number | null;
+  costosInternos: number | null;
+  costosInternosNota: string | null;
   techo: number;
   mostrarInformeInternacional: boolean;
   observaciones: string;
@@ -395,6 +397,31 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           </div>
         </div>
       )}
+
+      {/* Costos internos — el cliente NO los ve. Van en los dos modos: en el de
+          metros el precio sale de la tarifa y sin esto el transporte y los
+          viáticos se comían el margen en silencio. */}
+      <div className="space-y-3 p-4 rounded-xl border border-gray-300 bg-gray-50">
+        <label className={label + ' mb-0'}>Costos internos — el cliente no los ve</label>
+        <p className="text-[11px] text-gray-500">
+          Transporte del equipo, viáticos, alojamiento: lo que el trabajo cuesta de verdad pero no se le
+          desglosa al cliente. Se suman al costo y al precio con el margen mínimo encima, dentro del valor
+          del lavado. En la propuesta no aparecen por ningún lado.
+        </p>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className={label}>Monto (COP)</label>
+            <input name="costosInternos" type="number" min="0" step="1000" className={input}
+              placeholder="0" defaultValue={existente?.costosInternos ?? ''} />
+          </div>
+          <div className="col-span-2">
+            <label className={label}>De qué es (nota interna)</label>
+            <input name="costosInternosNota" className={input}
+              placeholder="Ej. transporte del equipo a Villavicencio + 2 noches"
+              defaultValue={existente?.costosInternosNota ?? ''} />
+          </div>
+        </div>
+      </div>
 
       {/* Insumos adicionales y trabajos de terceros — opcionales, en cualquiera
           de los dos modos. Nunca se absorben al costo: llevan su margen neto
