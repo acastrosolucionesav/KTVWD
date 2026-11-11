@@ -18,6 +18,7 @@ const NOMBRES_SERVICIO: Record<string, string> = {
   INSPECCION_SOLA: 'Inspección de fachada y cubierta (Diagnóstico Visual KTV)',
   LAVADO_MAS_INSPECCION: 'Lavado de fachada + Inspección KTV Colombia',
   SOLO_LAVADO: 'Lavado de fachada',
+  TRABAJO_ESPECIALIZADO: 'Servicio especializado en altura (ejecuta un tercero)',
 };
 
 const NOMBRES_CONCEPTO: Record<string, string> = {
@@ -66,6 +67,11 @@ export function datosOperativos(c: CotizacionParaOrden): { servicio: string; lin
       .filter(Boolean).join(' · ');
     lineas.push(`${it.nombre || 'Lavado'} (${NOMBRES_CONCEPTO[it.concepto] ?? it.concepto}): ${areas} — superficie ${NOMBRES_SUPERFICIE[it.superficie]} · edificio ${NOMBRES_NIVEL[it.tipoEdificio]} · dificultad ${NOMBRES_NIVEL[it.dificultad]}`);
   }
+
+  // Trabajo especializado: la descripción que se le vendió al cliente ES el
+  // alcance que Operaciones tiene que hacer cumplir, así que va completa. El
+  // costo y el fee no — son plata, y en una Orden de Servicio no va plata.
+  if (p?.trabajoDescripcion) lineas.push(`Alcance contratado: ${p.trabajoDescripcion}`);
 
   if (p) {
     // Cotizaciones viejas (de antes del multi-ítem) traen el único ítem en las

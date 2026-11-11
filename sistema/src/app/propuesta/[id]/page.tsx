@@ -28,6 +28,7 @@ const NOMBRES_SERVICIO: Record<string, string> = {
   INSPECCION_SOLA: 'Inspección de fachada y cubierta',
   LAVADO_MAS_INSPECCION: 'Lavado de fachada + Inspección KTV Colombia',
   SOLO_LAVADO: 'Lavado de fachada',
+  TRABAJO_ESPECIALIZADO: 'Servicio especializado en altura',
 };
 
 // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md) — mismo
@@ -179,6 +180,12 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
   }
 
   const p = dto.puntual;
+  // Trabajo especializado (impermeabilización, sellado, pintura en altura): la
+  // propuesta es la misma, pero el relato de dron y lavado no aplica. Lo que
+  // cambia es el encabezado, la carta de presentación, la línea de precio y la
+  // nota de Aerocivil — el resto del documento (condiciones, aceptación, firmas)
+  // es idéntico, que para eso es una sola plantilla.
+  const trabajo = p?.trabajo ?? null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -235,7 +242,10 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             {dto.clienteContacto && <p className="text-sm text-gray-500">Atn: {dto.clienteContacto}</p>}
             {p && (
               <p className="text-sm text-gray-600 mt-3">
-                <span className="font-bold text-[#66C2F8]">Ref:</span> Propuesta económica — intervención de fachadas con tecnología de drones.
+                <span className="font-bold text-[#66C2F8]">Ref:</span>{' '}
+                {trabajo
+                  ? 'Propuesta económica — servicio especializado de mantenimiento en altura.'
+                  : 'Propuesta económica — intervención de fachadas con tecnología de drones.'}
               </p>
             )}
             {dto.care && (
@@ -245,13 +255,23 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
             )}
           </div>
 
-          {p && (
+          {p && !trabajo && (
             <p className="text-sm text-gray-600 text-justify">
               Agradecemos su invitación a presentar nuestra propuesta económica por servicios
               especializados en gran altura con la utilización de drones de última tecnología. El
               presente documento se ha confeccionado atendiendo de forma exclusiva los requerimientos y
               necesidades expresadas por ustedes para realizar la limpieza y preservación de su
               infraestructura, combinando alta ingeniería aeronáutica con mano de obra técnica calificada.
+            </p>
+          )}
+
+          {trabajo && (
+            <p className="text-sm text-gray-600 text-justify">
+              Agradecemos su invitación a presentar nuestra propuesta económica por servicios
+              especializados de mantenimiento en altura. El presente documento se ha confeccionado
+              atendiendo de forma exclusiva los requerimientos expresados por ustedes, y su ejecución
+              estará a cargo de personal técnico certificado en trabajo en alturas, bajo la
+              responsabilidad y el acompañamiento de KTV Working Drone Colombia.
             </p>
           )}
 
@@ -266,7 +286,17 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
 
           {p && (
             <>
-              {p.itemsLavado.length > 0 ? (
+              {trabajo ? (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="bg-[#66C2F8] text-white px-4 py-2 text-xs font-bold uppercase">{NOMBRES_SERVICIO.TRABAJO_ESPECIALIZADO}</div>
+                  <div className="px-4 py-3 flex justify-between items-start gap-4">
+                    {/* whitespace-pre-line: la comercial escribe este texto a
+                        mano y sus saltos de línea son parte del alcance. */}
+                    <span className="text-sm text-gray-600 text-justify whitespace-pre-line">{trabajo.descripcion}</span>
+                    <span className="font-bold text-[#171E27] shrink-0">{cop(trabajo.precioTotal)}</span>
+                  </div>
+                </div>
+              ) : p.itemsLavado.length > 0 ? (
                 <>
                   {p.itemsLavado.map((it, idx) => (
                     <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden">
@@ -336,7 +366,11 @@ export default async function PropuestaPublicaPage({ params }: { params: Promise
                 <p className="font-bold uppercase tracking-wide text-gray-500 mb-1">Notas</p>
                 {p.incluyeLavado && <p>· Nuestra propuesta incluye los productos a aplicar durante el proceso de lavado.</p>}
                 <p>· El valor de la oferta es antes del IVA (19%).</p>
-                <p>· El inicio de la operación estará sujeto a la agenda disponible de la Aeronáutica Civil.</p>
+                {/* Un trabajo especializado no vuela: prometerle al cliente que
+                    el inicio depende de Aerocivil sería falso y le daría una
+                    excusa de demora que no existe. */}
+                {!trabajo && <p>· El inicio de la operación estará sujeto a la agenda disponible de la Aeronáutica Civil.</p>}
+                {trabajo && <p>· La ejecución está a cargo de personal certificado en trabajo en alturas, con los elementos de protección y la afiliación de ley vigentes.</p>}
               </div>
             </>
           )}

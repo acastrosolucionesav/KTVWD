@@ -34,12 +34,15 @@ export type CotizacionPuntualExistente = {
   clienteNombre: string;
   clienteContacto: string;
   pipedriveDealId: string;
-  servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
+  servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO' | 'TRABAJO_ESPECIALIZADO';
   itemsLavado: ItemLavadoUI[];
   descuentoPct: number | null;
   ajustePct: number | null;
   costosInternos: number | null;
   costosInternosNota: string | null;
+  trabajoDescripcion: string | null;
+  trabajoCostoReal: number | null;
+  trabajoFeePct: number | null;
   techo: number;
   mostrarInformeInternacional: boolean;
   observaciones: string;
@@ -106,7 +109,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   useEffect(() => {
     if (state && !(state as GuardarPipedriveState).error) setSucio(false);
   }, [state]);
-  const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
+  const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO' | 'TRABAJO_ESPECIALIZADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   // Modo de cotización (Gerencia 2026-11-04): por metros de fachada, o por días
   // estimados cuando el cliente no tiene el área — que es lo más común.
   const [modo, setModo] = useState<'METROS' | 'DIAS'>(existente?.modoCotizacion === 'DIAS' ? 'DIAS' : 'METROS');
@@ -115,7 +118,11 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   // DESPUÉS, desde el detalle interno — y eso se olvidaba, dejando el
   // subcontrato sin cobrar. Ahora se agregan al cotizar (Gerencia 2026-11-05).
   const [terceros, setTerceros] = useState<TerceroUI[]>(existente?.itemsTerceros ?? []);
-  const incluyeLavado = servicio !== 'INSPECCION_SOLA';
+  // Trabajo especializado: lo ejecuta un tercero, no KTV. No hay metros, ni
+  // días de dron, ni informe — por eso apaga medio formulario en vez de
+  // agregarle campos al que ya existe.
+  const esTrabajo = servicio === 'TRABAJO_ESPECIALIZADO';
+  const incluyeLavado = servicio !== 'INSPECCION_SOLA' && !esTrabajo;
   const [items, setItems] = useState<ItemLavadoUI[]>(existente?.itemsLavado?.length ? existente.itemsLavado : [itemVacio()]);
   const [dealPipedrive, setDealPipedrive] = useState<PipedriveDealResumen | null>(null);
   const [clienteNombre, setClienteNombre] = useState(existente?.clienteNombre ?? dealPrefill?.clienteNombre ?? '');
@@ -171,6 +178,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           <option value="SOLO_LAVADO">1 · Solo lavado de fachada</option>
           <option value="LAVADO_MAS_INSPECCION">2 · Lavado + Inspección KTV Colombia (Diagnóstico Visual incluido)</option>
           <option value="INSPECCION_SOLA">3 · Solo inspección — Diagnóstico Visual KTV</option>
+          <option value="TRABAJO_ESPECIALIZADO">4 · Trabajo especializado (lo ejecuta un tercero)</option>
         </select>
       </div>
 
@@ -208,6 +216,48 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
             value={clienteContacto} onChange={(e) => setClienteContacto(e.target.value)} />
         </div>
       </div>
+
+      {esTrabajo && (
+        <div className="space-y-3 p-4 rounded-xl border-2 border-[#66C2F8]/40 bg-[#F7FBFF]">
+          <label className={label + ' mb-0'}>Trabajo especializado</label>
+          <p className="text-[11px] text-gray-500">
+            Para lo que KTV vende y factura pero ejecuta un tercero: impermeabilización, sellado, pintura en
+            alturas. No tiene metros de fachada ni días de dron — usted escribe lo que verá el cliente, lo que
+            nos cuesta, y el fee que le carga encima.
+          </p>
+          <div>
+            <label className={label}>Descripción del trabajo (la ve el cliente)</label>
+            <textarea name="trabajoDescripcion" rows={4} className={input}
+              placeholder="Impermeabilización de cubierta — 1.225 m². Incluye suministro e instalación de manto asfáltico, sellado de juntas y limpieza de la superficie. Ejecutado por cuadrilla certificada en trabajo en alturas."
+              defaultValue={existente?.trabajoDescripcion ?? ''} />
+            <p className="text-[11px] text-gray-500 mt-1">
+              Es lo único de este bloque que sale en la propuesta. Escríbalo como quiere que lo lea el cliente:
+              nunca se menciona que lo ejecuta un tercero.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={label}>Nos cuesta (COP, sin IVA)</label>
+              <input name="trabajoCostoReal" type="number" min="0" step="1000" className={input}
+                placeholder="109000000" defaultValue={existente?.trabajoCostoReal ?? ''} />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Todo lo que hay que pagar para ejecutarlo: cuadrilla, materiales, equipos, exámenes.
+              </p>
+            </div>
+            <div>
+              <label className={label}>Fee KTV (%)</label>
+              <input name="trabajoFeePct" type="number" min="0" max="99" step="0.5" className={input}
+                placeholder="25" defaultValue={existente?.trabajoFeePct != null ? existente.trabajoFeePct * 100 : ''} />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Margen neto sobre el precio, ya descontada la regalía de la franquicia (no es un recargo
+                sobre el costo: 25% de fee sobre un costo de 100 da 147, no 125).
+                Vacío = 25%, que es el estándar cuando KTV coordina personal ajeno en sitio del cliente.
+                Por debajo de 25% pasa por Gerencia; subirlo no necesita aprobación.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modo de cotización — la decisión que cambia todo el formulario.
           Por metros es lo de siempre; por días es para cuando el cliente no
@@ -421,7 +471,9 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
 
       {/* Costos internos — el cliente NO los ve. Van en los dos modos: en el de
           metros el precio sale de la tarifa y sin esto el transporte y los
-          viáticos se comían el margen en silencio. */}
+          viáticos se comían el margen en silencio. En un trabajo especializado
+          no hacen falta: el costo se escribe completo en una sola casilla. */}
+      {!esTrabajo && (
       <div className="space-y-3 p-4 rounded-xl border border-gray-300 bg-gray-50">
         <label className={label + ' mb-0'}>Costos internos — el cliente no los ve</label>
         <p className="text-[11px] text-gray-500">
@@ -443,6 +495,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           </div>
         </div>
       </div>
+      )}
 
       {/* Insumos adicionales y trabajos de terceros — opcionales, en cualquiera
           de los dos modos. Nunca se absorben al costo: llevan su margen neto
@@ -493,15 +546,19 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         ))}
       </div>
 
-      <div>
-        <label className={label}>Área de techo (m²) — para el Diagnóstico Visual / Informe Internacional</label>
-        <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
-      </div>
+      {!esTrabajo && (
+        <>
+          <div>
+            <label className={label}>Área de techo (m²) — para el Diagnóstico Visual / Informe Internacional</label>
+            <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
+          </div>
 
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" name="mostrarInformeInternacional" className="rounded" defaultChecked={existente?.mostrarInformeInternacional ?? false} />
-        Ofrecer el Informe Internacional KTV como adicional en esta cotización (Regla B)
-      </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" name="mostrarInformeInternacional" className="rounded" defaultChecked={existente?.mostrarInformeInternacional ?? false} />
+            Ofrecer el Informe Internacional KTV como adicional en esta cotización (Regla B)
+          </label>
+        </>
+      )}
 
       <div>
         <label className={label}>Observaciones (se muestran al cliente)</label>
@@ -526,11 +583,16 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           <textarea name="condicionPagoNota" rows={2} className={input}
             defaultValue={existente?.condicionPagoNota ?? '60% con la Orden de Compra; 40% antes de finalizar el servicio. Opción de pago diferido hasta en 12 cuotas mensuales sujeto a aprobación (no modifica el valor del contrato).'} />
         </div>
-        <div>
-          <label className={label}>Permiso Aeronáutica Civil</label>
-          <input name="permisoAerocivil" className={input}
-            defaultValue={existente?.permisoAerocivil ?? '30 a 40 días hábiles. Tramitación y radicación a cargo de KTV.'} />
-        </div>
+        {/* Un trabajo especializado no vuela: no hay permiso de Aerocivil que
+            tramitar, y dejarlo visible solo invita a prometerle al cliente un
+            trámite que nadie va a hacer. */}
+        {!esTrabajo && (
+          <div>
+            <label className={label}>Permiso Aeronáutica Civil</label>
+            <input name="permisoAerocivil" className={input}
+              defaultValue={existente?.permisoAerocivil ?? '30 a 40 días hábiles. Tramitación y radicación a cargo de KTV.'} />
+          </div>
+        )}
         {incluyeLavado ? (
           <div>
             <label className={label}>Días de ejecución en sitio — vacío para que el sistema lo calcule</label>

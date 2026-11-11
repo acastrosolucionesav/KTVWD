@@ -839,3 +839,39 @@ export function calcularItemTercero(p: Parametros, args: { tipo: TipoItemTercero
   const precioVenta = args.costoReal / (1 - p.FEE_NORUEGA - margenNetoDeseado);
   return { margenNetoDeseado, precioVenta };
 }
+
+// ============================================================================
+// Trabajo especializado (Gerencia 2026-11-11, caso impermeabilización Maloka)
+// ----------------------------------------------------------------------------
+// Un trabajo que KTV vende, factura y por el que responde ante el cliente, pero
+// que ejecuta un tercero: impermeabilización, sellado, pintura en alturas. No
+// tiene m² de fachada ni días de dron que costear — el costo llega ya armado
+// (cuadrilla del tercero, materiales, equipos) y lo único que decide el sistema
+// es cuánto se le carga encima.
+//
+// Es la misma fórmula de los ítems de terceros, con UNA diferencia deliberada:
+// acá el fee lo fija la comercial en vez de salir de la tabla fija 15%/25%.
+// Razón: en un ítem de tercero el trabajo principal es de KTV y el tercero es
+// un accesorio; acá el trabajo ENTERO es del tercero, y lo que se cobra depende
+// de cuánto riesgo de marca y cuánta coordinación asume KTV en cada caso.
+//
+// El fee es un margen NETO sobre el precio, no un recargo sobre el costo. No es
+// lo mismo: 25% de margen sobre un costo de 100 da un precio de 147 (después de
+// descontar el 7% de Noruega), no de 125. Es la convención de toda la casa —
+// cambiarla acá sería el único lugar donde "25%" significa otra cosa.
+// ============================================================================
+export function calcularTrabajoEspecializado(p: Parametros, args: { costoReal: number; feePct: number }) {
+  const divisor = 1 - p.FEE_NORUEGA - args.feePct;
+  if (divisor <= 0) return { imposible: true as const, precio: 0, feeNoruega: 0, margenPct: 0 };
+  const precio = args.costoReal / divisor;
+  const feeNoruega = precio * p.FEE_NORUEGA;
+  return {
+    imposible: false as const,
+    precio,
+    feeNoruega,
+    // Sale exactamente igual a feePct — se devuelve calculado y no copiado para
+    // que, si alguien toca la fórmula de arriba, el margen reportado siga siendo
+    // el de verdad y no el que se pidió.
+    margenPct: (precio - args.costoReal - feeNoruega) / precio,
+  };
+}

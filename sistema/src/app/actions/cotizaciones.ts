@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
-import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, calcularPorDias, calcularItemTercero, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros, type TipoItemTercero } from '@/lib/pricing';
+import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, calcularPorDias, calcularItemTercero, calcularTrabajoEspecializado, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros, type TipoItemTercero } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
 import { registrarPropuestaEnviada, registrarCotizacionCreada, actualizarTratoCotizacion, type CamposComercialesTrato } from '@/lib/pipedrive';
 import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
@@ -27,8 +27,10 @@ export type CrearCareState = { error?: string; ok?: boolean } | undefined;
 // tenga que borrar y volver a crear por un dato mal digitado (m², días de
 // Aerocivil, etc.).
 // ============================================================================
+export type ServicioPuntual = 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO' | 'TRABAJO_ESPECIALIZADO';
+
 type PuntualData = {
-  servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
+  servicio: ServicioPuntual;
   tipoInformeBase: 'DIAGNOSTICO_VISUAL' | 'INTERNACIONAL' | null;
   mostrarInformeInternacional: boolean;
   m2Fachada: number | null;
@@ -63,7 +65,20 @@ type PuntualData = {
   horasExtraAsistente: number | null;
   diasApoyoExterno: number | null;
   margenObjetivo: number | null;
+  // Trabajo especializado (Gerencia 2026-11-11)
+  trabajoDescripcion: string | null;
+  trabajoCostoReal: number | null;
+  trabajoFeePct: number | null;
+  trabajoPrecio: number | null;
 };
+
+// Fee estándar de un trabajo que ejecuta un tercero en sitio del cliente: el
+// mismo 25% neto de un ítem de tercero tipo SERVICIO, por la misma razón (KTV
+// coordina personal ajeno y pone su marca a responder). Por debajo de ese piso
+// la cotización pasa por Gerencia; por encima no, que subirlo nunca es el
+// problema. OJO: el piso de 40% (MARGEN_MINIMO) NO aplica acá — ese se fijó
+// sobre el costeo de una operación de dron propia, no sobre reventa.
+const FEE_TRABAJO_ESTANDAR = 0.25;
 // Datos que el trato de Pipedrive necesita reflejar de la cotización — son los
 // mismos que Gerencia dejó como obligatorios para entrar a la etapa "Propuesta
 // Enviada", y todos salen de lo que el comercial ya llenó en el cotizador. Care
@@ -101,17 +116,153 @@ type ResultadoPuntual =
       puntualData: PuntualData; itemsLavadoData: ItemLavadoData[]; itemsTercerosData: ItemTerceroData[];
     };
 
+// Insumos adicionales y trabajos de terceros, agregados desde el formulario.
+// Llegan como arreglos paralelos, igual que los ítems de lavado. Vive aparte de
+// computarPuntual porque las dos clases de cotización los admiten: una de lavado
+// puede llevar colgado un subcontrato, y un trabajo especializado también.
+function leerItemsTerceros(formData: FormData, parametros: Parametros): { error: string } | { error?: undefined; items: ItemTerceroData[] } {
+  const terceroDescripciones = formData.getAll('terceroDescripcion').map((v) => String(v).trim());
+  const terceroTipos = formData.getAll('terceroTipo').map((v) => String(v) as TipoItemTercero);
+  const terceroCostos = formData.getAll('terceroCosto').map((v) => Number(v) || 0);
+  const terceroNotas = formData.getAll('terceroNota').map((v) => String(v).trim());
+  const items: ItemTerceroData[] = [];
+  for (let i = 0; i < terceroDescripciones.length; i++) {
+    const descripcionCliente = terceroDescripciones[i];
+    const costoReal = terceroCostos[i] ?? 0;
+    // Una fila vacía no es un error: el formulario puede dejar filas sin llenar.
+    if (!descripcionCliente && costoReal <= 0) continue;
+    if (!descripcionCliente) return { error: 'Cada insumo o trabajo de tercero necesita una descripción para el cliente.' };
+    if (!(costoReal > 0)) return { error: `Ingrese el costo real de "${descripcionCliente}".` };
+    const tipo = terceroTipos[i] === 'PRODUCTO' ? 'PRODUCTO' : 'SERVICIO';
+    const { margenNetoDeseado, precioVenta } = calcularItemTercero(parametros, { tipo, costoReal });
+    items.push({
+      descripcionCliente,
+      notaInterna: terceroNotas[i] || null,
+      tipo, costoReal, margenNetoDeseado, precioVenta,
+    });
+  }
+  return { items };
+}
+
+// Trabajo especializado (Gerencia 2026-11-11): un trabajo que KTV vende y
+// factura pero ejecuta un tercero — impermeabilización, sellado, pintura en
+// alturas. La comercial escribe lo que verá el cliente, el costo real que nos
+// cobran, y el fee que le carga encima; el sistema solo arma el precio.
+//
+// Lo que el cliente ve es UNA línea con su descripción y su precio. El costo y
+// el fee son confidenciales (Regla A) y nunca entran al DTO de cliente.
+function computarTrabajoEspecializado(
+  formData: FormData, parametros: Parametros,
+  base: { clienteNombre: string; clienteContacto: string | null; pipedriveDealId: string | null },
+): ResultadoPuntual {
+  const trabajoDescripcion = String(formData.get('trabajoDescripcion') || '').trim();
+  const trabajoCostoReal = Number(formData.get('trabajoCostoReal') || 0);
+  const feePctInput = formData.get('trabajoFeePct') ? Number(formData.get('trabajoFeePct')) : null;
+  const trabajoFeePct = feePctInput !== null ? feePctInput / 100 : FEE_TRABAJO_ESTANDAR;
+
+  if (!trabajoDescripcion) {
+    return { error: 'Escriba la descripción del trabajo como la verá el cliente (es lo único que va a leer en la propuesta).' };
+  }
+  if (!(trabajoCostoReal > 0)) {
+    return { error: 'Ingrese el costo real del trabajo — lo que nos cuesta ejecutarlo, antes del fee.' };
+  }
+  if (trabajoFeePct < 0 || trabajoFeePct >= 1) {
+    return { error: 'El fee debe estar entre 0% y 99%.' };
+  }
+
+  const t = calcularTrabajoEspecializado(parametros, { costoReal: trabajoCostoReal, feePct: trabajoFeePct });
+  if (t.imposible) {
+    return { error: `Con ese fee no queda con qué pagar el ${(parametros.FEE_NORUEGA * 100).toFixed(0)}% de la franquicia. Bájelo.` };
+  }
+
+  const terceros = leerItemsTerceros(formData, parametros);
+  if (terceros.error !== undefined) return { error: terceros.error };
+
+  const observaciones = String(formData.get('observaciones') || '').trim() || null;
+  const anticipoPct = formData.get('anticipoPct') ? Number(formData.get('anticipoPct')) : null;
+  const saldoPct = formData.get('saldoPct') ? Number(formData.get('saldoPct')) : null;
+  const condicionPagoNota = String(formData.get('condicionPagoNota') || '').trim() || null;
+  // Un trabajo de impermeabilización no vuela: no hay permiso de Aerocivil que
+  // tramitar. El plazo sí se escribe a mano (lo fija el tercero, no una fórmula
+  // de productividad como en el lavado).
+  const ejecucionSitio = String(formData.get('ejecucionSitio') || '').trim() || null;
+
+  return {
+    ...base,
+    observaciones,
+    totalCliente: t.precio,
+    margenP: t.margenPct,
+    // Por debajo del 25% estándar lo mira Gerencia. El piso de 40% del lavado
+    // no aplica: ese se calibró sobre una operación de dron propia.
+    requiereAprobacion: trabajoFeePct < FEE_TRABAJO_ESTANDAR,
+    itemsLavadoData: [],
+    itemsTercerosData: terceros.items,
+    puntualData: {
+      servicio: 'TRABAJO_ESPECIALIZADO',
+      tipoInformeBase: null,
+      mostrarInformeInternacional: false,
+      m2Fachada: null,
+      rangoTecho: null,
+      diasOperacion: 0,
+      costoOperacion: trabajoCostoReal,
+      feeNoruega: t.feeNoruega,
+      margenPct: t.margenPct,
+      descuentoPct: null,
+      ajustePct: null,
+      costosInternos: null,
+      costosInternosNota: null,
+      precioLavadoSinDescuento: null,
+      precioLavado: null,
+      precioInformeBase: null,
+      precioInformeAdicional: null,
+      anticipoPct,
+      saldoPct,
+      condicionPagoNota,
+      permisoAerocivil: null,
+      diasEjecucionSistema: null,
+      diasEjecucion: null,
+      ejecucionSitio,
+      modoCotizacion: 'METROS',
+      diasEstimados: null,
+      equipoAlturas: false,
+      ciudadFuera: false,
+      nochesAlojamiento: null,
+      trayectosIntermunicipales: null,
+      horasExtraPiloto: null,
+      horasExtraAsistente: null,
+      diasApoyoExterno: null,
+      margenObjetivo: null,
+      trabajoDescripcion,
+      trabajoCostoReal,
+      trabajoFeePct,
+      trabajoPrecio: t.precio,
+    },
+  };
+}
+
 // Cálculo y validación PUROS de una cotización puntual — no toca la base de
 // datos. Es la ÚNICA fuente de verdad del número: crearCotizacionPuntual la usa
 // justo antes de persistir, y previsualizarPuntual la usa solo para mostrarle el
 // precio al comercial sin guardar nada. Así lo que se previsualiza es EXACTO lo
 // que se termina guardando — nunca dos fórmulas que se puedan desalinear.
 function computarPuntual(formData: FormData, parametros: Parametros): ResultadoPuntual {
-  const servicio = String(formData.get('servicio')) as 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
+  const servicio = String(formData.get('servicio')) as ServicioPuntual;
   const clienteNombre = String(formData.get('clienteNombre') || '').trim();
   const clienteContacto = String(formData.get('clienteContacto') || '').trim() || null;
   if (!clienteNombre) return { error: 'El nombre del cliente es obligatorio.' };
   const pipedriveDealId = String(formData.get('pipedriveDealId') || '').trim() || null;
+
+  // ------------------------------------------------------------------------
+  // TRABAJO ESPECIALIZADO — sale por acá y no toca nada de lo de abajo.
+  // No es lavado ni inspección: no hay metros, ni días de dron, ni informe, ni
+  // tarifa de lista sobre la cual descontar. Todo el cálculo cabe en una línea
+  // (costo + fee), y mezclarlo con el camino del lavado solo serviría para
+  // arrastrarle validaciones que no tienen sentido acá — "agregue al menos un
+  // ítem de lavado" sobre una impermeabilización, por ejemplo.
+  // ------------------------------------------------------------------------
+  if (servicio === 'TRABAJO_ESPECIALIZADO') {
+    return computarTrabajoEspecializado(formData, parametros, { clienteNombre, clienteContacto, pipedriveDealId });
+  }
 
   const incluyeLavado = servicio !== 'INSPECCION_SOLA';
 
@@ -396,28 +547,9 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
       }))
     : [];
 
-  // Insumos adicionales y trabajos de terceros, agregados desde el formulario.
-  // Llegan como arreglos paralelos, igual que los ítems de lavado.
-  const terceroDescripciones = formData.getAll('terceroDescripcion').map((v) => String(v).trim());
-  const terceroTipos = formData.getAll('terceroTipo').map((v) => String(v) as TipoItemTercero);
-  const terceroCostos = formData.getAll('terceroCosto').map((v) => Number(v) || 0);
-  const terceroNotas = formData.getAll('terceroNota').map((v) => String(v).trim());
-  const itemsTercerosData: ItemTerceroData[] = [];
-  for (let i = 0; i < terceroDescripciones.length; i++) {
-    const descripcionCliente = terceroDescripciones[i];
-    const costoReal = terceroCostos[i] ?? 0;
-    // Una fila vacía no es un error: el formulario puede dejar filas sin llenar.
-    if (!descripcionCliente && costoReal <= 0) continue;
-    if (!descripcionCliente) return { error: 'Cada insumo o trabajo de tercero necesita una descripción para el cliente.' };
-    if (!(costoReal > 0)) return { error: `Ingrese el costo real de "${descripcionCliente}".` };
-    const tipo = terceroTipos[i] === 'PRODUCTO' ? 'PRODUCTO' : 'SERVICIO';
-    const { margenNetoDeseado, precioVenta } = calcularItemTercero(parametros, { tipo, costoReal });
-    itemsTercerosData.push({
-      descripcionCliente,
-      notaInterna: terceroNotas[i] || null,
-      tipo, costoReal, margenNetoDeseado, precioVenta,
-    });
-  }
+  const terceros = leerItemsTerceros(formData, parametros);
+  if (terceros.error !== undefined) return { error: terceros.error };
+  const itemsTercerosData = terceros.items;
 
   const puntualData = {
     servicio,
@@ -456,6 +588,11 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
     horasExtraAsistente: porDiasActivo && horasExtraAsistente > 0 ? horasExtraAsistente : null,
     diasApoyoExterno: porDiasActivo && diasApoyoExterno > 0 ? diasApoyoExterno : null,
     margenObjetivo: porDias ? porDias.margenObjetivo : null,
+    // Trabajo especializado: null en todo lo que no sea esa clase de cotización.
+    trabajoDescripcion: null,
+    trabajoCostoReal: null,
+    trabajoFeePct: null,
+    trabajoPrecio: null,
   };
 
   return {

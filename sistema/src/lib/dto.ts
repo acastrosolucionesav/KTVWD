@@ -32,8 +32,12 @@ export type CotizacionClienteDTO = {
   itemsTerceros: { descripcionCliente: string; precioVenta: number }[];
   // Familia 1
   puntual?: {
-    servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO';
+    servicio: 'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO' | 'TRABAJO_ESPECIALIZADO';
     incluyeLavado: boolean;
+    // Trabajo especializado (Gerencia 2026-11-11): lo ejecuta un tercero y lo
+    // factura KTV. Regla A: SOLO la descripción y el precio — ni el costo real
+    // ni el fee están en esta forma, así que no hay manera de imprimirlos.
+    trabajo: { descripcion: string; precioTotal: number } | null;
     // Ítems de lavado seleccionables (spec_lavado_items_dias_20260717.md) —
     // determina el texto que ve el cliente (fachada / vidrios / ambos), nunca el precio.
     concepto: 'SOLO_VENTANAS' | 'SOLO_FACHADA' | 'FACHADA_Y_VENTANAS' | null;
@@ -115,11 +119,15 @@ export async function getCotizacionClienteDTO(linkToken: string): Promise<Cotiza
 
   if (c.familia === 'PUNTUAL' && c.puntual) {
     const p = c.puntual;
-    const incluyeLavado = p.servicio !== 'INSPECCION_SOLA';
+    const esTrabajo = p.servicio === 'TRABAJO_ESPECIALIZADO';
+    const incluyeLavado = p.servicio !== 'INSPECCION_SOLA' && !esTrabajo;
     const dvEsGratis = p.servicio === 'LAVADO_MAS_INSPECCION' && p.tipoInformeBase === 'DIAGNOSTICO_VISUAL';
     base.puntual = {
       servicio: p.servicio,
       incluyeLavado,
+      trabajo: esTrabajo && p.trabajoDescripcion
+        ? { descripcion: p.trabajoDescripcion, precioTotal: p.trabajoPrecio ?? 0 }
+        : null,
       concepto: p.concepto,
       precioLavadoTotal: incluyeLavado ? p.precioLavado ?? null : null,
       itemsLavado: c.itemsLavado.map((it) => ({ nombre: it.nombre, precioTotal: it.precioLavado })),

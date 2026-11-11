@@ -34,6 +34,10 @@ enum ServicioPuntual {
   INSPECCION_SOLA
   LAVADO_MAS_INSPECCION
   SOLO_LAVADO
+  // Trabajo que KTV vende y factura pero ejecuta un tercero (impermeabilización,
+  // sellado, pintura en alturas). No tiene m² de fachada, ni días de dron, ni
+  // informe: descripción libre + costo real + fee. Ver bloque "trabajo*" abajo.
+  TRABAJO_ESPECIALIZADO
 }
 
 enum TipoInforme {
@@ -283,6 +287,15 @@ model CotizacionPuntual {
   diasApoyoExterno     Float?
   margenObjetivo       Float?   // con el que se calculó el precio (0.40 por defecto)
   filtroAgua           Boolean  @default(true)  // si no se monta, sus insumos no se gastan
+
+  // --- TRABAJO ESPECIALIZADO (Gerencia 2026-11-11, caso impermeabilización
+  // Maloka) --- Lo ejecuta un tercero; KTV lo vende, lo factura y responde por
+  // él. No hay metros ni días que calcular: el costo lo trae la comercial ya
+  // armado y el precio sale de aplicarle el fee. Null en todo lo demás.
+  trabajoDescripcion  String?  // lo ÚNICO de este bloque que ve el cliente
+  trabajoCostoReal    Float?   // CONFIDENCIAL — Regla A, lo que nos cuesta
+  trabajoFeePct       Float?   // CONFIDENCIAL — Regla A, margen neto sobre el precio
+  trabajoPrecio       Float?   // sin IVA
 }
 
 // Ítem de lavado (spec_multi_item_lavado_20260722.md): una cotización puntual

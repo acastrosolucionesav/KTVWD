@@ -13,6 +13,7 @@ const NOMBRES_SERVICIO: Record<string, string> = {
   INSPECCION_SOLA: 'Solo inspección',
   LAVADO_MAS_INSPECCION: 'Lavado + Inspección KTV Colombia',
   SOLO_LAVADO: 'Solo lavado',
+  TRABAJO_ESPECIALIZADO: 'Trabajo especializado (ejecuta un tercero)',
 };
 
 const NOMBRES_CONCEPTO: Record<string, string> = {
@@ -167,6 +168,21 @@ export default async function CotizacionDetallePage({ params }: { params: Promis
                       <dt className="text-gray-400">Días sistema</dt><dd>{it.diasEjecucionSistema}</dd>
                     </div>
                   ))}
+                </>
+              )}
+              {/* Trabajo especializado: el costo y el fee son TODO el costeo —
+                  no hay metros, ni días, ni ítems de lavado que mostrar. */}
+              {c.puntual!.trabajoCostoReal != null && (
+                <>
+                  <dt className="col-span-2 text-gray-400 pt-2 border-t border-white/10">Trabajo especializado</dt>
+                  <dt className="text-gray-400">Nos cuesta</dt><dd>{cop(c.puntual!.trabajoCostoReal)}</dd>
+                  <dt className="text-gray-400">Fee KTV aplicado</dt>
+                  <dd className={(c.puntual!.trabajoFeePct ?? 0) < 0.25 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                    {((c.puntual!.trabajoFeePct ?? 0) * 100).toFixed(1)}%
+                  </dd>
+                  <dt className="text-gray-400">Precio al cliente</dt><dd>{cop(c.puntual!.trabajoPrecio)}</dd>
+                  <dt className="col-span-2 text-gray-400 pt-1">Alcance que se le vendió</dt>
+                  <dd className="col-span-2 whitespace-pre-line text-gray-200">{c.puntual!.trabajoDescripcion}</dd>
                 </>
               )}
               {c.puntual!.descuentoPct != null && (
