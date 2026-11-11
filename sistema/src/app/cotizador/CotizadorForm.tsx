@@ -96,6 +96,16 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   useEffect(() => {
     if (idGuardado) onGuardado?.(idGuardado);
   }, [state, idGuardado, onGuardado]);
+  // Cambios sin guardar (Gerencia 2026-11-11, caso Maloka): "Calcular" muestra
+  // el precio nuevo pero NO toca la base, así que tras cambiar un descuento y
+  // calcular, la pantalla mostraba el total nuevo mientras el link del cliente
+  // seguía con el viejo — y el aviso verde de guardado seguía ahí, diciendo
+  // "guardada", como si ya estuviera. Esto marca el formulario como sucio en
+  // cuanto se toca algo y lo limpia solo cuando un guardado vuelve bien.
+  const [sucio, setSucio] = useState(false);
+  useEffect(() => {
+    if (state && !(state as GuardarPipedriveState).error) setSucio(false);
+  }, [state]);
   const [servicio, setServicio] = useState<'INSPECCION_SOLA' | 'LAVADO_MAS_INSPECCION' | 'SOLO_LAVADO'>(existente?.servicio ?? 'LAVADO_MAS_INSPECCION');
   // Modo de cotización (Gerencia 2026-11-04): por metros de fachada, o por días
   // estimados cuando el cliente no tiene el área — que es lo más común.
@@ -120,19 +130,25 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   }
 
   function actualizarItem(idx: number, patch: Partial<ItemLavadoUI>) {
+    setSucio(true);
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   }
 
   function agregarItem() {
+    setSucio(true);
     setItems((prev) => [...prev, itemVacio()]);
   }
 
   function quitarItem(idx: number) {
+    setSucio(true);
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }
 
   return (
-    <form action={action} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
+    // onChange en el <form>: en React el evento de cambio de cualquier campo
+    // burbujea hasta acá, así que basta este para enterarse de todo lo que se
+    // edite adentro sin tener que cablear campo por campo.
+    <form action={action} onChange={() => setSucio(true)} className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 my-8 space-y-5 border border-[#66C2F8]/20">
       <h1 className="text-lg font-extrabold text-[#171E27]">
         {esCorreccion ? 'Corregir cotización aceptada — Familia 1 (servicio puntual)' : existente ? 'Editar cotización — Familia 1 (servicio puntual)' : 'Cotización sencilla — Familia 1 (servicio puntual)'}
       </h1>
@@ -556,13 +572,27 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
       )}
 
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
-      {!state?.error && !!(state as GuardarPipedriveState | undefined)?.cotizacionId && (
+      {/* Tres avisos excluyentes: error, cambios sin guardar, guardado al día.
+          El del medio es el que faltaba: sin él, cambiar un descuento y darle
+          a "Calcular" dejaba en pantalla el total nuevo Y el aviso verde del
+          guardado anterior al mismo tiempo — dos cifras distintas, las dos
+          con cara de ser la buena, y el link del cliente con la vieja. */}
+      {!state?.error && sucio && !!idGuardado && (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <b>Hay cambios sin guardar.</b> El link que ve el cliente sigue mostrando
+          {!!(state as GuardarPipedriveState | undefined)?.totalCliente
+            ? <> <b>{cop((state as GuardarPipedriveState).totalCliente)}</b></>
+            : ' el valor anterior'}
+          {' '}— pulsa “{esCorreccion ? 'Crear versión corregida' : 'Guardar cambios'}” para que quede.
+        </p>
+      )}
+      {!state?.error && !sucio && !!(state as GuardarPipedriveState | undefined)?.cotizacionId && (
         <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
           ✓ Cotización guardada
           {!!(state as GuardarPipedriveState | undefined)?.totalCliente && (
             <> por <b>{cop((state as GuardarPipedriveState).totalCliente)}</b></>
           )}
-          {' '}— ya puedes cerrar esta ventana o seguir ajustando.
+          {' '}— el link del cliente ya muestra ese valor. Puedes cerrar esta ventana.
         </p>
       )}
 
