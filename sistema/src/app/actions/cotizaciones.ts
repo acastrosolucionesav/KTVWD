@@ -474,7 +474,7 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
 // Nunca hace redirect() ni toca cookies: el que redirige es cada wrapper,
 // porque el modal de Pipedrive no puede navegar a páginas que requieren el
 // login normal de KTV.
-type ResultadoGuardarPuntual = { error: string } | { error?: undefined; cotizacionId: string };
+type ResultadoGuardarPuntual = { error: string } | { error?: undefined; cotizacionId: string; totalCliente: number };
 
 async function guardarCotizacionPuntual(
   usuarioId: string, formData: FormData,
@@ -581,7 +581,7 @@ async function guardarCotizacionPuntual(
     // revisa) siguen viendo el precio anterior después de editar. Las demás
     // acciones sobre la propuesta ya lo hacían; esta se había quedado por fuera.
     revalidatePath(`/propuesta/${existente.linkToken}`);
-    return { cotizacionId: cotizacionExistenteId! };
+    return { cotizacionId: cotizacionExistenteId!, totalCliente };
   }
 
   // Corrección de una cotización ya enviada/aprobada/rechazada: se reutiliza
@@ -653,7 +653,7 @@ async function guardarCotizacionPuntual(
   }
 
   revalidatePath('/cotizaciones');
-  return { cotizacionId: cotizacion.id };
+  return { cotizacionId: cotizacion.id, totalCliente };
 }
 
 // Entrada normal (formulario del cotizador, sesión por cookie de KTV) — igual
@@ -674,7 +674,9 @@ export async function crearCotizacionPuntual(_state: CrearPuntualState, formData
 // contra los Usuario de KTV por correo (resolverUsuarioPipedrive). No hace
 // redirect (el modal no puede navegar a páginas que exigen el login normal
 // de KTV) — el llamador decide qué mostrar dentro del propio iframe.
-export type GuardarPipedriveState = { error?: string; cotizacionId?: string };
+// totalCliente viaja de vuelta para que el aviso de guardado muestre el valor
+// que quedó: sin eso, un guardado que no tomó efecto se ve idéntico a uno que sí.
+export type GuardarPipedriveState = { error?: string; cotizacionId?: string; totalCliente?: number };
 export async function crearCotizacionPuntualPipedrive(
   token: string, dealIdParam: string, userIdParam: string, formData: FormData,
 ): Promise<GuardarPipedriveState> {

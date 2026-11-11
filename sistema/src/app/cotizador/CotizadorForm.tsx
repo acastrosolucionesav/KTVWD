@@ -340,19 +340,24 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
               </div>
               <div className={it.concepto === 'SOLO_VENTANAS' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
                 <label className={label}>Área de fachada opaca (m²) — solo interno</label>
-                <input name="itemM2Opaca" type="number" disabled={it.concepto === 'SOLO_VENTANAS'} className={input}
+                {/* readOnly y no disabled: un input deshabilitado NO se envía con el
+                    formulario, y como la acción empareja los ítems por posición,
+                    con dos o más ítems los metros terminaban cruzados entre ellos. */}
+                <input name="itemM2Opaca" type="number" readOnly={it.concepto === 'SOLO_VENTANAS'} className={input}
                   placeholder="30500" value={it.concepto === 'SOLO_VENTANAS' ? 0 : it.m2Opaca}
                   onChange={(e) => actualizarItem(idx, { m2Opaca: Number(e.target.value) || 0 })} />
               </div>
               <div className={it.concepto === 'SOLO_FACHADA' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
                 <label className={label}>Área de vidrios/ventanas (m²) — solo interno</label>
-                <input name="itemM2Vidrio" type="number" disabled={it.concepto === 'SOLO_FACHADA'} className={input}
+                <input name="itemM2Vidrio" type="number" readOnly={it.concepto === 'SOLO_FACHADA'} className={input}
                   placeholder="0" value={it.concepto === 'SOLO_FACHADA' ? 0 : it.m2Vidrio}
                   onChange={(e) => actualizarItem(idx, { m2Vidrio: Number(e.target.value) || 0 })} />
               </div>
               <div>
                 <label className={label}>Superficie</label>
-                <select name="itemSuperficie" className={input} value={it.superficie} onChange={(e) => actualizarItem(idx, { superficie: e.target.value })}>
+                {/* `|| 'MIXTA'`: si el valor llega vacío, el <select> muestra la
+                    primera opción (Vidrio) y la guarda como si la hubieran elegido. */}
+                <select name="itemSuperficie" className={input} value={it.superficie || 'MIXTA'} onChange={(e) => actualizarItem(idx, { superficie: e.target.value })}>
                   <option value="VIDRIO">Vidrio</option>
                   <option value="MIXTA">Mixta</option>
                   <option value="DIFICIL">Difícil</option>
@@ -552,7 +557,13 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
 
       {state?.error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>}
       {!state?.error && !!(state as GuardarPipedriveState | undefined)?.cotizacionId && (
-        <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">✓ Cotización guardada — ya puedes cerrar esta ventana o seguir ajustando.</p>
+        <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+          ✓ Cotización guardada
+          {!!(state as GuardarPipedriveState | undefined)?.totalCliente && (
+            <> por <b>{cop((state as GuardarPipedriveState).totalCliente)}</b></>
+          )}
+          {' '}— ya puedes cerrar esta ventana o seguir ajustando.
+        </p>
       )}
 
       <div className="flex items-center gap-3">
