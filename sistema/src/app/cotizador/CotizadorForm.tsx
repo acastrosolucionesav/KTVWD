@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
+import { numeroEsCO } from '@/lib/numeros';
 import { crearCotizacionPuntual, previsualizarPuntual, type CrearPuntualState, type PreviewPuntualState, type GuardarPipedriveState } from '@/app/actions/cotizaciones';
 import PipedriveDealPicker from '@/components/PipedriveDealPicker';
 import type { PipedriveDealResumen } from '@/lib/pipedrive';
@@ -20,6 +21,12 @@ export type ItemLavadoUI = {
   concepto: ConceptoLavadoUI;
   m2Vidrio: number;
   m2Opaca: number;
+  // Espejo en texto de los dos campos de arriba. Existe porque el input dejó de
+  // ser type="number": mientras alguien escribe "1.600", el número todavía no
+  // es el definitivo, y si la casilla mostrara el número ya interpretado no la
+  // dejaría terminar de escribir el punto.
+  m2VidrioTexto?: string;
+  m2OpacaTexto?: string;
   superficie: string;
   tipoEdificio: string;
   dificultad: string;
@@ -67,7 +74,20 @@ export type CotizacionPuntualExistente = {
   itemsTerceros: { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; notaInterna: string }[];
 };
 
-export type TerceroUI = { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; notaInterna: string };
+export type TerceroUI = { descripcionCliente: string; tipo: 'PRODUCTO' | 'SERVICIO'; costoReal: number; costoTexto?: string; notaInterna: string };
+
+// Muestra, debajo de una casilla de plata, el número que el sistema entendió.
+// Solo aparece cuando hay algo escrito y lo entendido es distinto del texto
+// crudo — si alguien escribe "12000000" no hace falta repetírselo.
+function EcoNumero({ texto }: { texto: string }) {
+  const limpio = texto.trim();
+  if (!limpio) return null;
+  const n = numeroEsCO(limpio);
+  if (!n) {
+    return <p className="text-[11px] text-red-600 mt-1">No se entiende ese número — el sistema lo tomaría como 0.</p>;
+  }
+  return <p className="text-[11px] text-gray-500 mt-1">Se entiende: <b>{cop(n)}</b></p>;
+}
 
 export type DealPrefill = { id: string; clienteNombre: string; clienteContacto: string };
 
@@ -106,6 +126,11 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
   // "guardada", como si ya estuviera. Esto marca el formulario como sucio en
   // cuanto se toca algo y lo limpia solo cuando un guardado vuelve bien.
   const [sucio, setSucio] = useState(false);
+  // Eco de lo que el sistema entendió en las casillas de plata. Un campo que se
+  // lee mal no cambia de aspecto: se queda con lo que uno escribió y por dentro
+  // vale otra cosa, o cero. Esto lo vuelve visible mientras se escribe.
+  const [ecoCostoTrabajo, setEcoCostoTrabajo] = useState('');
+  const [ecoCostosInternos, setEcoCostosInternos] = useState('');
   useEffect(() => {
     if (state && !(state as GuardarPipedriveState).error) setSucio(false);
   }, [state]);
@@ -238,8 +263,10 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={label}>Nos cuesta (COP, sin IVA)</label>
-              <input name="trabajoCostoReal" type="number" min="0" step="1000" className={input}
-                placeholder="109000000" defaultValue={existente?.trabajoCostoReal ?? ''} />
+              <input name="trabajoCostoReal" type="text" inputMode="numeric" className={input}
+                placeholder="109.000.000" defaultValue={existente?.trabajoCostoReal ?? ''}
+                onChange={(e) => setEcoCostoTrabajo(e.target.value)} />
+              <EcoNumero texto={ecoCostoTrabajo} />
               <p className="text-[11px] text-gray-500 mt-1">
                 Todo lo que hay que pagar para ejecutarlo: cuadrilla, materiales, equipos, exámenes.
               </p>
@@ -409,15 +436,15 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
                 {/* readOnly y no disabled: un input deshabilitado NO se envía con el
                     formulario, y como la acción empareja los ítems por posición,
                     con dos o más ítems los metros terminaban cruzados entre ellos. */}
-                <input name="itemM2Opaca" type="number" readOnly={it.concepto === 'SOLO_VENTANAS'} className={input}
-                  placeholder="30500" value={it.concepto === 'SOLO_VENTANAS' ? 0 : it.m2Opaca}
-                  onChange={(e) => actualizarItem(idx, { m2Opaca: Number(e.target.value) || 0 })} />
+                <input name="itemM2Opaca" type="text" inputMode="numeric" readOnly={it.concepto === 'SOLO_VENTANAS'} className={input}
+                  placeholder="30.500" value={it.concepto === 'SOLO_VENTANAS' ? '0' : (it.m2OpacaTexto ?? (it.m2Opaca ? String(it.m2Opaca) : ''))}
+                  onChange={(e) => actualizarItem(idx, { m2OpacaTexto: e.target.value, m2Opaca: numeroEsCO(e.target.value) })} />
               </div>
               <div className={it.concepto === 'SOLO_FACHADA' ? 'col-span-3 md:col-span-1 opacity-40' : 'col-span-3 md:col-span-1'}>
                 <label className={label}>Área de vidrios/ventanas (m²) — solo interno</label>
-                <input name="itemM2Vidrio" type="number" readOnly={it.concepto === 'SOLO_FACHADA'} className={input}
-                  placeholder="0" value={it.concepto === 'SOLO_FACHADA' ? 0 : it.m2Vidrio}
-                  onChange={(e) => actualizarItem(idx, { m2Vidrio: Number(e.target.value) || 0 })} />
+                <input name="itemM2Vidrio" type="text" inputMode="numeric" readOnly={it.concepto === 'SOLO_FACHADA'} className={input}
+                  placeholder="0" value={it.concepto === 'SOLO_FACHADA' ? '0' : (it.m2VidrioTexto ?? (it.m2Vidrio ? String(it.m2Vidrio) : ''))}
+                  onChange={(e) => actualizarItem(idx, { m2VidrioTexto: e.target.value, m2Vidrio: numeroEsCO(e.target.value) })} />
               </div>
               <div>
                 <label className={label}>Superficie</label>
@@ -484,8 +511,10 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className={label}>Monto (COP)</label>
-            <input name="costosInternos" type="number" min="0" step="1000" className={input}
-              placeholder="0" defaultValue={existente?.costosInternos ?? ''} />
+            <input name="costosInternos" type="text" inputMode="numeric" className={input}
+              placeholder="0" defaultValue={existente?.costosInternos ?? ''}
+              onChange={(e) => setEcoCostosInternos(e.target.value)} />
+            <EcoNumero texto={ecoCostosInternos} />
           </div>
           <div className="col-span-2">
             <label className={label}>De qué es (nota interna)</label>
@@ -530,8 +559,9 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
             </div>
             <div className="col-span-2">
               <label className={label}>Nos cuesta</label>
-              <input name="terceroCosto" type="number" min="0" className={input} value={t.costoReal || ''}
-                onChange={(e) => setTerceros((prev) => prev.map((x, j) => j === i ? { ...x, costoReal: Number(e.target.value) || 0 } : x))} />
+              <input name="terceroCosto" type="text" inputMode="numeric" className={input}
+                value={t.costoTexto ?? (t.costoReal ? String(t.costoReal) : '')}
+                onChange={(e) => setTerceros((prev) => prev.map((x, j) => j === i ? { ...x, costoTexto: e.target.value, costoReal: numeroEsCO(e.target.value) } : x))} />
             </div>
             <div className="col-span-2">
               <label className={label}>Nota interna</label>
@@ -550,7 +580,7 @@ export default function CotizadorForm({ existente, esCorreccion, dealPrefill, ac
         <>
           <div>
             <label className={label}>Área de techo (m²) — para el Diagnóstico Visual / Informe Internacional</label>
-            <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
+            <input name="techo" type="text" inputMode="numeric" className={input} defaultValue={existente?.techo ?? 15000} />
           </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">

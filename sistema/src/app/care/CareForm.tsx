@@ -119,11 +119,11 @@ export default function CareForm({ existente, esCorreccion, dealPrefill, accion,
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={label}>Área de fachada (m²) — solo interno</label>
-          <input name="m2" type="number" required min="1" className={input} defaultValue={existente?.m2 ?? 30500} />
+          <input name="m2" type="text" inputMode="numeric" required className={input} defaultValue={existente?.m2 ?? 30500} />
         </div>
         <div>
           <label className={label}>Área de techo (m²) — para el Diagnóstico Visual incluido</label>
-          <input name="techo" type="number" className={input} defaultValue={existente?.techo ?? 15000} />
+          <input name="techo" type="text" inputMode="numeric" className={input} defaultValue={existente?.techo ?? 15000} />
         </div>
       </div>
 

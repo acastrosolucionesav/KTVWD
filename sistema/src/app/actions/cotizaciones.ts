@@ -7,6 +7,7 @@ import { verifySession, requireRol } from '@/lib/dal';
 import { getParametrosVigentes } from '@/lib/parametros';
 import { calcularLavadoMultiItem, calcularInspeccion, calcularCareTodos, calcularPorDias, calcularItemTercero, calcularTrabajoEspecializado, descuentoVolumen, type NivelRecargo, type Superficie, type ConceptoLavado, type Parametros, type TipoItemTercero } from '@/lib/pricing';
 import { generarIdTrazabilidad } from '@/lib/trazabilidad';
+import { numeroEsCO } from '@/lib/numeros';
 import { registrarPropuestaEnviada, registrarCotizacionCreada, actualizarTratoCotizacion, type CamposComercialesTrato } from '@/lib/pipedrive';
 import { verificarTokenModal, resolverUsuarioPipedrive } from '@/lib/pipedriveModalAuth';
 import { enviarCorreoAprobacionPendiente, enviarCorreoOrdenServicio } from '@/lib/email';
@@ -123,7 +124,7 @@ type ResultadoPuntual =
 function leerItemsTerceros(formData: FormData, parametros: Parametros): { error: string } | { error?: undefined; items: ItemTerceroData[] } {
   const terceroDescripciones = formData.getAll('terceroDescripcion').map((v) => String(v).trim());
   const terceroTipos = formData.getAll('terceroTipo').map((v) => String(v) as TipoItemTercero);
-  const terceroCostos = formData.getAll('terceroCosto').map((v) => Number(v) || 0);
+  const terceroCostos = formData.getAll('terceroCosto').map((v) => numeroEsCO(v));
   const terceroNotas = formData.getAll('terceroNota').map((v) => String(v).trim());
   const items: ItemTerceroData[] = [];
   for (let i = 0; i < terceroDescripciones.length; i++) {
@@ -156,7 +157,7 @@ function computarTrabajoEspecializado(
   base: { clienteNombre: string; clienteContacto: string | null; pipedriveDealId: string | null },
 ): ResultadoPuntual {
   const trabajoDescripcion = String(formData.get('trabajoDescripcion') || '').trim();
-  const trabajoCostoReal = Number(formData.get('trabajoCostoReal') || 0);
+  const trabajoCostoReal = numeroEsCO(formData.get('trabajoCostoReal'));
   const feePctInput = formData.get('trabajoFeePct') ? Number(formData.get('trabajoFeePct')) : null;
   const trabajoFeePct = feePctInput !== null ? feePctInput / 100 : FEE_TRABAJO_ESTANDAR;
 
@@ -282,8 +283,9 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
   // orden que se renderizaron los inputs — ver CotizadorForm).
   const itemNombres = formData.getAll('itemNombre').map((v) => String(v).trim());
   const itemConceptos = formData.getAll('itemConcepto').map((v) => String(v) as ConceptoLavado);
-  const itemM2VidrioInput = formData.getAll('itemM2Vidrio').map((v) => Number(v) || 0);
-  const itemM2OpacaInput = formData.getAll('itemM2Opaca').map((v) => Number(v) || 0);
+  // numeroEsCO y no Number(): "1.600" escrito a la colombiana valía 1,6 m².
+  const itemM2VidrioInput = formData.getAll('itemM2Vidrio').map((v) => numeroEsCO(v));
+  const itemM2OpacaInput = formData.getAll('itemM2Opaca').map((v) => numeroEsCO(v));
   const itemSuperficies = formData.getAll('itemSuperficie').map((v) => String(v) as Superficie);
   const itemTiposEdificio = formData.getAll('itemTipoEdificio').map((v) => String(v) as NivelRecargo);
   const itemDificultades = formData.getAll('itemDificultad').map((v) => String(v) as NivelRecargo);
@@ -312,10 +314,10 @@ function computarPuntual(formData: FormData, parametros: Parametros): ResultadoP
 
   // El techo se lee acá arriba porque el modo por días también lo necesita:
   // en el combo, el Diagnóstico Visual que se regala cuesta según el techo.
-  const techo = Number(formData.get('techo') || 0);
+  const techo = numeroEsCO(formData.get('techo'));
 
   // Costos internos: el trabajo los paga, el cliente no los ve desglosados.
-  const costosInternos = Math.max(0, Number(formData.get('costosInternos') || 0));
+  const costosInternos = Math.max(0, numeroEsCO(formData.get('costosInternos')));
   const costosInternosNota = String(formData.get('costosInternosNota') || '').trim() || null;
 
   // --- Entradas propias del modo POR DÍAS ---
@@ -1109,10 +1111,10 @@ function computarCare(formData: FormData, parametros: Parametros): ResultadoCare
 
   // Los 3 paquetes se cotizan siempre juntos, así que el área de fachada es
   // obligatoria aunque el plan destacado sea Basic (Essential/Complete la necesitan).
-  const m2 = Number(formData.get('m2') || 0);
+  const m2 = numeroEsCO(formData.get('m2'));
   if (m2 <= 0) return { error: 'Ingrese el área de fachada (m²) — se usa para calcular los 3 planes.' };
 
-  const techo = Number(formData.get('techo') || 0);
+  const techo = numeroEsCO(formData.get('techo'));
   // La duración ya no la elige el comercial: es fija por plan (reestructuración
   // 2026-07-23) — Basic 1 año, Essential y Complete 3 años. Se guarda la del
   // plan recomendado como referencia del registro.
